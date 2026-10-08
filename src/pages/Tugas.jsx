@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import api from './api';
+import api from '../api';
 import Login from './Login';
 
 // Helper: Format nilai angka menjadi predikat huruf
@@ -1315,4 +1315,7 @@ function Tugas() {
       )}
     </div>
   );
+}
+
 export default Tugas;
+
