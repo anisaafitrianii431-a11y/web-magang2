@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api';
 import Login from './Login';
 
@@ -61,13 +62,21 @@ function SidebarNavigation({ user, onLogout, activeMenu, setActiveMenu }) {
 
       {/* Nav Groups */}
       <div className="sidebar-nav">
-        {/* FITUR TUGAS MAGANG - satu-satunya menu yang digunakan */}
+        <div className="sidebar-group">
+          <span className="sidebar-group-title">MAIN CORE</span>
+          <Link to="/pembimbing" className="sidebar-nav-item" style={{ textDecoration: 'none' }}>
+            <span className="nav-icon">👥</span>
+            <span>Daftar Pemagang</span>
+          </Link>
+          <Link to="/periode" className="sidebar-nav-item" style={{ textDecoration: 'none' }}>
+            <span className="nav-icon">📅</span>
+            <span>Kelola Periode</span>
+          </Link>
+        </div>
+
         <div className="sidebar-group">
           <span className="sidebar-group-title">FITUR TUGAS MAGANG</span>
-          <button
-            className={`sidebar-nav-item ${activeMenu === 'tugas' ? 'active' : ''}`}
-            onClick={() => setActiveMenu('tugas')}
-          >
+          <Link to="/tugas" className="sidebar-nav-item active" style={{ textDecoration: 'none' }}>
             <span className="nav-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -78,7 +87,7 @@ function SidebarNavigation({ user, onLogout, activeMenu, setActiveMenu }) {
               </svg>
             </span>
             <span>Tugas Magang</span>
-          </button>
+          </Link>
         </div>
       </div>
 

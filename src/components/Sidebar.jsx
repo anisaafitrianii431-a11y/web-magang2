@@ -16,11 +16,14 @@ function Sidebar() {
         peserta: [
             { to: "/dashboard", label: "Dashboard" },
             { to: "/absensi", label: "Absen hari ini" },
+            { to: "/tugas", label: "Tugas Magang" },
             { to: "/riwayat", label: "Kehadiran" },
         ],
         pembimbing: [
             { to: "/dashboard", label: "Dashboard" },
-            { to: "/peserta", label: "Peserta" },
+            { to: "/pembimbing", label: "Daftar Pemagang" },
+            { to: "/periode", label: "Kelola Periode" },
+            { to: "/tugas", label: "Tugas Magang" },
             { to: "/riwayat", label: "Riwayat absensi" },
         ],
     };
@@ -60,7 +63,9 @@ function Sidebar() {
                     <Link to="/periode" className={location.pathname === "/periode" ? "active" : ""}>
                         📅 &nbsp;Kelola Periode
                     </Link>
-
+                    <Link to="/tugas" className={location.pathname === "/tugas" ? "active" : ""}>
+                        📋 &nbsp;Tugas Magang
+                    </Link>
                 </nav>
 
                 <div className="sidebar-footer" style={{ borderTop: "none", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto", padding: "10px 0" }}>
