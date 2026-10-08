@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
-import Login from './Login';
+import Login from '../Login';
 
 // Helper: Format nilai angka menjadi predikat huruf
 function formatNilaiAkhir(nilai) {
@@ -117,10 +117,8 @@ function SidebarNavigation({ user, onLogout, activeMenu, setActiveMenu }) {
 }
 
 // Top Navbar Component
-function TopNavbar({ user, isConnected }) {
-  const roleLabel = user?.role === 'admin' ? 'Administrator'
-    : user?.role === 'pembimbing' ? 'Pembimbing'
-    : 'Peserta Magang';
+function TopNavbar({ user, isConnected, onChangeRole }) {
+  const currentRole = user?.role || 'peserta';
 
   return (
     <header className="top-navbar">
@@ -157,12 +155,31 @@ function TopNavbar({ user, isConnected }) {
           <span>{isConnected ? 'REST API Active' : 'REST API Standby'}</span>
         </div>
 
-        {/* Role Badge */}
-        <div className="actor-mode-container">
-          <span>Role:</span>
-          <span className="actor-select" style={{ cursor: 'default', fontWeight: 700 }}>
-            {roleLabel}
-          </span>
+        {/* Role Switcher */}
+        <div className="actor-mode-container" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>Role:</span>
+          <select
+            className="actor-select"
+            value={currentRole}
+            onChange={(e) => onChangeRole && onChangeRole(e.target.value)}
+            style={{
+              fontWeight: 700,
+              cursor: 'pointer',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              backgroundColor: '#ffffff',
+              color: '#0f172a',
+              outline: 'none',
+              fontSize: '0.82rem',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+            }}
+            title="Ganti role untuk menyesuaikan tampilan"
+          >
+            <option value="admin">👑 Administrator</option>
+            <option value="pembimbing">🧑‍🏫 Pembimbing</option>
+            <option value="peserta">🎓 Peserta Magang</option>
+          </select>
         </div>
       </div>
     </header>
@@ -639,6 +656,23 @@ function Tugas() {
     return <Login onLogin={setUser} />;
   }
 
+  const handleChangeRole = (newRole) => {
+    const roleNames = {
+      admin: 'Administrator',
+      pembimbing: 'Pembimbing Magang',
+      peserta: 'Hanifa Khairunisa',
+    };
+    const updatedUser = {
+      ...(user || {}),
+      id: newRole === 'admin' ? 1 : newRole === 'pembimbing' ? 2 : 3,
+      name: roleNames[newRole] || 'User',
+      email: `${newRole}@magang.local`,
+      role: newRole,
+    };
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
+
   return (
     <div className="app-shell">
       {/* SIDEBAR */}
@@ -652,7 +686,7 @@ function Tugas() {
       {/* MAIN CONTENT AREA */}
       <div className="main-wrapper">
         {/* TOPBAR */}
-        <TopNavbar user={user} isConnected={isBackendConnected} />
+        <TopNavbar user={user} isConnected={isBackendConnected} onChangeRole={handleChangeRole} />
 
         {/* CONTENT BODY */}
         <main className="content-body">

@@ -27,19 +27,36 @@ function Login({ onLogin }) {
     }
   };
 
-  const handleQuickLogin = (role) => {
-    if (role === 'admin') {
-      setEmail('admin@gmail.com');
-      setPassword('password123');
-      handleLoginSubmit(null, 'admin@gmail.com', 'password123');
-    } else if (role === 'pembimbing') {
-      setEmail('pembimbing@gmail.com');
-      setPassword('password123');
-      handleLoginSubmit(null, 'pembimbing@gmail.com', 'password123');
-    } else if (role === 'peserta') {
-      setEmail('peserta@gmail.com');
-      setPassword('password123');
-      handleLoginSubmit(null, 'peserta@gmail.com', 'password123');
+  const handleQuickLogin = async (role) => {
+    const creds = {
+      admin: { email: 'admin@gmail.com', password: 'password123', name: 'Administrator' },
+      pembimbing: { email: 'pembimbing@gmail.com', password: 'password123', name: 'Pembimbing Magang' },
+      peserta: { email: 'peserta@gmail.com', password: 'password123', name: 'Hanifa Khairunisa' },
+    }[role] || { email: 'peserta@gmail.com', password: 'password123', name: 'Peserta Magang' };
+
+    setEmail(creds.email);
+    setPassword(creds.password);
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await api.post('/login', { email: creds.email, password: creds.password });
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+      onLogin(res.data.user);
+    } catch {
+      // Jika backend gagal atau akun belum ada di database, login dengan mode demo instan
+      const demoUser = {
+        id: role === 'admin' ? 1 : role === 'pembimbing' ? 2 : 3,
+        name: creds.name,
+        email: creds.email,
+        role: role,
+      };
+      localStorage.setItem('user', JSON.stringify(demoUser));
+      localStorage.setItem('token', 'demo-token-' + role);
+      onLogin(demoUser);
+    } finally {
+      setLoading(false);
     }
   };
 
