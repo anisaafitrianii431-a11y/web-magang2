@@ -1,5 +1,6 @@
 import React from 'react';
-import { GraduationCap, LogIn, UserCheck, LogOut, Home, Building2, Users, Activity, MessageSquare } from 'lucide-react';
+import { GraduationCap, LogIn, UserCheck, LogOut, Home, Building2, Users, Activity, MessageSquare, LayoutDashboard } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 function Navbar({ activeSection, setActiveSection, user, token, onOpenAuth, onLogout }) {
   const scrollToSection = (sectionId) => {
@@ -77,7 +78,27 @@ function Navbar({ activeSection, setActiveSection, user, token, onOpenAuth, onLo
           </button>
         </div>
 
-        <div className="nav-auth">
+        <div className="nav-auth" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Link
+            to="/dashboard"
+            className="btn-link-dashboard"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              background: 'rgba(99, 102, 241, 0.15)',
+              border: '1px solid rgba(99, 102, 241, 0.4)',
+              color: '#c7d2fe',
+              textDecoration: 'none',
+              fontSize: '13px',
+              fontWeight: 600,
+            }}
+          >
+            <LayoutDashboard size={16} />
+            <span>Ke Dashboard</span>
+          </Link>
           {token ? (
             <div className="user-menu">
               <button

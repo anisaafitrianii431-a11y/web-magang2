@@ -59,6 +59,9 @@ function Sidebar() {
                 </div>
 
                 <nav>
+                    <Link to="/dashboard" className={location.pathname === "/dashboard" ? "active" : ""}>
+                        📊 &nbsp;Dashboard
+                    </Link>
                     <Link to="/beranda" className={location.pathname === "/beranda" ? "active" : ""}>
                         🌐 &nbsp;Landing Page
                     </Link>

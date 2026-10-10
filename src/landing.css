@@ -2,37 +2,37 @@
 
 .landing-page-root {
   --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  
+
   --primary: #6366f1;
   --primary-hover: #4f46e5;
   --primary-light: rgba(99, 102, 241, 0.12);
   --primary-glow: rgba(99, 102, 241, 0.35);
-  
+
   --secondary: #06b6d4;
   --secondary-glow: rgba(6, 182, 212, 0.3);
   --accent: #a855f7;
   --accent-glow: rgba(168, 85, 247, 0.3);
-  
+
   --bg-gradient: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 60%, #090d16 100%);
   --card-bg: #ffffff;
   --card-border: #e2e8f0;
-  
+
   --glass-bg: rgba(255, 255, 255, 0.05);
   --glass-border: rgba(255, 255, 255, 0.12);
   --glass-hover: rgba(255, 255, 255, 0.09);
-  
+
   --text-main: #0f172a;
   --text-muted: #64748b;
   --text-light: #94a3b8;
-  
+
   --input-bg: #f8fafc;
   --input-border: #cbd5e1;
   --input-focus: #6366f1;
-  
+
   --danger-bg: #fef2f2;
   --danger-text: #991b1b;
   --danger-border: #fecaca;
-  
+
   --success-bg: #f0fdf4;
   --success-text: #166534;
   --success-border: #bbf7d0;
@@ -45,7 +45,7 @@
   --radius-md: 14px;
   --radius-lg: 24px;
   --radius-full: 9999px;
-  
+
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 10px 20px -5px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
@@ -61,18 +61,39 @@
   -webkit-font-smoothing: antialiased;
 }
 
+.landing-page-root h1,
+.landing-page-root h2,
+.landing-page-root h3,
+.landing-page-root h4,
+.landing-page-root h5,
+.landing-page-root h6 {
+  font-family: var(--font-family);
+  color: inherit;
+  letter-spacing: normal;
+}
+
+.landing-page-root button,
+.landing-page-root input,
+.landing-page-root select,
+.landing-page-root textarea {
+  font-family: var(--font-family);
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: rgba(15, 23, 42, 0.6);
 }
+
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.35);
 }
@@ -141,7 +162,7 @@
   position: absolute;
   inset: -1px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, rgba(255,255,255,0.4), transparent);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4), transparent);
   pointer-events: none;
 }
 
@@ -335,9 +356,20 @@
 }
 
 @keyframes pulse {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+  }
+
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(74, 222, 128, 0);
+  }
+
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+  }
 }
 
 .hero-title {
@@ -429,9 +461,23 @@
   flex-shrink: 0;
 }
 
-.stat-icon-wrapper.blue { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.25); }
-.stat-icon-wrapper.purple { background: rgba(192, 132, 252, 0.15); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.25); }
-.stat-icon-wrapper.amber { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.25); }
+.stat-icon-wrapper.blue {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.stat-icon-wrapper.purple {
+  background: rgba(192, 132, 252, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(192, 132, 252, 0.25);
+}
+
+.stat-icon-wrapper.amber {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
 
 .stat-value {
   font-size: 1.8rem;
@@ -1411,7 +1457,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .spin {
@@ -1557,20 +1605,25 @@
 
 /* RESPONSIVE */
 @media (max-width: 900px) {
+
   .profil-grid,
   .komentar-wrapper,
   .auth-page {
     grid-template-columns: 1fr;
   }
+
   .auth-banner {
     display: none;
   }
+
   .hero-title {
     font-size: 2.4rem;
   }
+
   .stats-container {
     grid-template-columns: 1fr;
   }
+
   .nav-links {
     display: none;
   }
@@ -2032,7 +2085,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .alert-box {
@@ -2701,10 +2756,8 @@
     right: 20px;
     padding: 10px 14px;
   }
+
   .wa-btn-text {
     display: none;
   }
 }
-
-
-

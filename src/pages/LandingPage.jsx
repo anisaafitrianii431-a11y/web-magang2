@@ -73,7 +73,7 @@ function LandingPage() {
   };
 
   return (
-    <div className="landing-page-root">
+    <div className="landing-page-root app-root">
       {activeSection !== 'auth' && (
         <Navbar
           activeSection={activeSection}

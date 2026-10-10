@@ -13,8 +13,9 @@ function App() {
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/" element={<LandingPage />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/beranda" element={<LandingPage />} />
+                <Route path="/landing" element={<LandingPage />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/tugas" element={<Tugas />} />
                 <Route path="/absensi" element={<Absensi />} />
@@ -23,7 +24,7 @@ function App() {
                 <Route path="/periode" element={<Periode />} />
 
                 <Route path="/riwayat" element={<Riwayat />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
         </BrowserRouter>
     );
