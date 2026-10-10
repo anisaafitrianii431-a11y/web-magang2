@@ -14,12 +14,14 @@ function Sidebar() {
 
     const menuByRole = {
         peserta: [
+            { to: "/beranda", label: "Landing Page" },
             { to: "/dashboard", label: "Dashboard" },
             { to: "/absensi", label: "Absen hari ini" },
             { to: "/tugas", label: "Tugas Magang" },
             { to: "/riwayat", label: "Kehadiran" },
         ],
         pembimbing: [
+            { to: "/beranda", label: "Landing Page" },
             { to: "/dashboard", label: "Dashboard" },
             { to: "/pembimbing", label: "Daftar Pemagang" },
             { to: "/periode", label: "Kelola Periode" },
@@ -57,6 +59,9 @@ function Sidebar() {
                 </div>
 
                 <nav>
+                    <Link to="/beranda" className={location.pathname === "/beranda" ? "active" : ""}>
+                        🌐 &nbsp;Landing Page
+                    </Link>
                     <Link to="/pembimbing" className={location.pathname === "/pembimbing" ? "active" : ""}>
                         👥 &nbsp;Daftar Pemagang
                     </Link>
