@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
+import LandingPage from "./pages/LandingPage";
 import Absensi from "./pages/Absensi";
 import Dashboard from "./pages/Dashboard";
 import Tugas from "./pages/Tugas";
@@ -12,7 +13,8 @@ function App() {
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/beranda" element={<LandingPage />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/tugas" element={<Tugas />} />
                 <Route path="/absensi" element={<Absensi />} />
@@ -21,7 +23,7 @@ function App() {
                 <Route path="/periode" element={<Periode />} />
 
                 <Route path="/riwayat" element={<Riwayat />} />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </BrowserRouter>
     );
