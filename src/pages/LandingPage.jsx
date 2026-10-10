@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import '../landing.css';
 import Navbar from '../components/landing/Navbar';
 import BerandaPage from '../components/landing/BerandaPage';
 import DetailAktivitas from '../components/landing/DetailAktivitas';
