@@ -8,6 +8,7 @@ import Pembimbing from "./pages/Pembimbing";
 import Periode from "./pages/Periode";
 import Peserta from "./pages/Peserta";
 import Riwayat from "./pages/Riwayat";
+import LaporanModule from "./pages/LaporanModule";
 
 function App() {
     return (
@@ -24,6 +25,9 @@ function App() {
                 <Route path="/periode" element={<Periode />} />
 
                 <Route path="/riwayat" element={<Riwayat />} />
+                <Route path="/laporan" element={<LaporanModule />} />
+                <Route path="/laporan/penilaian" element={<LaporanModule />} />
+                <Route path="/laporan/rekapitulasi" element={<LaporanModule />} />
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
         </BrowserRouter>

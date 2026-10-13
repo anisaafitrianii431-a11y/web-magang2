@@ -19,6 +19,9 @@ function Sidebar() {
             { to: "/absensi", label: "Absen hari ini" },
             { to: "/tugas", label: "Tugas Magang" },
             { to: "/riwayat", label: "Kehadiran" },
+            { to: "/laporan", label: "Laporan Magang" },
+            { to: "/laporan/penilaian", label: "Penilaian Laporan" },
+            { to: "/laporan/rekapitulasi", label: "Rekapitulasi" },
         ],
         pembimbing: [
             { to: "/beranda", label: "Landing Page" },
@@ -26,7 +29,9 @@ function Sidebar() {
             { to: "/pembimbing", label: "Daftar Pemagang" },
             { to: "/periode", label: "Kelola Periode" },
             { to: "/tugas", label: "Tugas Magang" },
-            { to: "/riwayat", label: "Riwayat absensi" },
+            { to: "/laporan", label: "Laporan Magang" },
+            { to: "/laporan/penilaian", label: "Penilaian Laporan" },
+            { to: "/laporan/rekapitulasi", label: "Rekapitulasi" },
         ],
     };
 
@@ -59,21 +64,15 @@ function Sidebar() {
                 </div>
 
                 <nav>
-                    <Link to="/dashboard" className={location.pathname === "/dashboard" ? "active" : ""}>
-                        📊 &nbsp;Dashboard
-                    </Link>
-                    <Link to="/beranda" className={location.pathname === "/beranda" ? "active" : ""}>
-                        🌐 &nbsp;Landing Page
-                    </Link>
-                    <Link to="/pembimbing" className={location.pathname === "/pembimbing" ? "active" : ""}>
-                        👥 &nbsp;Daftar Pemagang
-                    </Link>
-                    <Link to="/periode" className={location.pathname === "/periode" ? "active" : ""}>
-                        📅 &nbsp;Kelola Periode
-                    </Link>
-                    <Link to="/tugas" className={location.pathname === "/tugas" ? "active" : ""}>
-                        📋 &nbsp;Tugas Magang
-                    </Link>
+                    {menu.map((item) => (
+                        <Link
+                            key={item.to}
+                            to={item.to}
+                            className={location.pathname === item.to ? "active" : ""}
+                        >
+                            ◉ &nbsp;{item.label}
+                        </Link>
+                    ))}
                 </nav>
 
                 <div className="sidebar-footer" style={{ borderTop: "none", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto", padding: "10px 0" }}>
@@ -110,7 +109,7 @@ function Sidebar() {
             </div>
 
             <nav>
-                {menuByRole.peserta.map((item) => (
+                {menu.map((item) => (
                     <Link
                         key={item.to}
                         to={item.to}

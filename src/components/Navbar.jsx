@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 function Navbar() {
+    const location = useLocation();
     const currentUser = (() => {
         try {
             return JSON.parse(localStorage.getItem("user") || "null");
@@ -10,6 +11,12 @@ function Navbar() {
     })();
     
     const role = currentUser?.role || "peserta";
+    const reportPageTitles = {
+        "/laporan": "Laporan Magang",
+        "/laporan/penilaian": "Penilaian Laporan",
+        "/laporan/rekapitulasi": "Rekapitulasi Magang",
+    };
+    const reportTitle = reportPageTitles[location.pathname];
 
     const handleRoleToggle = () => {
         const newRole = role === "peserta" ? "pembimbing" : "peserta";
@@ -22,8 +29,14 @@ function Navbar() {
     return (
         <header className="navbar">
             <div>
-                <h3>{role === "pembimbing" ? "Admin Portal" : "Ruang kehadiran"}</h3>
-                <p>{role === "pembimbing" ? "Manajemen sistem absensi" : "Selamat datang di portal absensi magang"}</p>
+                <h3>{reportTitle || (role === "pembimbing" ? "Admin Portal" : "Ruang kehadiran")}</h3>
+                <p>
+                    {reportTitle
+                        ? `Kelola ${reportTitle.toLowerCase()} peserta magang`
+                        : role === "pembimbing"
+                            ? "Manajemen sistem absensi"
+                            : "Selamat datang di portal absensi magang"}
+                </p>
             </div>
             <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
                 <button 

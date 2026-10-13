@@ -1,4 +1,4 @@
-import { getInitialRekapitulasi } from '../services/api';
+import { getInitialRekapitulasi } from '../services/rekapitulasi';
 
 export default function RekapitulasiPage() {
   const data = getInitialRekapitulasi();
