@@ -10,7 +10,7 @@ function Sidebar() {
         }
     })();
 
-    const role = currentUser?.role || "peserta";
+    const role = String(currentUser?.role || "peserta").toLowerCase();
 
     const menuByRole = {
         peserta: [
@@ -27,6 +27,7 @@ function Sidebar() {
             { to: "/beranda", label: "Landing Page" },
             { to: "/dashboard", label: "Dashboard" },
             { to: "/pembimbing", label: "Daftar Pemagang" },
+            { to: "/pembimbing/dashboard", label: "Dashboard Pembimbing" },
             { to: "/periode", label: "Kelola Periode" },
             { to: "/tugas", label: "Tugas Magang" },
             { to: "/laporan", label: "Laporan Magang" },
@@ -38,6 +39,7 @@ function Sidebar() {
     const roleLabel = {
         pembimbing: "Pembimbing",
         peserta: "Peserta",
+        pemagang: "Pemagang",
     };
 
     const menu = menuByRole[role] || menuByRole.peserta;

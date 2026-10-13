@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle, CheckCircle2 } from 'lucide-react';
+import api from '../../services/api';
+import { getLoginData } from '../../utils/auth';
 
 function LoginForm({ onSuccess, noticeMessage = '' }) {
   const [email, setEmail] = useState('');
@@ -22,32 +24,22 @@ function LoginForm({ onSuccess, noticeMessage = '' }) {
     setIsLoading(true);
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ email, password })
-      });
-      const result = await res.json();
+      const response = await api.post('/login', { email, password });
+      const { token: authToken, user } = getLoginData(response.data);
 
-      if (result.status === 'success') {
-        localStorage.setItem('token', result.data.access_token);
-        if (result.data.user) {
-          localStorage.setItem('user', JSON.stringify(result.data.user));
-        }
-        setSuccessMessage('Login Berhasil! Selamat datang.');
-        if (onSuccess) onSuccess(result.data);
-
-      } else {
-        const msg = result.message || 'Email atau kata sandi yang Anda masukkan salah.';
-        setErrorMessage(msg);
-        alert('Login Gagal: ' + msg);
+      if (!authToken || !user) {
+        throw new Error('Respons login tidak berisi token atau data pengguna.');
       }
+
+      localStorage.setItem('token', authToken);
+      localStorage.setItem('user', JSON.stringify(user));
+      setSuccessMessage('Login Berhasil! Selamat datang.');
+      if (onSuccess) onSuccess(response.data);
     } catch (error) {
       console.error('Login error:', error);
-      const errTxt = 'Gagal terhubung ke layanan server. Silakan periksa koneksi internet Anda.';
+      const errTxt = error.response?.data?.message
+        || error.message
+        || 'Gagal terhubung ke layanan server. Silakan periksa koneksi internet Anda.';
       setErrorMessage(errTxt);
       alert('Login Gagal: ' + errTxt);
     } finally {

@@ -46,12 +46,18 @@ function Dashboard() {
         // but normally it's set in Absensi page.
     }, []);
 
-    const role = user?.role || "peserta";
-    const displayName = user?.name || participant?.participant_name || "Pengguna";
+    const role = String(user?.role || "peserta").toLowerCase();
+    const isParticipant = role === "peserta" || role === "pemagang";
+    const displayName =
+        user?.name ||
+        user?.nama ||
+        participant?.participant_name ||
+        participant?.nama ||
+        "Pengguna";
 
     useEffect(() => {
         const loadData = async () => {
-            if (role !== "peserta") {
+            if (!isParticipant) {
                 setAbsensi(null);
                 setLoading(false);
                 return;
@@ -80,16 +86,18 @@ function Dashboard() {
         };
 
         loadData();
-    }, [role, participant]);
+    }, [role, isParticipant, participant]);
 
     const roleLabel = {
         pembimbing: "Pembimbing",
         peserta: "Peserta",
+        pemagang: "Pemagang",
     };
 
     const descriptionMap = {
         pembimbing: "Pantau kehadiran peserta magang dan validasi status harian.",
         peserta: "Silakan lakukan absensi sesuai kegiatan magang yang sedang berjalan.",
+        pemagang: "Silakan lakukan absensi sesuai kegiatan magang yang sedang berjalan.",
     };
 
     return (
@@ -112,7 +120,7 @@ function Dashboard() {
                         <div className="status-box">
                             <span>Status Hari Ini</span>
                             <strong className={absensi?.status === "Hadir" ? "hadir" : "tidak-hadir"}>
-                                {role === "peserta" ? absensi?.status || "Tidak Hadir" : "Tersedia"}
+                                {isParticipant ? absensi?.status || "Tidak Hadir" : "Tersedia"}
                             </strong>
                         </div>
                     </div>
@@ -127,7 +135,7 @@ function Dashboard() {
                                 </div>
                             </div>
                         </div>
-                    ) : role === "peserta" ? (
+                    ) : isParticipant ? (
                         <div className="stats">
                             <div className="stat-card">
                                 <span>📥</span>
