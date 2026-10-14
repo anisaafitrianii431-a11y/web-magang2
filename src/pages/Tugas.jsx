@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
 import Login from '../Login';
+import Sidebar from '../components/Sidebar';
+import { getLoginData } from '../utils/auth';
 
 // Helper: Format nilai angka menjadi predikat huruf
 function formatNilaiAkhir(nilai) {
@@ -31,89 +33,37 @@ function formatTanggal(dateString) {
   }
 }
 
-// Helper: Status badge
-function getStatusSubmisi(submisi) {
+// Helper: Status badge (menerima deadline untuk mendeteksi pengumpulan terlambat)
+function getStatusSubmisi(submisi, deadline) {
   if (!submisi) {
     return { label: 'Belum Dikerjakan', className: 'unsubmitted' };
   }
+
+  // Terlambat jika waktu submit melewati deadline
+  const isLate =
+    !!deadline &&
+    !!submisi.tanggal_submit &&
+    new Date(submisi.tanggal_submit) > new Date(deadline);
+
   if (submisi.status === 'sudah_dinilai') {
+    if (isLate) {
+      return { label: 'Disetujui / Selesai (Terlambat)', className: 'late' };
+    }
     return { label: 'Disetujui / Selesai', className: 'approved' };
+  }
+
+  if (isLate) {
+    return { label: 'Terlambat - Menunggu Review', className: 'late' };
   }
   return { label: 'Menunggu Review', className: 'pending' };
 }
 
-// Sidebar Component (Sesuai Desain MagangAdmin Enterprise)
-function SidebarNavigation({ user, onLogout, activeMenu, setActiveMenu }) {
-  return (
-    <aside className="sidebar">
-      {/* Brand Header */}
-      <div className="sidebar-brand">
-        <div className="brand-icon-box">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
-            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
-          </svg>
-        </div>
-        <div className="brand-text-container">
-          <span className="brand-title">MagangAdmin</span>
-          <span className="brand-subtitle">ENTERPRISE PORTAL</span>
-        </div>
-      </div>
-
-      {/* Nav Groups */}
-      <div className="sidebar-nav">
-        <div className="sidebar-group">
-          <span className="sidebar-group-title">MAIN CORE</span>
-          <Link to="/pembimbing" className="sidebar-nav-item" style={{ textDecoration: 'none' }}>
-            <span className="nav-icon">👥</span>
-            <span>Daftar Pemagang</span>
-          </Link>
-          <Link to="/periode" className="sidebar-nav-item" style={{ textDecoration: 'none' }}>
-            <span className="nav-icon">📅</span>
-            <span>Kelola Periode</span>
-          </Link>
-        </div>
-
-        <div className="sidebar-group">
-          <span className="sidebar-group-title">FITUR TUGAS MAGANG</span>
-          <Link to="/tugas" className="sidebar-nav-item active" style={{ textDecoration: 'none' }}>
-            <span className="nav-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
-              </svg>
-            </span>
-            <span>Tugas Magang</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* Footer Profile */}
-      <div className="sidebar-footer">
-        <div className="sidebar-user-box">
-          <div className="user-avatar-circle">
-            {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
-          </div>
-          <div className="user-info-text">
-            <div className="user-info-name" title={user.name}>{user.name}</div>
-            <div className="user-info-role">
-              {user.role === 'admin' ? 'Administrator' : user.role === 'pembimbing' ? 'Pembimbing' : 'Peserta Magang'}
-            </div>
-          </div>
-          <button className="btn-sidebar-logout" onClick={onLogout} title="Keluar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
-          </button>
-        </div>
-      </div>
-    </aside>
-  );
+// Helper: Hitung jumlah submisi yang terlambat pada satu tugas
+function hitungTerlambat(submisiList, deadline) {
+  if (!deadline) return 0;
+  return (submisiList || []).filter(
+    (s) => s.tanggal_submit && new Date(s.tanggal_submit) > new Date(deadline)
+  ).length;
 }
 
 // Top Navbar Component
@@ -186,85 +136,6 @@ function TopNavbar({ user, isConnected, onChangeRole }) {
   );
 }
 
-// Data Dummy Awal
-const initialFallbackTugas = [
-  {
-    id: 5,
-    judul: 'Laporan minggu ke 4',
-    deskripsi: 'kumpulkan dalam bentuk pdf',
-    kategori: 'Individu',
-    deadline: '2026-10-02 11:00:00',
-    created_at: '2026-09-30 11:00:37',
-    submisi: [
-      {
-        id: 4,
-        tugas_id: 5,
-        user_id: 2,
-        file_path: 'submisi_tugas/n0MnU1biA8I8E8VVjG2sBniYW2aIhFvTE2Nb0uyd.pdf',
-        catatan_peserta: null,
-        tanggal_submit: '2026-09-30 11:02:48',
-        nilai: null,
-        feedback: null,
-        status: 'belum_dinilai',
-        peserta: { id: 2, name: 'Peserta Magang' },
-      },
-    ],
-  },
-  {
-    id: 4,
-    judul: 'Membuat laporan aplikasi project',
-    deskripsi: 'Kumpulkan dalam bentuk Pdf',
-    kategori: 'Individu',
-    deadline: '2026-09-22 08:31:00',
-    created_at: '2026-09-20 08:31:27',
-    submisi: [],
-  },
-  {
-    id: 2,
-    judul: 'Buatkan Flowchart',
-    deskripsi: 'Buatkan flowchart aplikasi web tersbut',
-    kategori: 'Individu',
-    deadline: '2026-09-21 08:04:00',
-    created_at: '2026-09-20 01:01:23',
-    submisi: [
-      {
-        id: 2,
-        tugas_id: 2,
-        user_id: 2,
-        file_path: 'submisi_tugas/ZE7doXBve06wPgAXPT9LTYREyniSlV97xn8gP1ym.png',
-        catatan_peserta: 'xx',
-        tanggal_submit: '2026-09-20 01:01:51',
-        nilai: 75,
-        feedback: null,
-        status: 'sudah_dinilai',
-        peserta: { id: 2, name: 'Peserta Magang' },
-      },
-    ],
-  },
-  {
-    id: 1,
-    judul: 'Buatkan usecase untuk web umkm',
-    deskripsi: 'Buatkan secara jelas dan detail tentang usecase nya',
-    kategori: 'Individu',
-    deadline: '2026-09-25 06:56:00',
-    created_at: '2026-09-19 23:56:43',
-    submisi: [
-      {
-        id: 1,
-        tugas_id: 1,
-        user_id: 2,
-        file_path: 'submisi_tugas/hNI7yJ0aSHY9CQMbkX3ksHyLoH8tFx6yzAjYYJB2.png',
-        catatan_peserta: null,
-        tanggal_submit: '2026-09-19 23:57:24',
-        nilai: 85,
-        feedback: 'Buatkan gambarnya secara detail',
-        status: 'sudah_dinilai',
-        peserta: { id: 2, name: 'Peserta Magang' },
-      },
-    ],
-  },
-];
-
 // Main App Component
 function Tugas() {
   const [user, setUser] = useState(() => {
@@ -283,8 +154,8 @@ function Tugas() {
   const isAdmin = user?.role === 'admin';
   const isPeserta = user?.role === 'peserta';
 
-  const [activeMenu, setActiveMenu] = useState('tugas');
-  const [daftarTugas, setDaftarTugas] = useState(initialFallbackTugas);
+  const [daftarTugas, setDaftarTugas] = useState([]);
+  const [taskLoadError, setTaskLoadError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isBackendConnected, setIsBackendConnected] = useState(false);
 
@@ -336,52 +207,14 @@ function Tugas() {
     clearSession();
   };
 
-  // Switch Actor Mode
-  const handleSwitchActor = async (targetRole) => {
-    const defaultUsers = {
-      admin: { id: 1, name: 'widya anjelina (Admin)', email: 'admin@gmail.com', role: 'admin' },
-      pembimbing: { id: 3, name: 'Pembimbing Magang', email: 'pembimbing@gmail.com', role: 'pembimbing' },
-      peserta: { id: 2, name: 'Anak Magang (Anda)', email: 'peserta@gmail.com', role: 'peserta' },
-    };
-
-    const creds = {
-      admin: { email: 'admin@gmail.com', password: 'password123' },
-      pembimbing: { email: 'pembimbing@gmail.com', password: 'password123' },
-      peserta: { email: 'peserta@gmail.com', password: 'password123' },
-    }[targetRole];
-
-    if (!creds) return;
-
-    try {
-      setLoading(true);
-      const res = await api.post('/login', creds);
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      setUser(res.data.user);
-      setIsBackendConnected(true);
-    } catch {
-      // Fallback offline switch
-      const fallbackUser = defaultUsers[targetRole];
-      if (fallbackUser) {
-        localStorage.setItem('user', JSON.stringify(fallbackUser));
-        setUser(fallbackUser);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Fetch tasks
   const fetchTugas = useCallback(() => {
     setLoading(true);
     api.get('/tugas')
       .then((response) => {
         setIsBackendConnected(true);
-        if (response.data && response.data.length > 0) {
-          setDaftarTugas(response.data);
-        } else {
-          setDaftarTugas(initialFallbackTugas);
-        }
+        setTaskLoadError('');
+        setDaftarTugas(Array.isArray(response.data) ? response.data : []);
         setLoading(false);
       })
       .catch((error) => {
@@ -389,10 +222,29 @@ function Tugas() {
           clearSession();
           return;
         }
-        setIsBackendConnected(false);
-        setDaftarTugas(initialFallbackTugas);
+        setIsBackendConnected(Boolean(error.response));
+        setTaskLoadError(error.response?.data?.message || 'Tidak dapat memuat tugas dari server.');
+        setDaftarTugas([]);
         setLoading(false);
       });
+  }, [clearSession]);
+
+  // Sinkronisasi status user & token dengan backend saat pertama kali dibuka
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      api.get('/me')
+        .then((res) => {
+          const currentUser = res.data?.data || res.data?.user || res.data;
+          if (currentUser?.id) {
+            localStorage.setItem('user', JSON.stringify(currentUser));
+            setUser(currentUser);
+          }
+        })
+        .catch(() => {
+          clearSession();
+        });
+    }
   }, [clearSession]);
 
   useEffect(() => {
@@ -410,9 +262,8 @@ function Tugas() {
         fetchTugas();
         alert('Tugas magang berhasil dihapus.');
       } catch (err) {
-        // Hapus dari state lokal jika offline
-        setDaftarTugas((prev) => prev.filter((t) => t.id !== id));
-        alert('Tugas magang dihapus.');
+        const errMsg = err?.response?.data?.message || 'Gagal menghapus tugas. Silakan coba lagi.';
+        alert('❌ Gagal: ' + errMsg);
       }
     }
   };
@@ -427,6 +278,7 @@ function Tugas() {
         await api.put(`/tugas/${modalFormTugas.id}`, {
           judul: formTugasData.judul,
           deskripsi: formTugasData.deskripsi,
+          kategori: formTugasData.kategori,
           deadline: formTugasData.deadline,
         });
         alert('Tugas magang berhasil diubah!');
@@ -435,6 +287,7 @@ function Tugas() {
         await api.post('/tugas', {
           judul: formTugasData.judul,
           deskripsi: formTugasData.deskripsi,
+          kategori: formTugasData.kategori,
           deadline: formTugasData.deadline,
         });
         alert('Tugas magang baru berhasil diterbitkan!');
@@ -442,31 +295,10 @@ function Tugas() {
       setModalFormTugas(null);
       fetchTugas();
     } catch (err) {
-      // Update lokal jika offline
-      if (modalFormTugas?.id) {
-        setDaftarTugas((prev) =>
-          prev.map((t) =>
-            t.id === modalFormTugas.id
-              ? { ...t, judul: formTugasData.judul, deskripsi: formTugasData.deskripsi, deadline: formTugasData.deadline, kategori: formTugasData.kategori }
-              : t
-          )
-        );
-        alert('Tugas magang berhasil diubah!');
-      } else {
-        const newId = Date.now();
-        const newTask = {
-          id: newId,
-          judul: formTugasData.judul,
-          deskripsi: formTugasData.deskripsi,
-          deadline: formTugasData.deadline,
-          kategori: formTugasData.kategori,
-          created_at: new Date().toISOString(),
-          submisi: [],
-        };
-        setDaftarTugas((prev) => [newTask, ...prev]);
-        alert('Tugas magang baru berhasil diterbitkan!');
-      }
-      setModalFormTugas(null);
+      const errMsg = err?.response?.data?.message
+        || (err?.response?.data?.errors ? JSON.stringify(err?.response?.data?.errors) : null)
+        || 'Gagal menyimpan tugas. Silakan coba lagi.';
+      alert('❌ Gagal: ' + errMsg);
     } finally {
       setSavingTugas(false);
     }
@@ -525,24 +357,8 @@ function Tugas() {
       setModalNilai(null);
       fetchTugas();
     } catch (err) {
-      // Update lokal jika offline
-      setDaftarTugas((prev) =>
-        prev.map((t) => {
-          if (t.id === modalNilai.tugas.id) {
-            return {
-              ...t,
-              submisi: (t.submisi || []).map((s) =>
-                s.id === modalNilai.submisi.id
-                  ? { ...s, nilai: val, feedback: inputFeedback, status: 'sudah_dinilai' }
-                  : s
-              ),
-            };
-          }
-          return t;
-        })
-      );
-      alert('Nilai & feedback berhasil disimpan!');
-      setModalNilai(null);
+      const errMsg = err?.response?.data?.message || 'Gagal menyimpan nilai. Silakan coba lagi.';
+      alert('❌ Gagal: ' + errMsg);
     } finally {
       setSavingNilai(false);
     }
@@ -597,34 +413,12 @@ function Tugas() {
       setUploadCatatan('');
       fetchTugas();
     } catch (err) {
-      // Simulasikan sukses jika offline
-      setDaftarTugas((prev) =>
-        prev.map((t) => {
-          if (t.id === modalSubmit.id) {
-            const newSub = {
-              id: Date.now(),
-              tugas_id: t.id,
-              tanggal_submit: new Date().toISOString(),
-              status: 'belum_dinilai',
-              catatan_peserta: uploadCatatan,
-              file_path: 'submisi_tugas/' + uploadFile.name,
-              nilai: null,
-              feedback: null,
-              peserta: {
-                id: user.id,
-                name: user.name,
-                instansi: 'Universitas Indonesia',
-              },
-            };
-            return { ...t, submisi: [newSub] };
-          }
-          return t;
-        })
-      );
-      alert('Tugas magang berhasil dikumpulkan!');
-      setModalSubmit(null);
-      setUploadFile(null);
-      setUploadCatatan('');
+      // Tampilkan pesan error yang sebenarnya dari backend
+      const errMsg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        'Gagal mengumpulkan tugas. Silakan coba lagi atau hubungi pembimbing.';
+      alert('❌ Gagal: ' + errMsg);
     } finally {
       setUploading(false);
     }
@@ -645,7 +439,7 @@ function Tugas() {
       const itemKategori = item.kategori || 'Individu';
       const matchKategori = !filterKategori || itemKategori === filterKategori;
 
-      const statusInfo = getStatusSubmisi(submisi);
+      const statusInfo = getStatusSubmisi(submisi, item.deadline);
       const matchStatus = !filterStatus || statusInfo.label.includes(filterStatus);
 
       return matchSearch && matchKategori && matchStatus;
@@ -656,32 +450,38 @@ function Tugas() {
     return <Login onLogin={setUser} />;
   }
 
-  const handleChangeRole = (newRole) => {
-    const roleNames = {
-      admin: 'Administrator',
-      pembimbing: 'Pembimbing Magang',
-      peserta: 'Hanifa Khairunisa',
+  const handleChangeRole = async (newRole) => {
+    const roleCreds = {
+      admin:      { email: 'admin@gmail.com',      password: 'password123' },
+      pembimbing: { email: 'pembimbing@gmail.com', password: 'password123' },
+      peserta:    { email: 'peserta@gmail.com',    password: 'password123' },
     };
-    const updatedUser = {
-      ...(user || {}),
-      id: newRole === 'admin' ? 1 : newRole === 'pembimbing' ? 2 : 3,
-      name: roleNames[newRole] || 'User',
-      email: `${newRole}@magang.local`,
-      role: newRole,
-    };
-    setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
+    const creds = roleCreds[newRole];
+    if (!creds) return;
+
+    try {
+      setLoading(true);
+      const res = await api.post('/login', { email: creds.email, password: creds.password });
+      const { token, user: authenticatedUser } = getLoginData(res.data);
+      if (!token || !authenticatedUser) {
+        throw new Error('Respons login tidak berisi token atau data pengguna.');
+      }
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(authenticatedUser));
+      setUser(authenticatedUser);
+      fetchTugas();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Gagal beralih role ke ' + newRole;
+      alert('⚠️ ' + msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="app-shell">
       {/* SIDEBAR */}
-      <SidebarNavigation
-        user={user}
-        onLogout={handleLogout}
-        activeMenu={activeMenu}
-        setActiveMenu={setActiveMenu}
-      />
+      <Sidebar onLogout={handleLogout} />
 
       {/* MAIN CONTENT AREA */}
       <div className="main-wrapper">
@@ -793,14 +593,14 @@ function Tugas() {
                     <tr>
                       <td colSpan="6" className="table-empty-state">
                         <div className="table-empty-icon">📁</div>
-                        <div>Tidak ada data tugas magang yang ditemukan.</div>
+                        <div>{taskLoadError || 'Tidak ada tugas magang yang tersedia.'}</div>
                       </td>
                     </tr>
                   ) : (
                     filteredData.map((tugas, index) => {
                       const submisiList = tugas.submisi || [];
                       const submisi = submisiList[0];
-                      const statusInfo = getStatusSubmisi(submisi);
+                      const statusInfo = getStatusSubmisi(submisi, tugas.deadline);
                       const nilaiInfo = formatNilaiAkhir(submisi?.nilai);
                       const tanggalSubmit = formatTanggal(submisi?.tanggal_submit || tugas.created_at);
 
@@ -855,10 +655,18 @@ function Tugas() {
                                 <span>{statusInfo.label}</span>
                               </span>
                             ) : (
-                              <span className={`badge-status-dot ${submisiList.length > 0 ? 'approved' : 'unsubmitted'}`}>
-                                <span className="dot"></span>
-                                <span>{submisiList.length > 0 ? `${submisiList.length} Submisi Masuk` : 'Belum Ada Submisi'}</span>
-                              </span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
+                                <span className={`badge-status-dot ${submisiList.length > 0 ? 'approved' : 'unsubmitted'}`}>
+                                  <span className="dot"></span>
+                                  <span>{submisiList.length > 0 ? `${submisiList.length} Submisi Masuk` : 'Belum Ada Submisi'}</span>
+                                </span>
+                                {hitungTerlambat(submisiList, tugas.deadline) > 0 && (
+                                  <span className="badge-status-dot late">
+                                    <span className="dot"></span>
+                                    <span>{hitungTerlambat(submisiList, tugas.deadline)} Terlambat</span>
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </td>
 
@@ -934,6 +742,7 @@ function Tugas() {
                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                   </svg>
+                                  <span>Edit</span>
                                 </button>
                               )}
 
@@ -1012,9 +821,9 @@ function Tugas() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.88rem' }}>
                         <div>
                           <strong>Status:</strong>{' '}
-                          <span className={`badge-status-dot ${getStatusSubmisi(mySub).className}`}>
+                          <span className={`badge-status-dot ${getStatusSubmisi(mySub, modalDetail.deadline).className}`}>
                             <span className="dot"></span>
-                            {getStatusSubmisi(mySub).label}
+                            {getStatusSubmisi(mySub, modalDetail.deadline).label}
                           </span>
                         </div>
                         <div>
@@ -1102,9 +911,9 @@ function Tugas() {
                             {sub.peserta?.instansi || 'Universitas Indonesia'} &bull; Dikumpulkan pada: {new Date(sub.tanggal_submit).toLocaleString('id-ID')}
                           </div>
                         </div>
-                        <span className={`badge-status-dot ${getStatusSubmisi(sub).className}`}>
+                        <span className={`badge-status-dot ${getStatusSubmisi(sub, modalSubmisiList.deadline).className}`}>
                           <span className="dot"></span>
-                          {getStatusSubmisi(sub).label}
+                          {getStatusSubmisi(sub, modalSubmisiList.deadline).label}
                         </span>
                       </div>
 
@@ -1242,14 +1051,14 @@ function Tugas() {
               </h3>
               <button className="btn-modal-close" onClick={() => setModalFormTugas(null)}>✕</button>
             </div>
-            <form onSubmit={handleSimpanTugas}>
+            <form className="task-form" onSubmit={handleSimpanTugas}>
               <div className="modal-body">
                 <div className="form-field-group">
                   <label className="form-field-label">Judul Tugas</label>
                   <input
                     type="text"
                     className="form-control-input"
-                    placeholder="Contoh: Rancangan UMKM Kamang Hilia"
+                    placeholder="Contoh: Buat Tugas Magang Baru"
                     value={formTugasData.judul}
                     onChange={(e) => setFormTugasData({ ...formTugasData, judul: e.target.value })}
                     required
@@ -1361,4 +1170,3 @@ function Tugas() {
 }
 
 export default Tugas;
-

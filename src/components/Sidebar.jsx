@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 
-function Sidebar() {
+function Sidebar({ onLogout: onLogoutOverride } = {}) {
     const location = useLocation();
     const currentUser = (() => {
         try {
@@ -14,25 +14,26 @@ function Sidebar() {
 
     const menuByRole = {
         peserta: [
-            { to: "/beranda", label: "Landing Page" },
-            { to: "/dashboard", label: "Dashboard" },
-            { to: "/absensi", label: "Absen hari ini" },
-            { to: "/tugas", label: "Tugas Magang" },
-            { to: "/riwayat", label: "Kehadiran" },
-            { to: "/laporan", label: "Laporan Magang" },
-            { to: "/laporan/penilaian", label: "Penilaian Laporan" },
-            { to: "/laporan/rekapitulasi", label: "Rekapitulasi" },
+            { to: "/beranda", label: "Landing Page", icon: "\u{1F310}" },
+            { to: "/dashboard", label: "Dashboard", icon: "\u{1F4CA}" },
+            { to: "/absensi", label: "Absen hari ini", icon: "\u{1F4C5}" },
+            { to: "/tugas", label: "Tugas Magang", icon: "\u{1F4CB}" },
+            { to: "/riwayat", label: "Kehadiran", icon: "\u{1F4C6}" },
+            { to: "/laporan", label: "Laporan Magang", icon: "\u{1F4C1}" },
+            { to: "/laporan/penilaian", label: "Penilaian Laporan", icon: "\u{2B50}" },
+            { to: "/laporan/rekapitulasi", label: "Rekapitulasi", icon: "\u{1F4CA}" },
+            { to: "/pemagang/daftar", label: "Pendaftaran Magang", icon: "\u{1F465}" },
         ],
         pembimbing: [
-            { to: "/beranda", label: "Landing Page" },
-            { to: "/dashboard", label: "Dashboard" },
-            { to: "/pembimbing", label: "Daftar Pemagang" },
-            { to: "/pembimbing/dashboard", label: "Dashboard Pembimbing" },
-            { to: "/periode", label: "Kelola Periode" },
-            { to: "/tugas", label: "Tugas Magang" },
-            { to: "/laporan", label: "Laporan Magang" },
-            { to: "/laporan/penilaian", label: "Penilaian Laporan" },
-            { to: "/laporan/rekapitulasi", label: "Rekapitulasi" },
+            { to: "/beranda", label: "Landing Page", icon: "\u{1F310}" },
+            { to: "/dashboard", label: "Dashboard", icon: "\u{1F4CA}" },
+            { to: "/pembimbing", label: "Daftar Pemagang", icon: "\u{1F465}" },
+            { to: "/pembimbing/dashboard", label: "Dashboard Pembimbing", icon: "\u{1F4CA}" },
+            { to: "/periode", label: "Kelola Periode", icon: "\u{1F4C5}" },
+            { to: "/tugas", label: "Tugas Magang", icon: "\u{1F4CB}" },
+            { to: "/laporan", label: "Laporan Magang", icon: "\u{1F4C1}" },
+            { to: "/laporan/penilaian", label: "Penilaian Laporan", icon: "\u{2B50}" },
+            { to: "/laporan/rekapitulasi", label: "Rekapitulasi", icon: "\u{1F4CA}" },
         ],
     };
 
@@ -45,6 +46,10 @@ function Sidebar() {
     const menu = menuByRole[role] || menuByRole.peserta;
 
     const handleLogout = () => {
+        if (onLogoutOverride) {
+            onLogoutOverride();
+            return;
+        }
         localStorage.removeItem("user");
         localStorage.removeItem("token");
         window.location.href = "/";
@@ -66,15 +71,18 @@ function Sidebar() {
                 </div>
 
                 <nav>
-                    {menu.map((item) => (
-                        <Link
-                            key={item.to}
-                            to={item.to}
-                            className={location.pathname === item.to ? "active" : ""}
-                        >
-                            ◉ &nbsp;{item.label}
-                        </Link>
-                    ))}
+                    {menu.map((item) => {
+                        return (
+                            <Link
+                                key={item.to}
+                                to={item.to}
+                                className={location.pathname === item.to ? "active" : ""}
+                            >
+                                <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                                <span>{item.label}</span>
+                            </Link>
+                        );
+                    })}
                 </nav>
 
                 <div className="sidebar-footer" style={{ borderTop: "none", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto", padding: "10px 0" }}>
@@ -111,15 +119,18 @@ function Sidebar() {
             </div>
 
             <nav>
-                {menu.map((item) => (
-                    <Link
-                        key={item.to}
-                        to={item.to}
-                        className={location.pathname === item.to ? "active" : ""}
-                    >
-                        ◉ &nbsp;{item.label}
-                    </Link>
-                ))}
+                {menu.map((item) => {
+                    return (
+                        <Link
+                            key={item.to}
+                            to={item.to}
+                            className={location.pathname === item.to ? "active" : ""}
+                        >
+                            <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                            <span>{item.label}</span>
+                        </Link>
+                    );
+                })}
             </nav>
 
             <div className="sidebar-footer">

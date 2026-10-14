@@ -18,4 +18,9 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// Fungsi untuk data awal rekapitulasi (diperlukan oleh RekapitulasiPage)
+export const getInitialRekapitulasi = () => {
+    return [];
+};
+
 export default api;

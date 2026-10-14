@@ -20,6 +20,10 @@ import Periode from "./pages/Periode";
 import Peserta from "./pages/Peserta";
 import Riwayat from "./pages/Riwayat";
 import LaporanModule from "./pages/LaporanModule";
+import Rekapitulasi from "./pages/Rekapitulasi";
+import LaporanMagang from "./pages/LaporanMagang";
+import Penilaian from "./pages/Penilaian";
+import LaporanApp from "./pages/LaporanApp";
 import { getRoleHome, getStoredUser, normalizeRole } from "./utils/auth";
 
 const ProtectedRoute = ({ children, allowedRole }) => {
@@ -57,6 +61,10 @@ export default function App() {
         <Route path="/laporan" element={<LaporanModule />} />
         <Route path="/laporan/penilaian" element={<LaporanModule />} />
         <Route path="/laporan/rekapitulasi" element={<LaporanModule />} />
+        <Route path="/laporan-magang" element={<LaporanMagang />} />
+        <Route path="/rekapitulasi" element={<Rekapitulasi />} />
+        <Route path="/penilaian" element={<Penilaian />} />
+        <Route path="/laporan-app" element={<LaporanApp />} />
 
         <Route
           path="/pemagang/daftar"
