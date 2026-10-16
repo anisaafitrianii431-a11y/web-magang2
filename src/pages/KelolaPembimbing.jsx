@@ -7,86 +7,37 @@ function KelolaPembimbing() {
     const [pembimbings, setPembimbings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [formError, setFormError] = useState("");
-    
-    const [isEditing, setIsEditing] = useState(false);
-    const [formData, setFormData] = useState({
-        id: "",
-        nama: "",
-        email: "",
-        no_hp: "",
-        bidang: "",
-    });
+    const [searchTerm, setSearchTerm] = useState("");
 
     const loadData = async () => {
         try {
             setLoading(true);
             const response = await api.get("/pembimbing");
-            setPembimbings(response.data);
+            const data = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+            setPembimbings(data);
             setError("");
-        } catch (err) {
-            setError("Gagal memuat data pembimbing.");
+        } catch {
+            setError("Gagal memuat data pembimbing dari server.");
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        loadData();
+        const timeoutId = setTimeout(loadData, 0);
+        return () => clearTimeout(timeoutId);
     }, []);
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setFormError("");
-        try {
-            if (isEditing) {
-                await api.put(`/pembimbing/${formData.id}`, formData);
-            } else {
-                await api.post("/pembimbing", formData);
-            }
-            resetForm();
-            loadData();
-        } catch (err) {
-            setFormError(err.response?.data?.message || "Terjadi kesalahan saat menyimpan data.");
-        }
-    };
-
-    const handleEdit = (item) => {
-        setIsEditing(true);
-        setFormData({
-            id: item.id,
-            nama: item.nama,
-            email: item.email,
-            no_hp: item.no_hp || "",
-            bidang: item.bidang || "",
-        });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    const handleDelete = async (id) => {
-        if (window.confirm("Apakah Anda yakin ingin menghapus data pembimbing ini?")) {
-            try {
-                await api.delete(`/pembimbing/${id}`);
-                // Jika sedang mengedit data yang dihapus, reset formnya
-                if (isEditing && formData.id === id) {
-                    resetForm();
-                }
-                loadData();
-            } catch (err) {
-                alert("Gagal menghapus data pembimbing.");
-            }
-        }
-    };
-
-    const resetForm = () => {
-        setIsEditing(false);
-        setFormData({ id: "", nama: "", email: "", no_hp: "", bidang: "" });
-        setFormError("");
-    };
+    const filteredPembimbings = pembimbings.filter((item) => {
+        const query = searchTerm.toLowerCase();
+        return (
+            (item.nama && item.nama.toLowerCase().includes(query)) ||
+            (item.email && item.email.toLowerCase().includes(query)) ||
+            (item.bidang && item.bidang.toLowerCase().includes(query)) ||
+            (item.no_hp && item.no_hp.toLowerCase().includes(query)) ||
+            String(item.id).includes(query)
+        );
+    });
 
     return (
         <div className="layout">
@@ -95,100 +46,117 @@ function KelolaPembimbing() {
             <div className="content">
                 <Navbar />
 
-                <main className="main">
-                    <div className="page-heading">
+                <main className="main" style={{ maxWidth: "1200px", margin: "0 auto", paddingBottom: "50px" }}>
+                    {/* Header Halaman yang Bersih & Alami */}
+                    <div className="page-heading" style={{ marginBottom: "20px" }}>
                         <div>
-                            <p className="eyebrow">KELOLA DATA</p>
-                            <h1>Daftar Pembimbing</h1>
-                            <p className="subtitle">Manajemen data pembimbing magang.</p>
+                            <p className="eyebrow" style={{ letterSpacing: "0.08em", color: "#4f46e5", fontWeight: "700" }}>
+                                DAFTAR PEMBIMBING
+                            </p>
+                            <h1 style={{ margin: "4px 0", fontSize: "26px", fontWeight: "800", color: "#0f172a" }}>
+                                Data Pembimbing
+                            </h1>
+                            <p className="subtitle" style={{ margin: 0, color: "#64748b", fontSize: "14px" }}>
+                                Lihat daftar pembimbing lapangan yang tersedia.
+                            </p>
                         </div>
                     </div>
 
-                    <div className="setup-panel" style={{ marginBottom: "30px", gridTemplateColumns: "1fr" }}>
-                        <div>
-                            <h3 style={{ margin: "0 0 15px", color: "#1e293b", fontSize: "18px" }}>
-                                {isEditing ? "Edit Data Pembimbing" : "Tambah Pembimbing Baru"}
+                    {/* Ringkasan Statistik Pembimbing */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "25px" }}>
+                        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "18px 20px", display: "flex", alignItems: "center", gap: "14px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+                            <div style={{ width: "44px", height: "44px", borderRadius: "10px", background: "#e0e7ff", color: "#4338ca", display: "grid", placeItems: "center", fontSize: "20px" }}>
+                                👥
+                            </div>
+                            <div>
+                                <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>Total Pembimbing</span>
+                                <h3 style={{ margin: "2px 0 0", fontSize: "22px", fontWeight: "800", color: "#0f172a" }}>{pembimbings.length}</h3>
+                            </div>
+                        </div>
+
+                        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "18px 20px", display: "flex", alignItems: "center", gap: "14px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+                            <div style={{ width: "44px", height: "44px", borderRadius: "10px", background: "#ecfdf5", color: "#059669", display: "grid", placeItems: "center", fontSize: "20px" }}>
+                                🏢
+                            </div>
+                            <div>
+                                <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "600", textTransform: "uppercase" }}>Divisi / Bidang</span>
+                                <h3 style={{ margin: "2px 0 0", fontSize: "22px", fontWeight: "800", color: "#0f172a" }}>
+                                    {new Set(pembimbings.map(p => p.bidang).filter(Boolean)).size}
+                                </h3>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    {/* Tabel Daftar Pembimbing */}
+                    <div className="table-card" style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "14px", overflow: "hidden", boxShadow: "0 2px 8px rgba(15, 23, 42, 0.04)" }}>
+                        <div className="table-toolbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", padding: "18px 24px", borderBottom: "1px solid #f1f5f9" }}>
+                            <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "#1e293b" }}>
+                                Daftar Pembimbing ({filteredPembimbings.length})
                             </h3>
-                            {formError && <div className="message error" style={{ marginBottom: "15px" }}>{formError}</div>}
-                            <form onSubmit={handleSubmit} className="participant-form" style={{ gridTemplateColumns: "1fr 1fr", display: "grid", gap: "15px" }}>
-                                <div style={{ gridColumn: "1 / -1" }}>
-                                    <label>Nama Lengkap</label>
-                                    <input type="text" name="nama" value={formData.nama} onChange={handleChange} required placeholder="Masukkan nama pembimbing" />
-                                </div>
-                                <div>
-                                    <label>Email</label>
-                                    <input type="email" name="email" value={formData.email} onChange={handleChange} required placeholder="email@contoh.com" />
-                                </div>
-                                <div>
-                                    <label>Nomor HP <span className="optional">(Opsional)</span></label>
-                                    <input type="text" name="no_hp" value={formData.no_hp} onChange={handleChange} placeholder="Contoh: 0812..." />
-                                </div>
-                                <div style={{ gridColumn: "1 / -1" }}>
-                                    <label>Bidang / Divisi <span className="optional">(Opsional)</span></label>
-                                    <input type="text" name="bidang" value={formData.bidang} onChange={handleChange} placeholder="Contoh: IT Support" />
-                                </div>
-                                <div style={{ gridColumn: "1 / -1", display: "flex", gap: "10px", marginTop: "10px" }}>
-                                    <button type="submit" className="btn-primary" style={{ display: "inline-block", width: "auto" }}>
-                                        {isEditing ? "Simpan Perubahan" : "Tambah Data"}
-                                    </button>
-                                    {isEditing && (
-                                        <button type="button" onClick={resetForm} className="btn-primary" style={{ background: "#94a3b8", display: "inline-block", width: "auto" }}>
-                                            Batal
-                                        </button>
-                                    )}
-                                </div>
-                            </form>
-                        </div>
-                    </div>
 
-                    <div className="table-card">
-                        <div className="table-toolbar">
-                            <h3>Total Pembimbing ({pembimbings.length})</h3>
+                            <input 
+                                type="text"
+                                placeholder="Cari nama, email, atau bidang..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "13px", minWidth: "260px" }}
+                            />
                         </div>
+
                         {loading ? (
-                            <p className="empty">Memuat data...</p>
+                            <p className="empty" style={{ padding: "40px", textAlign: "center", color: "#64748b" }}>Memuat data pembimbing...</p>
                         ) : error ? (
                             <p className="message error" style={{ margin: "20px" }}>{error}</p>
                         ) : (
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Nama</th>
-                                        <th>Email</th>
-                                        <th>No. HP</th>
-                                        <th>Bidang</th>
-                                        <th>Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pembimbings.length > 0 ? (
-                                        pembimbings.map((item) => (
-                                            <tr key={item.id}>
-                                                <td><strong>{item.nama}</strong></td>
-                                                <td>{item.email}</td>
-                                                <td>{item.no_hp || "-"}</td>
-                                                <td>{item.bidang || "-"}</td>
-                                                <td>
-                                                    <div style={{ display: "flex", gap: "8px" }}>
-                                                        <button 
-                                                            onClick={() => handleEdit(item)}
-                                                            style={{ border: "1px solid #e2e8f0", background: "#fff", color: "#3b82f6", padding: "4px 10px", borderRadius: "4px", fontSize: "12px", cursor: "pointer", fontWeight: "600" }}
-                                                        >Edit</button>
-                                                        <button 
-                                                            onClick={() => handleDelete(item.id)}
-                                                            style={{ border: "1px solid #e2e8f0", background: "#fee2e2", color: "#ef4444", padding: "4px 10px", borderRadius: "4px", fontSize: "12px", cursor: "pointer", fontWeight: "600" }}
-                                                        >Hapus</button>
-                                                    </div>
+                            <div style={{ overflowX: "auto" }}>
+                                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
+                                    <thead>
+                                        <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                                            <th style={{ padding: "12px 18px", color: "#64748b", fontWeight: "700", fontSize: "12px", width: "60px" }}>NO</th>
+                                            <th style={{ padding: "12px 18px", color: "#64748b", fontWeight: "700", fontSize: "12px" }}>NAMA PEMBIMBING</th>
+                                            <th style={{ padding: "12px 18px", color: "#64748b", fontWeight: "700", fontSize: "12px" }}>EMAIL</th>
+                                            <th style={{ padding: "12px 18px", color: "#64748b", fontWeight: "700", fontSize: "12px" }}>NO. HP</th>
+                                            <th style={{ padding: "12px 18px", color: "#64748b", fontWeight: "700", fontSize: "12px" }}>BIDANG / DIVISI</th>
+                                            <th style={{ padding: "12px 18px", color: "#64748b", fontWeight: "700", fontSize: "12px" }}>WAKTU DIBUAT</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredPembimbings.length > 0 ? (
+                                            filteredPembimbings.map((item, index) => (
+                                                <tr key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                                    <td style={{ padding: "14px 18px", color: "#64748b", fontWeight: "600" }}>
+                                                        {index + 1}
+                                                    </td>
+                                                    <td style={{ padding: "14px 18px" }}>
+                                                        <strong style={{ color: "#0f172a", fontSize: "14px" }}>{item.nama}</strong>
+                                                    </td>
+                                                    <td style={{ padding: "14px 18px", color: "#334155" }}>
+                                                        {item.email}
+                                                    </td>
+                                                    <td style={{ padding: "14px 18px", color: "#334155" }}>
+                                                        {item.no_hp || "-"}
+                                                    </td>
+                                                    <td style={{ padding: "14px 18px", color: "#334155" }}>
+                                                        <span style={{ background: "#f1f5f9", padding: "4px 8px", borderRadius: "6px", fontSize: "12px" }}>
+                                                            {item.bidang || "-"}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ padding: "14px 18px", color: "#64748b", fontSize: "12px" }}>
+                                                        {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : "-"}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="6" style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
+                                                    {searchTerm ? "Tidak ada pembimbing yang cocok dengan pencarian." : "Belum ada data pembimbing."}
                                                 </td>
                                             </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="5" className="empty">Belum ada data pembimbing.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
                 </main>

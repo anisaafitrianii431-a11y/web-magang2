@@ -64,14 +64,16 @@ function SidebarNavigation({ user, onLogout, activeMenu, setActiveMenu }) {
       <div className="sidebar-nav">
         <div className="sidebar-group">
           <span className="sidebar-group-title">MAIN CORE</span>
-          <Link to="/pembimbing" className="sidebar-nav-item" style={{ textDecoration: 'none' }}>
+          <Link to="/riwayat" className="sidebar-nav-item" style={{ textDecoration: 'none' }}>
             <span className="nav-icon">👥</span>
-            <span>Daftar Pemagang</span>
+            <span>Absensi &amp; Riwayat</span>
           </Link>
-          <Link to="/periode" className="sidebar-nav-item" style={{ textDecoration: 'none' }}>
-            <span className="nav-icon">📅</span>
-            <span>Kelola Periode</span>
-          </Link>
+          {user?.role === 'admin' && (
+            <Link to="/periode" className="sidebar-nav-item" style={{ textDecoration: 'none' }}>
+              <span className="nav-icon">📅</span>
+              <span>Kelola Periode</span>
+            </Link>
+          )}
         </div>
 
         <div className="sidebar-group">
@@ -117,8 +119,13 @@ function SidebarNavigation({ user, onLogout, activeMenu, setActiveMenu }) {
 }
 
 // Top Navbar Component
-function TopNavbar({ user, isConnected, onChangeRole }) {
+function TopNavbar({ user, isConnected }) {
   const currentRole = user?.role || 'peserta';
+  const roleLabel = {
+    admin: 'Administrator',
+    pembimbing: 'Pembimbing',
+    peserta: 'Peserta Magang',
+  }[currentRole] || 'Peserta Magang';
 
   return (
     <header className="top-navbar">
@@ -155,16 +162,13 @@ function TopNavbar({ user, isConnected, onChangeRole }) {
           <span>{isConnected ? 'REST API Active' : 'REST API Standby'}</span>
         </div>
 
-        {/* Role Switcher */}
         <div className="actor-mode-container" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>Role:</span>
-          <select
+          <span
             className="actor-select"
-            value={currentRole}
-            onChange={(e) => onChangeRole && onChangeRole(e.target.value)}
             style={{
+              display: 'inline-block',
               fontWeight: 700,
-              cursor: 'pointer',
               padding: '6px 12px',
               borderRadius: '8px',
               border: '1px solid #cbd5e1',
@@ -174,12 +178,10 @@ function TopNavbar({ user, isConnected, onChangeRole }) {
               fontSize: '0.82rem',
               boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
             }}
-            title="Ganti role untuk menyesuaikan tampilan"
+            aria-label={`Role: ${roleLabel}`}
           >
-            <option value="admin">👑 Administrator</option>
-            <option value="pembimbing">🧑‍🏫 Pembimbing</option>
-            <option value="peserta">🎓 Peserta Magang</option>
-          </select>
+            {roleLabel}
+          </span>
         </div>
       </div>
     </header>
@@ -334,41 +336,6 @@ function Tugas() {
       /* abaikan error logout */
     }
     clearSession();
-  };
-
-  // Switch Actor Mode
-  const handleSwitchActor = async (targetRole) => {
-    const defaultUsers = {
-      admin: { id: 1, name: 'widya anjelina (Admin)', email: 'admin@gmail.com', role: 'admin' },
-      pembimbing: { id: 3, name: 'Pembimbing Magang', email: 'pembimbing@gmail.com', role: 'pembimbing' },
-      peserta: { id: 2, name: 'Anak Magang (Anda)', email: 'peserta@gmail.com', role: 'peserta' },
-    };
-
-    const creds = {
-      admin: { email: 'admin@gmail.com', password: 'password123' },
-      pembimbing: { email: 'pembimbing@gmail.com', password: 'password123' },
-      peserta: { email: 'peserta@gmail.com', password: 'password123' },
-    }[targetRole];
-
-    if (!creds) return;
-
-    try {
-      setLoading(true);
-      const res = await api.post('/login', creds);
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      setUser(res.data.user);
-      setIsBackendConnected(true);
-    } catch {
-      // Fallback offline switch
-      const fallbackUser = defaultUsers[targetRole];
-      if (fallbackUser) {
-        localStorage.setItem('user', JSON.stringify(fallbackUser));
-        setUser(fallbackUser);
-      }
-    } finally {
-      setLoading(false);
-    }
   };
 
   // Fetch tasks
@@ -656,23 +623,6 @@ function Tugas() {
     return <Login onLogin={setUser} />;
   }
 
-  const handleChangeRole = (newRole) => {
-    const roleNames = {
-      admin: 'Administrator',
-      pembimbing: 'Pembimbing Magang',
-      peserta: 'Hanifa Khairunisa',
-    };
-    const updatedUser = {
-      ...(user || {}),
-      id: newRole === 'admin' ? 1 : newRole === 'pembimbing' ? 2 : 3,
-      name: roleNames[newRole] || 'User',
-      email: `${newRole}@magang.local`,
-      role: newRole,
-    };
-    setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-  };
-
   return (
     <div className="app-shell">
       {/* SIDEBAR */}
@@ -686,7 +636,7 @@ function Tugas() {
       {/* MAIN CONTENT AREA */}
       <div className="main-wrapper">
         {/* TOPBAR */}
-        <TopNavbar user={user} isConnected={isBackendConnected} onChangeRole={handleChangeRole} />
+        <TopNavbar user={user} isConnected={isBackendConnected} />
 
         {/* CONTENT BODY */}
         <main className="content-body">
@@ -1361,4 +1311,3 @@ function Tugas() {
 }
 
 export default Tugas;
-

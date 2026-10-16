@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import api from "../services/api";
@@ -12,7 +13,7 @@ function Dashboard() {
         }
     });
     
-    const [participant, setParticipant] = useState(() => {
+    const [participant] = useState(() => {
         try {
             return JSON.parse(localStorage.getItem("participant") || "null");
         } catch {
@@ -46,7 +47,7 @@ function Dashboard() {
         // but normally it's set in Absensi page.
     }, []);
 
-    const role = user?.role || "peserta";
+    const role = (user?.role || "peserta").toLowerCase();
     const displayName = user?.name || participant?.participant_name || "Pengguna";
 
     useEffect(() => {
@@ -100,87 +101,137 @@ function Dashboard() {
                 <Navbar />
 
                 <main className="main">
-                    <h1>Dashboard</h1>
-                    <p className="subtitle">Ringkasan {roleLabel[role] || "Pengguna"}</p>
-
-                    <div className="welcome-card">
-                        <div>
-                            <h2>Halo, {displayName} 👋</h2>
-                            <p>{descriptionMap[role] || descriptionMap.peserta}</p>
-                        </div>
-
-                        <div className="status-box">
-                            <span>Status Hari Ini</span>
-                            <strong className={absensi?.status === "Hadir" ? "hadir" : "tidak-hadir"}>
-                                {role === "peserta" ? absensi?.status || "Tidak Hadir" : "Tersedia"}
-                            </strong>
-                        </div>
-                    </div>
-
-                    {loading ? (
-                        <div className="stats">
-                            <div className="stat-card">
-                                <span>⏳</span>
+                    {role === "pembimbing" ? (
+                        <>
+                            <h1>Dashboard Pembimbing</h1>
+                            <p className="subtitle">Pilih pengelolaan yang ingin dibuka.</p>
+                            <div className="welcome-card">
                                 <div>
-                                    <small>Loading</small>
-                                    <h2>Memuat data...</h2>
+                                    <h2>Halo, {displayName} 👋</h2>
+                                    <p>{descriptionMap.pembimbing}</p>
                                 </div>
                             </div>
-                        </div>
-                    ) : role === "peserta" ? (
-                        <div className="stats">
-                            <div className="stat-card">
-                                <span>📥</span>
+                            <div className="management-links">
+                                <Link to="/riwayat" className="management-link">
+                                    <span className="management-icon">📅</span>
+                                    <span>
+                                        <strong>Absensi Magang</strong>
+                                        <small>Lihat rekapitulasi data kehadiran peserta.</small>
+                                    </span>
+                                    <span className="management-arrow">→</span>
+                                </Link>
+                                <Link to="/periode" className="management-link">
+                                    <span className="management-icon">🗓️</span>
+                                    <span>
+                                        <strong>Tahun Periode</strong>
+                                        <small>Lihat dan kelola tahun periode magang.</small>
+                                    </span>
+                                    <span className="management-arrow">→</span>
+                                </Link>
+                                <Link to="/tugas" className="management-link">
+                                    <span className="management-icon">📋</span>
+                                    <span>
+                                        <strong>Tugas Magang</strong>
+                                        <small>Kelola tugas, periksa, dan beri nilai submisi.</small>
+                                    </span>
+                                    <span className="management-arrow">→</span>
+                                </Link>
+                            </div>
+                        </>
+                    ) : role === "admin" ? (
+                        <>
+                            <h1>Dashboard Administrator</h1>
+                            <p className="subtitle">Portal utama pengelolaan sistem informasi magang.</p>
+                            <div className="welcome-card">
                                 <div>
-                                    <small>Jam Masuk</small>
-                                    <h2>{absensi?.jam_masuk || "08.00"}</h2>
+                                    <h2>Halo, {displayName} 👋</h2>
+                                    <p>Kelola periode, tugas, dan seluruh data absensi peserta magang.</p>
                                 </div>
                             </div>
-
-                            <div className="stat-card">
-                                <span>📤</span>
-                                <div>
-                                    <small>Jam Pulang</small>
-                                    <h2>{absensi?.jam_pulang || "17.00"}</h2>
-                                </div>
+                            <div className="management-links">
+                                <Link to="/periode" className="management-link">
+                                    <span className="management-icon">🗓️</span>
+                                    <span>
+                                        <strong>Periode Magang</strong>
+                                        <small>Kelola periode, waktu, dan peserta magang.</small>
+                                    </span>
+                                    <span className="management-arrow">→</span>
+                                </Link>
+                                <Link to="/tugas" className="management-link">
+                                    <span className="management-icon">📋</span>
+                                    <span>
+                                        <strong>Tugas Magang</strong>
+                                        <small>Kelola bank tugas dan evaluasi submisi.</small>
+                                    </span>
+                                    <span className="management-arrow">→</span>
+                                </Link>
+                                <Link to="/riwayat" className="management-link">
+                                    <span className="management-icon">📅</span>
+                                    <span>
+                                        <strong>Kelola Data Absensi</strong>
+                                        <small>Edit, hapus, dan pantau rekapan absensi.</small>
+                                    </span>
+                                    <span className="management-arrow">→</span>
+                                </Link>
                             </div>
-
-                            <div className="stat-card">
-                                <span>📌</span>
-                                <div>
-                                    <small>Status</small>
-                                    <h2>{absensi?.status || "Tidak Hadir"}</h2>
-                                </div>
-                            </div>
-                        </div>
+                        </>
                     ) : (
-                        <div className="stats">
-                            <div className="stat-card">
-                                <span>👥</span>
+                        <>
+                            <h1>Dashboard</h1>
+                            <p className="subtitle">Ringkasan {roleLabel[role] || "Pengguna"}</p>
+
+                            <div className="welcome-card">
                                 <div>
-                                    <small>Role</small>
-                                    <h2 style={{ fontSize: role === "pembimbing" ? "23px" : "30px", marginTop: role === "pembimbing" ? "4px" : "0" }}>
-                                        {roleLabel[role]}
-                                    </h2>
+                                    <h2>Halo, {displayName} 👋</h2>
+                                    <p>{descriptionMap[role] || descriptionMap.peserta}</p>
+                                </div>
+
+                                <div className="status-box">
+                                    <span>Status Hari Ini</span>
+                                    <strong className={absensi?.status === "Hadir" ? "hadir" : "tidak-hadir"}>
+                                        {absensi?.status || "Tidak Hadir"}
+                                    </strong>
                                 </div>
                             </div>
 
-                            <div className="stat-card">
-                                <span>📊</span>
-                                <div>
-                                    <small>Jam Kerja</small>
-                                    <h2>08.00 - 17.00</h2>
+                            {loading ? (
+                                <div className="stats">
+                                    <div className="stat-card">
+                                        <span>⏳</span>
+                                        <div>
+                                            <small>Loading</small>
+                                            <h2>Memuat data...</h2>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="stats">
+                                    <div className="stat-card">
+                                        <span>📥</span>
+                                        <div>
+                                            <small>Jam Masuk</small>
+                                            <h2>{absensi?.jam_masuk || "08.00"}</h2>
+                                        </div>
+                                    </div>
 
-                            <div className="stat-card">
-                                <span>📅</span>
-                                <div>
-                                    <small>Hari</small>
-                                    <h2>Senin - Sabtu</h2>
+                                    <div className="stat-card">
+                                        <span>📤</span>
+                                        <div>
+                                            <small>Jam Pulang</small>
+                                            <h2>{absensi?.jam_pulang || "17.00"}</h2>
+                                        </div>
+                                    </div>
+
+                                    <div className="stat-card">
+                                        <span>📌</span>
+                                        <div>
+                                            <small>Status</small>
+                                            <h2>{absensi?.status || "Tidak Hadir"}</h2>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+                            )}
+                        </>
                     )}
                 </main>
             </div>

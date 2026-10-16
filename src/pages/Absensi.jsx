@@ -1,100 +1,79 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import api from "../services/api";
 
 function Absensi() {
-    const savedParticipant = JSON.parse(localStorage.getItem("participant") || "null");
-    const [participant, setParticipant] = useState(savedParticipant);
-    const [magangs, setMagangs] = useState([]);
+    const navigate = useNavigate();
+    const [participant, setParticipant] = useState(null);
     const [data, setData] = useState(null);
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [profileLoading, setProfileLoading] = useState(true);
     const [clock, setClock] = useState(new Date());
     const [attendanceStatus, setAttendanceStatus] = useState("Hadir");
     const [keterangan, setKeterangan] = useState("");
 
-    const loadMagang = async () => {
-        try {
-            const response = await api.get("/magang");
-            const responseData = response.data?.data || response.data || [];
-            const dataArray = Array.isArray(responseData) ? responseData : [];
-            const filteredMagangs = dataArray.filter(item => {
-                const name = item.participant_name.toLowerCase();
-                return !name.includes('ayu') && !name.includes('rizky');
-            });
-            setMagangs(filteredMagangs);
-        } catch (requestError) {
-            console.error(requestError);
-        }
-    };
+    useEffect(() => {
+        let cancelled = false;
 
-    const loadData = async (code = participant?.participant_code) => {
-        if (!code) {
-            setData(null);
-            return;
-        }
-        try {
-            const response = await api.get("/absensi/hari-ini", { params: { participant_code: code } });
-            const responseData = response.data;
-            // If backend returns {} instead of null, treat it as null
-            if (responseData && Object.keys(responseData).length > 0) {
-                setData(responseData);
-                if (responseData.status) setAttendanceStatus(responseData.status);
-                if (responseData.keterangan) setKeterangan(responseData.keterangan);
-            } else {
-                setData(null);
+        const loadProfile = async () => {
+            try {
+                const response = await api.get("/me");
+                const profile = response.data?.data?.magang || null;
+                if (cancelled) return;
+                setParticipant(profile);
+
+                if (!profile) {
+                    setError("Akun peserta bersama tidak dapat dipakai untuk absensi pribadi. Keluar dan masuk dengan NPM serta password akun pribadi Anda.");
+                    return;
+                }
+
+                const attendanceResponse = await api.get("/absensi/hari-ini");
+                if (cancelled) return;
+                const attendance = attendanceResponse.data;
+                if (attendance && Object.keys(attendance).length > 0) {
+                    setData(attendance);
+                    if (attendance.approval_status) {
+                        setAttendanceStatus("Izin");
+                        setMessage(
+                            attendance.approval_status === "pending"
+                                ? "Permohonan izin sedang menunggu persetujuan pembimbing."
+                                : attendance.approval_status === "approved"
+                                    ? "Permohonan izin sudah disetujui pembimbing."
+                                    : "Permohonan izin ditolak pembimbing."
+                        );
+                    } else if (attendance.status) {
+                        setAttendanceStatus(attendance.status);
+                    }
+                    if (attendance.keterangan) setKeterangan(attendance.keterangan);
+                } else {
+                    setData(null);
+                    setMessage("");
+                }
+            } catch (requestError) {
+                if (!cancelled) {
+                    setError(requestError.response?.data?.message || "Profil atau data absensi belum dapat dimuat.");
+                    setData(null);
+                }
+            } finally {
+                if (!cancelled) setProfileLoading(false);
             }
-        } catch (requestError) {
-            setError(requestError.response?.data?.message || "Data absensi belum dapat dimuat.");
-            setData(null);
-        }
-    };
-
-    useEffect(() => {
-        loadMagang();
-        const timer = setInterval(() => setClock(new Date()), 1000);
-        return () => clearInterval(timer);
-    }, []);
-
-    useEffect(() => {
-        if (participant?.participant_code) {
-            loadData(participant.participant_code);
-        } else {
-            setData(null);
-        }
-    }, [participant?.participant_code]);
-
-    const handleCodeSelect = (event) => {
-        const selectedCode = event.target.value;
-        const selected = magangs.find((item) => item.participant_code === selectedCode);
-
-        if (!selected) {
-            setParticipant(null);
-            localStorage.removeItem("participant");
-            setData(null);
-            setKeterangan("");
-            return;
-        }
-
-        const profile = {
-            participant_code: selected.participant_code,
-            participant_name: selected.participant_name,
-            institution: selected.institution || "",
         };
-        
-        localStorage.setItem("participant", JSON.stringify(profile));
-        setParticipant(profile);
-        setError("");
-        setMessage("");
-        setKeterangan("");
-    };
+
+        void loadProfile();
+        const timer = setInterval(() => setClock(new Date()), 1000);
+        return () => {
+            cancelled = true;
+            clearInterval(timer);
+        };
+    }, []);
 
     const submitAttendance = async (type) => {
         if (!participant) {
-            setError("Silakan pilih nama terlebih dahulu.");
+            setError("Akun peserta belum terhubung ke NPM.");
             return;
         }
         
@@ -108,7 +87,7 @@ function Absensi() {
         setError("");
         try {
             const endpoint = type === "in" ? "/absensi/masuk" : "/absensi/pulang";
-            const payload = type === "in" ? { ...participant, status: attendanceStatus, keterangan: keterangan } : { participant_code: participant.participant_code };
+            const payload = type === "in" ? { status: attendanceStatus, keterangan } : {};
             const response = await api.post(endpoint, payload);
             setMessage(response.data.message);
             setData(response.data.data);
@@ -121,106 +100,85 @@ function Absensi() {
     };
 
     const dateLabel = clock.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const displayedStatus = data?.approval_status === "pending"
+        ? "Menunggu persetujuan"
+        : data?.approval_status === "approved"
+            ? "Izin disetujui"
+            : data?.approval_status === "rejected"
+                ? "Alpa"
+                : data?.status || "Belum hadir";
 
     return (
         <div className="layout">
             <Sidebar />
             <div className="content">
                 <Navbar />
-                <main className="main">
-                    <section className="page-heading">
+                <main className="main attendance-page">
+                    <section className="page-heading attendance-page-heading">
                         <div><p className="eyebrow">PORTAL KEHADIRAN</p><h1>Absensi magang</h1><p className="subtitle">Catat kehadiran harianmu tanpa antre.</p></div>
                         <div className="live-clock"><strong>{clock.toLocaleTimeString("id-ID")}</strong><span>{dateLabel}</span></div>
                     </section>
                     
-                    <section className="attendance-card">
+                    <section className="attendance-card attendance-page-card">
                         <div className="attendance-header">
                             <div>
-                                <p className="eyebrow">PILIH NAMA PESERTA</p>
-                                <select 
-                                    className="name-select" 
-                                    value={participant?.participant_code || ""} 
-                                    onChange={handleCodeSelect}
-                                    style={{ width: "100%", padding: "10px", marginTop: "10px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "16px" }}
-                                >
-                                    <option value="">-- Pilih nama kamu --</option>
-                                    {magangs.map((item) => {
-                                        // Coba ambil NPM dari localStorage berdasarkan nama
-                                        let npmDigits = "";
-                                        try {
-                                            const periodes = JSON.parse(localStorage.getItem("periodesDataV2") || "[]");
-                                            for (const p of periodes) {
-                                                if (!p.peserta) continue;
-                                                const found = p.peserta.find(peserta => peserta.nama.toLowerCase() === item.participant_name.toLowerCase());
-                                                if (found && found.npm) {
-                                                    npmDigits = found.npm.slice(-2);
-                                                    break;
-                                                }
-                                            }
-                                        } catch (e) {}
-
-                                        // Fallback jika tidak ketemu di localStorage (ambil 2 angka dari participant_code)
-                                        if (!npmDigits) {
-                                            const nums = item.participant_code.replace(/\D/g, '');
-                                            npmDigits = nums.slice(-2) || item.participant_code;
-                                        }
-
-                                        return (
-                                            <option key={item.id} value={item.participant_code}>
-                                                {item.participant_name} ({npmDigits})
-                                            </option>
-                                        );
-                                    })}
-                                </select>
+                                <p className="eyebrow">AKUN PESERTA</p>
+                                <h2>{profileLoading ? "Memuat profil..." : participant?.participant_name || "Akun belum terhubung"}</h2>
+                                {participant && <p className="subtitle">NPM: {participant.participant_code}</p>}
                             </div>
                         </div>
 
+                        {profileLoading && <p className="message">Memuat profil peserta...</p>}
                         {participant && (
                             <>
-                                <hr style={{ margin: "20px 0", border: "none", borderTop: "1px solid #eee" }} />
-                                <div className="attendance-header">
+                                <hr className="attendance-divider" />
+                                <div className="attendance-header attendance-current-status">
                                     <div>
                                         <p className="eyebrow">STATUS HARI INI</p>
-                                        <h2 className={data?.status === "Hadir" ? "hadir" : "muted-status"}>{data?.status || "Belum hadir"}</h2>
+                                        <h2 className={data?.status === "Hadir" || data?.approval_status === "approved" ? "hadir" : "muted-status"}>{displayedStatus}</h2>
                                         {data?.keterangan && <p style={{ marginTop: "5px", fontSize: "14px", color: "#666" }}>Catatan: {data.keterangan}</p>}
                                     </div>
                                 </div>
-                                <label className="attendance-status-select" style={{ display: "block", marginTop: "15px" }}>
+                                <label className="attendance-status-select">
                                     Status kehadiran
                                     <select 
                                         value={attendanceStatus} 
                                         onChange={(event) => setAttendanceStatus(event.target.value)} 
                                         disabled={loading || !!data}
-                                        style={{ width: "200px", padding: "10px", marginTop: "8px", fontSize: "14px" }}
                                     >
                                         <option value="Hadir">Hadir</option>
-                                        <option value="Izin">Izin</option>
+                                        <option value="Izin">Izin (perlu persetujuan pembimbing)</option>
                                         <option value="Sakit">Sakit</option>
                                         <option value="Alpa">Alpa</option>
                                     </select>
+                                    {attendanceStatus === "Izin" && !data && (
+                                        <small className="attendance-hint">
+                                            Status izin baru tercatat setelah disetujui pembimbing.
+                                        </small>
+                                    )}
                                 </label>
                                 
                                 {attendanceStatus !== "Hadir" && (
-                                    <label className="attendance-status-select" style={{ marginTop: "15px" }}>
+                                    <label className="attendance-status-select">
                                         Keterangan / Alasan
                                         <textarea 
                                             value={keterangan} 
                                             onChange={(e) => setKeterangan(e.target.value)}
                                             placeholder={`Masukkan alasan kenapa Anda ${attendanceStatus.toLowerCase()}...`}
                                             disabled={loading || !!data}
-                                            style={{ width: "100%", padding: "10px", marginTop: "8px", borderRadius: "8px", border: "1px solid #ddd", fontSize: "15px", minHeight: "80px", fontFamily: "inherit" }}
+                                            className="attendance-reason"
                                             required
                                         ></textarea>
                                     </label>
                                 )}
                                 
-                                <div className="time-container" style={{ marginTop: "20px" }}>
+                                <div className="time-container attendance-time-container">
                                     <div className="time-box">
                                         <span>JAM MASUK</span>
                                         <strong>{data?.jam_masuk || "--:--"}</strong>
-                                        <small className="time-note">{data?.jam_masuk ? "Waktu masuk tercatat" : attendanceStatus === "Hadir" ? "Belum melakukan absen masuk" : `Status ${attendanceStatus.toLowerCase()} tidak memakai jam masuk`}</small>
-                                        <button onClick={() => submitAttendance("in")} disabled={loading || !!data} className="btn-primary">
-                                            {data ? "Sudah tercatat" : attendanceStatus === "Hadir" ? "Absen masuk" : `Ajukan ${attendanceStatus}`}
+                                        <small className="time-note">{data?.approval_status === "pending" ? "Menunggu keputusan pembimbing" : data?.jam_masuk ? "Waktu masuk tercatat" : attendanceStatus === "Hadir" ? "Belum melakukan absen masuk" : `Status ${attendanceStatus.toLowerCase()} tidak memakai jam masuk`}</small>
+                                        <button type="button" onClick={() => submitAttendance("in")} disabled={loading || !!data} className="btn-attendance-in">
+                                            {data?.approval_status === "pending" ? "Menunggu persetujuan" : data?.approval_status === "approved" ? "Izin disetujui" : data?.approval_status === "rejected" ? "Izin ditolak" : data ? "Sudah tercatat" : attendanceStatus === "Hadir" ? "Absen masuk" : `Kirim Status ${attendanceStatus}`}
                                         </button>
                                     </div>
                                     <div className="time-box checkout">
@@ -241,10 +199,24 @@ function Absensi() {
                                 </div>
                             </>
                         )}
-                        {(message || error) && <div className={error ? "message error" : "message"} style={{ marginTop: "20px" }}>{error || message}</div>}
+                        {error && <div className="message error" role="alert" style={{ marginTop: "20px" }}>{error}</div>}
+                        {!profileLoading && !participant && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    localStorage.removeItem("token");
+                                    localStorage.removeItem("user");
+                                    navigate("/login");
+                                }}
+                                style={{ marginTop: "12px", border: "none", background: "#4f46e5", color: "#fff", padding: "10px 14px", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}
+                            >
+                                Keluar dan masuk memakai NPM pribadi
+                            </button>
+                        )}
+                        {message && !error && <div className="message" role="status" style={{ marginTop: "20px" }}>{message}</div>}
                     </section>
                     
-                    <div className="history-link"><span>Perlu melihat kehadiran sebelumnya?</span><Link to="/riwayat">Buka riwayat absensi →</Link></div>
+                    {participant && <div className="history-link"><span>Perlu melihat kehadiran sebelumnya?</span><Link to="/riwayat">Buka riwayat absensi →</Link></div>}
                 </main>
             </div>
         </div>

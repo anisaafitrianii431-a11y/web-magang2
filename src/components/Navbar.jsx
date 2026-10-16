@@ -9,43 +9,29 @@ function Navbar() {
         }
     })();
     
-    const role = currentUser?.role || "peserta";
-
-    const handleRoleToggle = () => {
-        const newRole = role === "peserta" ? "pembimbing" : "peserta";
-        const newUser = currentUser ? { ...currentUser, role: newRole } : { role: newRole };
-        localStorage.setItem("user", JSON.stringify(newUser));
-        // Jika sedang di halaman dashboard atau lainnya, bisa reload untuk me-refresh data
-        window.location.reload();
-    };
+    const role = (currentUser?.role || "peserta").toLowerCase();
 
     return (
         <header className="navbar">
             <div>
-                <h3>{role === "pembimbing" ? "Admin Portal" : "Ruang kehadiran"}</h3>
-                <p>{role === "pembimbing" ? "Manajemen sistem absensi" : "Selamat datang di portal absensi magang"}</p>
+                <h3>{role === "admin" ? "Admin Portal" : role === "pembimbing" ? "Portal Pembimbing" : "Ruang kehadiran"}</h3>
+                <p>{role === "admin" ? "Kelola data absensi peserta magang" : role === "pembimbing" ? "Manajemen sistem absensi" : "Selamat datang di portal absensi magang"}</p>
             </div>
-            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                <button 
-                    onClick={handleRoleToggle} 
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <span 
                     style={{
-                        padding: "8px 16px",
-                        background: role === "pembimbing" ? "#3b82f6" : "#f1f5f9",
-                        color: role === "pembimbing" ? "white" : "#475569",
-                        border: "1px solid",
-                        borderColor: role === "pembimbing" ? "#2563eb" : "#e2e8f0",
+                        padding: "6px 12px",
+                        background: role === "admin" || role === "pembimbing" ? "#dbeafe" : "#f1f5f9",
+                        color: role === "admin" || role === "pembimbing" ? "#1e40af" : "#475569",
                         borderRadius: "8px",
-                        cursor: "pointer",
-                        fontWeight: "600",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        fontSize: "14px"
+                        fontSize: "12px",
+                        fontWeight: "700",
+                        letterSpacing: "0.02em"
                     }}
                 >
-                    {role === "pembimbing" ? "🔄 Mode Pembimbing" : "🔄 Mode Peserta"}
-                </button>
-                {role === "peserta" && (
+                    {role === "admin" ? "👑 Mode Admin" : role === "pembimbing" ? "🛡️ Mode Pembimbing" : "👤 Mode Peserta"}
+                </span>
+                {role === "peserta" && localStorage.getItem("token") && (
                     <Link className="history-button" to="/riwayat">
                         Lihat riwayat <span>↗</span>
                     </Link>
