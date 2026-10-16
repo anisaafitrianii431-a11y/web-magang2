@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 
-function Sidebar() {
+function Sidebar({ onLogout: onLogoutOverride } = {}) {
     const location = useLocation();
     const currentUser = (() => {
         try {
@@ -10,137 +10,92 @@ function Sidebar() {
         }
     })();
 
-    const role = (currentUser?.role || "peserta").toLowerCase();
-
-    const roleLabel = {
-        pembimbing: "Pembimbing",
-        peserta: "Peserta",
-    };
+    const role = String(currentUser?.role || "peserta").trim().toLowerCase();
+    const isAdmin = role === "admin" || role === "administrator";
+    const isPembimbing = role === "pembimbing";
+    const roleLabel = isAdmin ? "Admin" : isPembimbing ? "Pembimbing" : "Peserta";
+    const menu = isAdmin
+        ? [
+            { to: "/riwayat", label: "Absensi & Riwayat", icon: "📅" },
+            { to: "/akun-peserta", label: "Akun Peserta", icon: "👤" },
+            { to: "/tugas", label: "Tugas Magang", icon: "📋" },
+        ]
+        : isPembimbing
+            ? [
+                { to: "/riwayat", label: "Absensi Magang", icon: "📅" },
+                { to: "/periode", label: "Kelola Periode", icon: "🗓️" },
+                { to: "/tugas", label: "Tugas Magang", icon: "📋" },
+                { to: "/laporan", label: "Laporan Magang", icon: "📁" },
+            ]
+            : [
+                { to: "/beranda", label: "Landing Page", icon: "🌐" },
+                { to: "/dashboard", label: "Dashboard", icon: "📊" },
+                { to: "/absensi", label: "Absen Hari Ini", icon: "📅" },
+                { to: "/tugas", label: "Tugas Magang", icon: "📋" },
+                { to: "/riwayat", label: "Kehadiran", icon: "🗓️" },
+                { to: "/laporan", label: "Laporan Magang", icon: "📁" },
+                { to: "/pemagang/daftar", label: "Pendaftaran Magang", icon: "👥" },
+            ];
 
     const handleLogout = () => {
+        if (onLogoutOverride) {
+            onLogoutOverride();
+            return;
+        }
         localStorage.removeItem("user");
         localStorage.removeItem("token");
         window.location.href = "/login";
     };
 
-    if (role === "admin") {
-        return (
-            <aside className="sidebar">
-                <Link to="/riwayat" className="sidebar-logo" style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}>
-                    <div className="logo-small">A</div>
-                    <div>
-                        <h2>MagangAdmin</h2>
-                        <span>ADMINISTRATOR PORTAL</span>
-                    </div>
-                </Link>
-
-                <div className="sidebar-note">
-                    <span>MAIN CORE</span>
-                </div>
-
-                <nav>
-                    <Link to="/riwayat" className={location.pathname === "/riwayat" ? "active" : ""}>
-                        📅 &nbsp;Absensi & Riwayat
-                    </Link>
-                    <Link to="/akun-peserta" className={location.pathname === "/akun-peserta" ? "active" : ""}>
-                        👤 &nbsp;Akun Peserta
-                    </Link>
-                    <Link to="/tugas" className={location.pathname === "/tugas" ? "active" : ""}>
-                        📋 &nbsp;Tugas Magang
-                    </Link>
-                </nav>
-
-                <div className="sidebar-footer" style={{ borderTop: "none", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto", padding: "10px 0" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <div style={{ width: "32px", height: "32px", background: "#4f46e5", color: "#fff", borderRadius: "50%", display: "grid", placeItems: "center", fontWeight: "bold" }}>
-                            {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : "A"}
-                        </div>
-                        <div>
-                            <strong style={{ display: "block", color: "#f8fafc", fontSize: "14px" }}>{currentUser?.name || "Administrator"}</strong>
-                            <span style={{ color: "#94a3b8", fontSize: "11px" }}>{currentUser?.email || "admin@magang.local"}</span>
-                        </div>
-                    </div>
-                    <button onClick={handleLogout} style={{ background: "#ef4444", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "6px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" }}>
-                        Logout
-                    </button>
-                </div>
-            </aside>
-        );
-    }
-
-    if (role === "pembimbing") {
-        return (
-            <aside className="sidebar">
-                <Link to="/pembimbing" className="sidebar-logo" style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}>
-                    <div className="logo-small">P</div>
-                    <div>
-                        <h2>Portal Pembimbing</h2>
-                        <span>PEMBIMBING LAPANGAN</span>
-                    </div>
-                </Link>
-
-                <div className="sidebar-note">
-                    <span>MENU PEMBIMBING</span>
-                </div>
-
-                <nav>
-                    <Link to="/riwayat" className={location.pathname === "/riwayat" ? "active" : ""}>
-                        📅 &nbsp;Absensi Magang
-                    </Link>
-                    <Link to="/tugas" className={location.pathname === "/tugas" ? "active" : ""}>
-                        📋 &nbsp;Tugas Magang
-                    </Link>
-                </nav>
-
-                <div className="sidebar-footer" style={{ borderTop: "none", display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto", padding: "10px 0" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <div style={{ width: "32px", height: "32px", background: "#3b82f6", color: "#fff", borderRadius: "50%", display: "grid", placeItems: "center", fontWeight: "bold" }}>
-                            {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : "P"}
-                        </div>
-                        <div>
-                            <strong style={{ display: "block", color: "#f8fafc", fontSize: "14px" }}>{currentUser?.name || "Pembimbing"}</strong>
-                            <span style={{ color: "#94a3b8", fontSize: "11px" }}>{currentUser?.email || "pembimbing@magang.local"}</span>
-                        </div>
-                    </div>
-                    <button onClick={handleLogout} style={{ background: "#ef4444", color: "#fff", border: "none", padding: "6px 12px", borderRadius: "6px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" }}>
-                        Logout
-                    </button>
-                </div>
-            </aside>
-        );
-    }
-
     return (
         <aside className="sidebar">
-            <div className="sidebar-logo">
-                <div className="logo-small">AM</div>
+            <Link
+                to={isAdmin ? "/riwayat" : isPembimbing ? "/pembimbing" : "/absensi"}
+                className="sidebar-logo"
+                style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}
+            >
+                <div className="logo-small">{isAdmin ? "A" : isPembimbing ? "P" : "AM"}</div>
                 <div>
-                    <h2>Absensi</h2>
-                    <span>portal {roleLabel[role] || "Peserta"}</span>
+                    <h2>{isAdmin ? "MagangAdmin" : isPembimbing ? "Portal Pembimbing" : "Absensi"}</h2>
+                    <span>{isAdmin ? "ADMINISTRATOR PORTAL" : `PORTAL ${roleLabel.toUpperCase()}`}</span>
                 </div>
-            </div>
+            </Link>
 
             <div className="sidebar-note">
-                <span>ROLE SYSTEM</span>
-                <p>Catat kehadiran sesuai jadwal magang.</p>
+                <span>{isAdmin ? "MAIN CORE" : `MENU ${roleLabel.toUpperCase()}`}</span>
+                {!isAdmin && !isPembimbing && <p>Catat kehadiran sesuai jadwal magang.</p>}
             </div>
 
             <nav>
-                {[
-                    { to: "/absensi", label: "Absensi Magang" },
-                    { to: "/tugas", label: "Tugas Magang" },
-                ].map((item) => (
+                {menu.map((item) => (
                     <Link
                         key={item.to}
                         to={item.to}
                         className={location.pathname === item.to ? "active" : ""}
                     >
-                        ◉ &nbsp;{item.label}
+                        <span className="nav-icon" aria-hidden="true">{item.icon}</span>
+                        <span>{item.label}</span>
                     </Link>
                 ))}
             </nav>
 
             <div className="sidebar-footer">
+                {currentUser && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                        <div style={{ minWidth: 0 }}>
+                            <strong style={{ display: "block", color: "#f8fafc", fontSize: "14px" }}>
+                                {currentUser.name || currentUser.nama || roleLabel}
+                            </strong>
+                            <span style={{ color: "#94a3b8", fontSize: "11px" }}>{currentUser.email}</span>
+                        </div>
+                        <button
+                            onClick={handleLogout}
+                            style={{ background: "#ef4444", color: "#fff", border: "none", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: "bold", cursor: "pointer" }}
+                        >
+                            Logout
+                        </button>
+                    </div>
+                )}
                 Jam kerja magang<br />
                 <strong>08.00 - 17.00</strong><br />
                 <span>Senin - Minggu</span>

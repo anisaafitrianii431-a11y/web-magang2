@@ -2,9 +2,13 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: 'http://127.0.0.1:8000/api',
-  headers: { Accept: 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  }
 });
 
+// Interceptor Request: Menambahkan Token Bearer ke setiap permintaan
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -13,6 +17,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Interceptor Response: Menangani error 401 (Unauthorized)
 api.interceptors.response.use(
   (response) => response,
   (error) => {

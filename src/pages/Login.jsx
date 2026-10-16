@@ -1,148 +1,171 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { getLoginData } from "../utils/auth";
 
 function Login() {
     const navigate = useNavigate();
-
     const [identifier, setIdentifier] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const executeLogin = async (loginEmail, loginPass) => {
+    const handleLogin = async (event) => {
+        event.preventDefault();
         setError("");
         setLoading(true);
 
         try {
             const response = await api.post("/login", {
-                email: loginEmail,
-                password: loginPass,
+                email: identifier.trim(),
+                password,
             });
-            const authData = response.data?.data || response.data;
-            const user = authData?.user;
-            const token = authData?.access_token || authData?.token;
+            const { token, user } = getLoginData(response.data);
 
-            if (!user || !token) {
-                throw new Error("Respons login tidak valid. Silakan coba lagi.");
+            if (!token || !user) {
+                throw new Error("Respons login tidak berisi token atau data pengguna.");
             }
 
             localStorage.setItem("token", token);
             localStorage.setItem("user", JSON.stringify(user));
 
-            const role = user.role?.toLowerCase();
-            if (role === "admin") {
-                navigate("/riwayat");
-            } else if (role === "pembimbing") {
-                navigate("/pembimbing");
-            } else {
-                navigate("/absensi");
-            }
-        } catch (err) {
+            const role = String(user.role || "").toLowerCase();
+            navigate(role === "admin" ? "/riwayat" : role === "pembimbing" ? "/pembimbing" : "/absensi");
+        } catch (requestError) {
             setError(
-                err.response?.data?.message || err.message || "Email atau password salah"
+                requestError.response?.data?.message
+                || requestError.message
+                || "Email atau password salah."
             );
         } finally {
             setLoading(false);
         }
     };
 
-    const handleLogin = (e) => {
-        e.preventDefault();
-        executeLogin(identifier, password);
-    };
-
-    const handleQuickLogin = (quickEmail, quickPass) => {
-        setIdentifier(quickEmail);
-        setPassword(quickPass);
-        executeLogin(quickEmail, quickPass);
+    const inputStyle = {
+        width: "100%",
+        padding: "12px 15px",
+        borderRadius: "8px",
+        border: "1px solid #cbd5e1",
+        outline: "none",
+        fontSize: "14px",
+        boxSizing: "border-box",
+        background: "#fff",
+        color: "#0f172a",
     };
 
     return (
-        <div className="login-page">
-            <div className="login-card">
-                <div className="login-header">
-                    <div className="logo">AM</div>
-                    <h1>Absensi Magang</h1>
-                    <p>Sistem Informasi Absensi Peserta Magang</p>
-                </div>
+        <main style={{
+            display: "flex",
+            minHeight: "100vh",
+            fontFamily: "'Inter', 'Segoe UI', Arial, sans-serif",
+            background: "#f8fafc",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "20px",
+            boxSizing: "border-box",
+        }}>
+            <section style={{
+                width: "100%",
+                maxWidth: "420px",
+                background: "#fff",
+                padding: "40px",
+                borderRadius: "16px",
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+                boxSizing: "border-box",
+            }}>
+                <header style={{ textAlign: "center", marginBottom: "30px" }}>
+                    <div aria-hidden="true" style={{
+                        width: "60px",
+                        height: "60px",
+                        background: "#3b82f6",
+                        borderRadius: "12px",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        fontSize: "30px",
+                        margin: "0 auto 15px",
+                        boxShadow: "0 4px 6px -1px rgba(59, 130, 246, 0.5)",
+                    }}>
+                        🎓
+                    </div>
+                    <h1 style={{ fontSize: "24px", lineHeight: 1.3, fontWeight: "bold", color: "#0f172a", margin: "0 0 5px" }}>
+                        Absensi Magang
+                    </h1>
+                    <p style={{ color: "#64748b", fontSize: "14px", lineHeight: 1.5, margin: 0 }}>
+                        Masuk ke akun magang Anda
+                    </p>
+                </header>
 
-                {error && <div className="alert">{error}</div>}
+                {error && (
+                    <div role="alert" style={{
+                        marginBottom: "16px",
+                        padding: "12px",
+                        color: "#991b1b",
+                        background: "#fef2f2",
+                        border: "1px solid #fecaca",
+                        borderRadius: "8px",
+                        fontSize: "13px",
+                    }}>
+                        {error}
+                    </div>
+                )}
 
-                <form onSubmit={handleLogin}>
-                    <div className="form-group">
-                        <label>Email atau NPM</label>
+                <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                    <div>
+                        <label htmlFor="login-identifier" style={{ display: "block", fontSize: "14px", fontWeight: "500", color: "#334155", marginBottom: "8px" }}>
+                            Email atau NPM
+                        </label>
                         <input
+                            id="login-identifier"
                             type="text"
-                            placeholder="Masukkan email atau NPM"
                             value={identifier}
-                            onChange={(e) => setIdentifier(e.target.value)}
+                            onChange={(event) => setIdentifier(event.target.value)}
+                            placeholder="Masukkan email atau NPM"
+                            style={inputStyle}
+                            autoComplete="username"
                             required
                         />
                     </div>
-
-                    <div className="form-group">
-                        <label>Password</label>
+                    <div>
+                        <label htmlFor="login-password" style={{ display: "block", fontSize: "14px", fontWeight: "500", color: "#334155", marginBottom: "8px" }}>
+                            Password
+                        </label>
                         <input
+                            id="login-password"
                             type="password"
-                            placeholder="Masukkan password"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={(event) => setPassword(event.target.value)}
+                            placeholder="Masukkan password"
+                            style={inputStyle}
+                            autoComplete="current-password"
                             required
                         />
                     </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        style={{
-                            width: "100%",
-                            padding: "14px",
-                            background: "#4f46e5",
-                            color: "#ffffff",
-                            border: "none",
-                            borderRadius: "8px",
-                            fontSize: "15px",
-                            fontWeight: "bold",
-                            cursor: loading ? "not-allowed" : "pointer",
-                            marginTop: "16px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "8px",
-                            boxShadow: "0 4px 12px rgba(79, 70, 229, 0.35)",
-                            transition: "all 0.2s",
-                        }}
-                    >
-                        {loading ? "Memproses..." : "👉 KLIK DISINI UNTUK MASUK (LOGIN)"}
+                    <button type="submit" disabled={loading} style={{
+                        background: "#4f46e5",
+                        color: "#fff",
+                        padding: "14px",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: loading ? "not-allowed" : "pointer",
+                        fontWeight: "bold",
+                        fontSize: "15px",
+                        marginTop: "4px",
+                        boxShadow: "0 4px 6px -1px rgba(79, 70, 229, 0.4)",
+                    }}>
+                        {loading ? "Memproses..." : "Masuk"}
                     </button>
                 </form>
 
-                <div style={{ marginTop: "24px", padding: "14px", background: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
-                    <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#64748b", fontWeight: "600", textAlign: "center" }}>
-                        ⚡ Atau Langsung Masuk Sekali Klik:
-                    </p>
-                    <div style={{ display: "flex", gap: "8px" }}>
-                        <button
-                            type="button"
-                            onClick={() => handleQuickLogin("admin@magang.com", "admin123")}
-                            disabled={loading}
-                            style={{ flex: 1, padding: "10px 6px", fontSize: "12px", background: "#4f46e5", color: "#fff", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}
-                        >
-                            👑 Masuk Admin
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => handleQuickLogin("pembimbing@absensi.com", "pembimbing123")}
-                            disabled={loading}
-                            style={{ flex: 1, padding: "10px 6px", fontSize: "12px", background: "#0284c7", color: "#fff", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: "bold" }}
-                        >
-                            👨‍🏫 Pembimbing
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+                <p style={{ margin: "24px 0 0", textAlign: "center", color: "#64748b", fontSize: "14px" }}>
+                    Belum memiliki akun?{" "}
+                    <Link to="/register" style={{ color: "#4f46e5", fontWeight: "bold", textDecoration: "none" }}>
+                        Daftar di sini
+                    </Link>
+                </p>
+            </section>
+        </main>
     );
 }
 

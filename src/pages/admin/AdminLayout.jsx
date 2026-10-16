@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import api from '../../utils/api';
+import api from '../../services/api';
 
 export default function AdminLayout() {
   const location = useLocation();
@@ -74,6 +74,26 @@ export default function AdminLayout() {
           >
             <span style={{ fontSize: '16px' }}>📅</span>
             <span style={{ fontSize: '14px', fontWeight: '500' }}>Kelola Periode</span>
+          </Link>
+
+          <Link
+            to="/admin/pembimbing"
+            style={{
+              padding: '10px 15px',
+              marginBottom: '5px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              textDecoration: 'none',
+              background: location.pathname === '/admin/pembimbing' ? '#4f46e5' : 'transparent',
+              color: location.pathname === '/admin/pembimbing' ? 'white' : '#cbd5e1',
+              transition: 'all 0.2s'
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>👥</span>
+            <span style={{ fontSize: '14px', fontWeight: '500' }}>Kelola Pembimbing</span>
           </Link>
 
         </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import api from './api';
+import { getLoginData } from './utils/auth';
 
 function Login({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -17,11 +18,19 @@ function Login({ onLogin }) {
 
     try {
       const res = await api.post('/login', { email: loginEmail, password: loginPass });
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      onLogin(res.data.user);
+      const { token, user } = getLoginData(res.data);
+      if (!token || !user) {
+        throw new Error('Respons login tidak berisi token atau data pengguna.');
+      }
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      if (typeof onLogin === 'function') {
+        onLogin(user);
+      } else {
+        window.location.href = '/dashboard';
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Tidak dapat terhubung ke server backend.');
+      setError(err.response?.data?.message || err.message || 'Tidak dapat terhubung ke server backend.');
     } finally {
       setLoading(false);
     }
@@ -41,20 +50,19 @@ function Login({ onLogin }) {
 
     try {
       const res = await api.post('/login', { email: creds.email, password: creds.password });
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      onLogin(res.data.user);
-    } catch {
-      // Jika backend gagal atau akun belum ada di database, login dengan mode demo instan
-      const demoUser = {
-        id: role === 'admin' ? 1 : role === 'pembimbing' ? 2 : 3,
-        name: creds.name,
-        email: creds.email,
-        role: role,
-      };
-      localStorage.setItem('user', JSON.stringify(demoUser));
-      localStorage.setItem('token', 'demo-token-' + role);
-      onLogin(demoUser);
+      const { token, user } = getLoginData(res.data);
+      if (!token || !user) {
+        throw new Error('Respons login tidak berisi token atau data pengguna.');
+      }
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      if (typeof onLogin === 'function') {
+        onLogin(user);
+      } else {
+        window.location.href = '/dashboard';
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Tidak dapat terhubung ke server backend.');
     } finally {
       setLoading(false);
     }

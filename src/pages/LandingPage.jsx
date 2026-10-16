@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../landing.css';
 import Navbar from '../components/landing/Navbar';
 import BerandaPage from '../components/landing/BerandaPage';
@@ -8,24 +9,23 @@ import RegisterForm from '../components/landing/RegisterForm';
 import Footer from '../components/landing/Footer';
 import WhatsAppButton from '../components/landing/WhatsAppButton';
 import { LogIn, UserPlus, Zap, ArrowLeft } from 'lucide-react';
+import { getRoleHome, getStoredUser } from '../utils/auth';
 
-function LandingPage() {
-  const [activeSection, setActiveSection] = useState('beranda');
-  const [activeTab, setActiveTab] = useState('login');
+function LandingPage({ initialAuthTab }) {
+  const navigate = useNavigate();
+  const [activeSection, setActiveSection] = useState(initialAuthTab ? 'auth' : 'beranda');
+  const [activeTab, setActiveTab] = useState(initialAuthTab || 'login');
   const [selectedAktivitasId, setSelectedAktivitasId] = useState(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [loginNotice, setLoginNotice] = useState('');
   const [token, setToken] = useState(localStorage.getItem('token') || '');
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('user');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [user, setUser] = useState(getStoredUser);
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    const storedUser = getStoredUser();
     if (storedToken) setToken(storedToken);
-    if (storedUser) setUser(JSON.parse(storedUser));
+    if (storedUser) setUser(storedUser);
   }, []);
 
   useEffect(() => {
@@ -36,11 +36,12 @@ function LandingPage() {
 
   const handleAuthSuccess = () => {
     const freshToken = localStorage.getItem('token');
-    const freshUser = localStorage.getItem('user');
+    const freshUser = getStoredUser();
     if (freshToken) setToken(freshToken);
-    if (freshUser) setUser(JSON.parse(freshUser));
+    if (freshUser) setUser(freshUser);
     setLoginNotice('');
     setActiveSection('beranda');
+    if (freshUser) navigate(getRoleHome(freshUser.role));
   };
 
   const handleRegisterSuccess = (email) => {

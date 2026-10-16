@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../utils/api';
+import api from '../../services/api';
 
 export default function FormPendaftaran() {
   const navigate = useNavigate();

@@ -1,7 +1,35 @@
+import { useState } from 'react';
+import api from '../services/api';
 import StatusBadge from './StatusBadge';
 
 export default function DetailModal({ isOpen, onClose, laporan }) {
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+
   if (!isOpen || !laporan) return null;
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    setDownloadError('');
+
+    try {
+      const response = await api.get(`/v1/laporan-magang/${laporan.id_laporan}/download`, {
+        responseType: 'blob',
+      });
+      const fileUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = fileUrl;
+      link.download = laporan.file_laporan_pdf?.split('/').pop() || `laporan-${laporan.id_laporan}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(fileUrl);
+    } catch (error) {
+      setDownloadError(error.response?.data?.message || 'PDF laporan gagal diunduh.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   return (
     <div className="modal-overlay">
@@ -43,9 +71,10 @@ export default function DetailModal({ isOpen, onClose, laporan }) {
                 </svg>
                 <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e40af' }}>{laporan.file_laporan_pdf}</span>
               </div>
-              <a
-                href={`http://127.0.0.1:8000/api/v1/laporan-magang/${laporan.id_laporan}/download`}
-                download
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={isDownloading}
                 style={{ backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '0.45rem 0.9rem', borderRadius: '6px', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -53,9 +82,10 @@ export default function DetailModal({ isOpen, onClose, laporan }) {
                   <polyline points="7 10 12 15 17 10"></polyline>
                   <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
-                Unduh PDF
-              </a>
+                {isDownloading ? 'Mengunduh...' : 'Unduh PDF'}
+              </button>
             </div>
+            {downloadError && <p role="alert" style={{ color: '#b91c1c', marginTop: '0.5rem' }}>{downloadError}</p>}
           </div>
 
           {/* Catatan Revisi jika ada */}
