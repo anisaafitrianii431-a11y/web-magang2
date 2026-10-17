@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { GraduationCap } from 'lucide-react';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     nama: '',
+    nim: '',
     email: '',
     password: '',
     role: 'Pemagang',
@@ -21,8 +23,12 @@ export default function RegisterPage() {
 
     try {
       await api.post('/register', formData);
-      alert(`Akun untuk ${formData.nama} berhasil didaftarkan! Silakan login.`);
-      navigate('/login');
+      navigate('/login', {
+        state: {
+          registeredEmail: formData.email,
+          registrationNotice: 'Akun berhasil dibuat. Masuk untuk melengkapi data diri dan mengirim pengajuan magang.',
+        },
+      });
     } catch (requestError) {
       setError(
         requestError.response?.data?.message
@@ -88,7 +94,7 @@ export default function RegisterPage() {
               boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.5)',
             }}
           >
-            🚀
+            <GraduationCap size={30} color="#fff" strokeWidth={1.8} />
           </div>
           <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#0f172a', margin: '0 0 5px' }}>
             Buat Akun Baru
@@ -126,6 +132,21 @@ export default function RegisterPage() {
               placeholder="Nama lengkap"
               style={inputStyle}
               autoComplete="name"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="register-nim" style={labelStyle}>NIM</label>
+            <input
+              id="register-nim"
+              type="text"
+              value={formData.nim}
+              onChange={(event) => setFormData({ ...formData, nim: event.target.value })}
+              placeholder="Nomor Induk Mahasiswa"
+              style={inputStyle}
+              autoComplete="off"
+              maxLength={50}
               required
             />
           </div>

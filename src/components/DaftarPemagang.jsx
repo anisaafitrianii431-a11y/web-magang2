@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
+import { CalendarDays } from 'lucide-react';
+import { API_BASE_URL } from '../config/api';
 
 export default function DaftarPemagang() {
+  const tanggalSelesaiRef = useRef(null);
   const [dataPendaftaran, setDataPendaftaran] = useState([]);
   const [listPeriode, setListPeriode] = useState([]);
   const [listPembimbing, setListPembimbing] = useState([]);
@@ -11,11 +14,17 @@ export default function DaftarPemagang() {
       const [pendaftaranRes, periodeRes, pembimbingRes] = await Promise.all([
         api.get('/pendaftaran'),
         api.get('/periode'),
-        api.get('/pembimbing')
+        // The pendaftaran approval API expects a pembimbing user ID, so use
+        // the admin endpoint that returns users with role "pembimbing".
+        api.get('/admin/pembimbing')
       ]);
-      setDataPendaftaran(pendaftaranRes.data.data);
-      setListPeriode(periodeRes.data.data);
-      setListPembimbing(pembimbingRes.data.data);
+      const pendaftaran = pendaftaranRes.data?.data;
+      const periode = periodeRes.data?.data;
+      const pembimbing = pembimbingRes.data?.data ?? pembimbingRes.data;
+
+      setDataPendaftaran(Array.isArray(pendaftaran) ? pendaftaran : []);
+      setListPeriode(Array.isArray(periode) ? periode : []);
+      setListPembimbing(Array.isArray(pembimbing) ? pembimbing : []);
     } catch (error) {
       console.error('Failed to fetch data', error);
     }
@@ -28,6 +37,11 @@ export default function DaftarPemagang() {
 
   const [formData, setFormData] = useState({ 
     nama_user: '', 
+    nim_user: '',
+    program_studi_user: '',
+    alamat_user: '',
+    email_user: '',
+    no_hp_user: '',
     periode_id: '1', 
     pembimbing_id: '',
     asal_instansi: '', 
@@ -74,18 +88,23 @@ export default function DaftarPemagang() {
   const handleEdit = (item) => {
     setEditingId(item.id);
     setFormData({
-      nama_user: item.user?.nama,
+      nama_user: item.user?.nama || item.user?.name || '',
+      nim_user: item.user?.nim || '',
+      program_studi_user: item.user?.program_studi || '',
+      alamat_user: item.user?.alamat || '',
       email_user: item.user?.email,
-      no_hp_user: item.no_hp_user,
+      no_hp_user: item.user?.no_hp || item.no_hp_user || '',
+      foto_user: item.user?.foto || '',
       periode_id: item.periode_id ? item.periode_id.toString() : '1',
       pembimbing_id: item.pembimbing_id ? item.pembimbing_id.toString() : '',
       asal_instansi: item.asal_instansi,
       file_surat_pengantar: item.file_surat_pengantar, // Tetap set supaya tampil namanya
       status: item.status,
       tanggal_daftar: item.tanggal_daftar,
-      tanggal_selesai: item.tanggal_selesai || '',
+      tanggal_selesai: item.tanggal_selesai ? String(item.tanggal_selesai).slice(0, 10) : '',
       file_surat_balasan: item.file_surat_balasan || null
     });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async () => {
@@ -94,25 +113,50 @@ export default function DaftarPemagang() {
 
   return (
     <div style={{ fontFamily: "'Inter', 'Segoe UI', Arial, sans-serif" }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      {editingId === null && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
           <h2 style={{ margin: 0, color: '#0f172a', fontSize: '20px' }}>Data Pendaftaran & Pemagang</h2>
           <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: '14px' }}>Kelola informasi peserta, instansi mitra, serta status pemagang.</p>
         </div>
-      </div>
+      </div>}
 
       {/* Form Pengelolaan Data (Hanya Muncul Saat Edit) */}
       {editingId !== null && (
       <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '30px', border: '2px solid #3b82f6', boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.1)' }}>
-        <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '8px' }}>✏️ Ubah Status / Data Pendaftaran</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '15px' }}>
+          <h3 style={{ margin: 0, fontSize: '16px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '8px' }}>✏️ Ubah Status / Data Pendaftaran</h3>
+          <button
+            type="button"
+            onClick={() => setEditingId(null)}
+            style={{ background: 'white', color: '#475569', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', flexShrink: 0 }}
+          >
+            ← Kembali ke daftar
+          </button>
+        </div>
         <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           {/* Kiri: Data Pemagang (Read-Only) */}
           <div style={{ background: '#f1f5f9', padding: '15px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#334155', borderBottom: '1px solid #cbd5e1', paddingBottom: '8px' }}>Data Pendaftar (Otomatis)</h4>
             <div>
                 <span style={{ display: 'block', fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>NAMA PEMAGANG</span>
-                <div style={{ fontSize: '14px', color: '#0f172a', fontWeight: '500' }}>{formData.nama_user}</div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{formData.email_user || '-'} | {formData.no_hp_user || '-'}</div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', gap: '10px', marginTop: '4px' }}>
+                  <div style={{ minWidth: 0, flex: '0 1 260px' }}>
+                    <div style={{ fontSize: '14px', color: '#0f172a', fontWeight: '500' }}>{formData.nama_user}</div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>NIM: {formData.nim_user || '-'}</div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Email: {formData.email_user || '-'}</div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>No. HP: {formData.no_hp_user || '-'}</div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Program Studi: {formData.program_studi_user || '-'}</div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Alamat: {formData.alamat_user || '-'}</div>
+                  </div>
+                  {formData.foto_user && (
+                    <img
+                      src={`${API_BASE_URL.replace(/\/api\/?$/, '')}/storage/${formData.foto_user.replace(/^\/+/, '').replace(/^storage\//, '')}`}
+                      alt={`Pas foto ${formData.nama_user}`}
+                      style={{ width: '90px', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', flexShrink: 0 }}
+                      onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                    />
+                  )}
+                </div>
             </div>
             <div>
                 <span style={{ display: 'block', fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>ASAL INSTANSI</span>
@@ -176,19 +220,36 @@ export default function DaftarPemagang() {
               >
                 <option value="" style={{ color: '#0f172a', background: 'white' }}>-- Belum Ditentukan --</option>
                 {listPembimbing.map(p => (
-                  <option key={p.id} value={p.id} style={{ color: '#0f172a', background: 'white' }}>{p.nama}</option>
+                  <option key={p.id} value={p.id} style={{ color: '#0f172a', background: 'white' }}>{p.nama || p.name}</option>
                 ))}
               </select>
             </div>
 
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>Set Tanggal Selesai Magang</label>
-              <input 
-                type="date" 
-                value={formData.tanggal_selesai} 
-                onChange={(e) => setFormData({...formData, tanggal_selesai: e.target.value})}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', color: '#0f172a', background: 'white' }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                <input
+                  ref={tanggalSelesaiRef}
+                  type="date"
+                  value={formData.tanggal_selesai}
+                  onChange={(e) => setFormData({...formData, tanggal_selesai: e.target.value})}
+                  style={{ width: '100%', padding: '10px 44px 10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', color: '#0f172a', background: 'white' }}
+                />
+                <button
+                  type="button"
+                  aria-label="Pilih tanggal selesai magang dari kalender"
+                  title="Pilih tanggal dari kalender"
+                  onClick={() => {
+                    const input = tanggalSelesaiRef.current;
+                    if (!input) return;
+                    if (typeof input.showPicker === 'function') input.showPicker();
+                    else input.focus();
+                  }}
+                  style={{ position: 'absolute', right: '6px', display: 'grid', placeItems: 'center', width: '32px', height: '32px', border: 0, borderRadius: '5px', color: '#4f46e5', background: '#eef2ff', cursor: 'pointer' }}
+                >
+                  <CalendarDays size={18} />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -199,10 +260,7 @@ export default function DaftarPemagang() {
             {editingId !== null && (
               <button 
                 type="button" 
-                onClick={() => { 
-                  setEditingId(null); 
-                  setFormData({ nama_user: '', periode_id: '1', pembimbing_id: '', asal_instansi: '', file_surat_pengantar: null, status: 'Calon Pemagang', tanggal_daftar: new Date().toISOString().split('T')[0], tanggal_selesai: '', file_surat_balasan: null }); 
-                }}
+                onClick={() => setEditingId(null)}
                 style={{ background: 'white', color: '#475569', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}
               >
                 Batal
@@ -214,7 +272,7 @@ export default function DaftarPemagang() {
       )}
 
       {/* Tabel Rekapitulasi Data Pendaftaran */}
-      <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+      {editingId === null && <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
         <div style={{ padding: '15px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '16px' }}>👥</span>
             <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>Daftar Pendaftaran / Pemagang ({dataPendaftaran.length} Data)</h3>
@@ -234,14 +292,18 @@ export default function DaftarPemagang() {
               {dataPendaftaran.map((item, index) => (
                 <tr key={item.id} style={{ borderBottom: index === dataPendaftaran.length - 1 ? 'none' : '1px solid #e2e8f0', transition: 'background 0.2s', ':hover': { background: '#f8fafc' } }}>
                   <td style={{ padding: '15px 20px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>{item.user?.nama}</div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>{item.user?.nama || item.user?.name || 'Peserta Magang'}</div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>NIM: {item.user?.nim || '-'}</div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>{item.user?.email || '-'} | {item.user?.no_hp || '-'}</div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Program Studi: {item.user?.program_studi || '-'}</div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Alamat: {item.user?.alamat || '-'}</div>
                     <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>{item.asal_instansi}</div>
                   </td>
                   <td style={{ padding: '15px 20px' }}>
                     <div style={{ fontSize: '13px', color: '#334155', background: '#e2e8f0', display: 'inline-block', padding: '2px 8px', borderRadius: '4px', marginBottom: '4px' }}>
                       {item.periode ? `${new Date(item.periode.tanggal_mulai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).toLowerCase()} - ${new Date(item.periode.tanggal_selesai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).toLowerCase()}` : '-'}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>👨‍🏫 {item.pembimbing?.nama || '-'}</div>
+                    <div style={{ fontSize: '12px', color: '#64748b' }}>👨‍🏫 {item.pembimbing?.nama || item.pembimbing?.name || '-'}</div>
                   </td>
                   <td style={{ padding: '15px 20px' }}>
                     <div style={{ fontSize: '12px', color: '#3b82f6', marginBottom: '2px' }}>📄 {item.file_surat_pengantar || '-'}</div>
@@ -277,13 +339,15 @@ export default function DaftarPemagang() {
               ))}
               {dataPendaftaran.length === 0 && (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#64748b', fontSize: '14px' }}>Belum ada data pendaftaran magang.</td>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '30px', color: '#64748b', fontSize: '14px' }}>
+                    Belum ada pengajuan magang. Peserta membuat akun sendiri, melengkapi formulir, lalu data pengajuannya akan muncul di sini untuk diverifikasi.
+                  </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

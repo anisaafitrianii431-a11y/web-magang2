@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../landing.css';
 import Navbar from '../components/landing/Navbar';
@@ -46,7 +46,7 @@ function LandingPage({ initialAuthTab }) {
 
   const handleRegisterSuccess = (email) => {
     setRegisteredEmail(email);
-    setLoginNotice('Registrasi berhasil! Silakan masuk dengan akun baru Anda.');
+    setLoginNotice('Akun berhasil dibuat. Masuk untuk melengkapi data diri dan mengirim pengajuan magang.');
     setActiveTab('login');
   };
 
@@ -60,12 +60,7 @@ function LandingPage({ initialAuthTab }) {
   };
 
   const openAuthView = (tab = 'login') => {
-    if (token) {
-      setActiveSection('beranda');
-      return;
-    }
-    setActiveTab(tab);
-    setActiveSection('auth');
+    navigate(tab === 'register' ? '/register' : '/login');
   };
 
   const handleSelectAktivitas = (id) => {
@@ -160,6 +155,7 @@ function LandingPage({ initialAuthTab }) {
                     <LoginForm
                       onSuccess={handleAuthSuccess}
                       noticeMessage={loginNotice}
+                      initialEmail={registeredEmail}
                     />
                   ) : (
                     <RegisterForm onRegisterSuccess={handleRegisterSuccess} />

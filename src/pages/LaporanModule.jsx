@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../services/api';
 import Sidebar from '../components/Sidebar';
@@ -46,36 +46,46 @@ function LaporanModule() {
   const [revisiError, setRevisiError] = useState('');
   const [reviewError, setReviewError] = useState('');
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetchLaporan = useCallback(async () => {
+    try {
+      const response = await api.get(laporanEndpoint);
+      const data = Array.isArray(response.data) ? response.data : response.data?.data;
+      if (!Array.isArray(data)) {
+        throw new Error('Format data laporan dari server tidak valid.');
+      }
 
-    api.get(laporanEndpoint)
-      .then((response) => {
-        const data = Array.isArray(response.data) ? response.data : response.data?.data;
-        if (!Array.isArray(data)) {
-          throw new Error('Format data laporan dari server tidak valid.');
-        }
-        if (isMounted) setLaporanList(data);
-      })
-      .catch((error) => {
-        if (!isMounted) return;
-        setApiError(getApiError(
-          error,
-          error.message || 'Tidak dapat terhubung ke server untuk mengambil laporan magang.'
-        ));
-      });
-
-    return () => {
-      isMounted = false;
-    };
+      setLaporanList(data);
+      setApiError('');
+    } catch (error) {
+      setApiError(getApiError(
+        error,
+        error.message || 'Tidak dapat terhubung ke server untuk mengambil laporan magang.'
+      ));
+    }
   }, []);
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') fetchLaporan();
+    };
+
+    const initialRefresh = window.setTimeout(fetchLaporan, 0);
+    const refreshInterval = window.setInterval(refreshWhenVisible, 30000);
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.clearTimeout(initialRefresh);
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [fetchLaporan, location.pathname]);
 
   const handleUpload = async (laporan) => {
     setIsSaving(true);
     setApiError('');
 
     const formData = new FormData();
-    formData.append('id_peserta', String(currentUser?.id_peserta ?? currentUser?.id ?? 1));
     formData.append('judul_laporan', laporan.judul_laporan);
     formData.append('kategori_laporan', laporan.kategori_laporan);
     formData.append('abstrak', laporan.abstrak);
@@ -86,6 +96,7 @@ function LaporanModule() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setLaporanList((items) => [response.data.data, ...items]);
+      await fetchLaporan();
       return true;
     } catch (error) {
       setApiError(getApiError(error, 'Laporan gagal disimpan. Periksa koneksi server dan konfigurasi database.'));
@@ -190,6 +201,7 @@ function LaporanModule() {
             <LaporanMagangPage
               laporanList={laporanList}
               currentRole={currentRole}
+              currentUserName={currentUser?.name || currentUser?.nama || 'Peserta Magang'}
               onOpenUpload={() => {
                 setApiError('');
                 setIsUploadOpen(true);

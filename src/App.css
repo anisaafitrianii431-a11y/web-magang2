@@ -333,25 +333,148 @@
 
 .report-module .custom-table {
   width: 100%;
-  min-width: 850px;
+  min-width: 1200px;
+  table-layout: fixed;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .report-module .custom-table th {
-  padding: 14px 16px;
+  padding: 15px 14px;
   background: #f5f8fb;
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: .04em;
+  line-height: 1.4;
   text-align: left;
+  white-space: normal;
+  vertical-align: middle;
 }
 
 .report-module .custom-table td {
-  padding: 16px;
+  padding: 18px 14px;
   border-top: 1px solid #e1e7ee;
   color: #334155;
   vertical-align: middle;
+  line-height: 1.5;
+}
+
+.report-module .custom-table th:nth-child(1),
+.report-module .custom-table td:nth-child(1) { width: 4%; }
+.report-module .custom-table th:nth-child(2),
+.report-module .custom-table td:nth-child(2) { width: 24%; }
+.report-module .custom-table th:nth-child(3),
+.report-module .custom-table td:nth-child(3) { width: 9%; }
+.report-module .custom-table th:nth-child(4),
+.report-module .custom-table td:nth-child(4) { width: 13%; }
+.report-module .custom-table th:nth-child(5),
+.report-module .custom-table td:nth-child(5) { width: 13%; }
+.report-module .custom-table th:nth-child(6),
+.report-module .custom-table td:nth-child(6) { width: 13%; }
+.report-module .custom-table th:nth-child(7),
+.report-module .custom-table td:nth-child(7) { width: 24%; }
+
+.report-module .custom-table th:first-child,
+.report-module .custom-table td:first-child { padding-left: 18px; }
+.report-module .custom-table th:last-child,
+.report-module .custom-table td:last-child { padding-right: 18px; }
+.report-module .custom-table td:nth-child(2) { overflow-wrap: anywhere; }
+.report-module .custom-table .cell-main-title { font-size: 14px; }
+.report-module .custom-table .cell-subtitle { font-size: 12px; line-height: 1.5; }
+.report-module .recap-card-header { justify-content: flex-start; }
+.report-module .recap-table-scroll { width: 100%; overflow-x: auto; }
+.report-module .recap-table { min-width: 900px; table-layout: fixed; }
+.report-module .recap-table th:nth-child(1),
+.report-module .recap-table td:nth-child(1) { width: 4%; }
+.report-module .recap-table th:nth-child(2),
+.report-module .recap-table td:nth-child(2) { width: 25%; }
+.report-module .recap-table th:nth-child(3),
+.report-module .recap-table td:nth-child(3) { width: 23%; }
+.report-module .recap-table th:nth-child(4),
+.report-module .recap-table td:nth-child(4) { width: 20%; }
+.report-module .recap-table th:nth-child(5),
+.report-module .recap-table td:nth-child(5) { width: 14%; }
+.report-module .recap-table th:nth-child(6),
+.report-module .recap-table td:nth-child(6) { width: 14%; }
+.report-module .recap-table td:nth-child(2),
+.report-module .recap-table td:nth-child(3) { overflow-wrap: anywhere; }
+.report-module .recap-project { color: #1e293b; font-size: 13px; font-weight: 600; line-height: 1.5; }
+.report-module .recap-date-range { display: inline-block; padding: 4px 7px; border-radius: 6px; background: #f1f5f9; color: #475569; font-size: 12px; line-height: 1.5; }
+.report-module .recap-metric { display: inline-block; padding: 5px 7px; border: 1px solid; border-radius: 7px; font-size: 12px; font-weight: 700; line-height: 1.4; white-space: nowrap; }
+.report-module .recap-attendance { border-color: #bfdbfe; background: #eff6ff; color: #2563eb; }
+.report-module .recap-tasks { border-color: #a7f3d0; background: #ecfdf5; color: #059669; }
+.report-module .recap-task-button { cursor: pointer; font-family: inherit; }
+.report-module .recap-task-button:hover { background: #d1fae5; }
+.report-module .recap-task-modal { width: min(760px, 100%); }
+.report-module .recap-modal-subtitle { margin: 5px 0 0; color: #64748b; font-size: 13px; }
+.report-module .recap-task-list { display: grid; gap: 12px; padding: 18px 22px 22px; }
+.report-module .recap-task-detail { padding: 16px; border: 1px solid #dce4ec; border-radius: 9px; background: #fff; }
+.report-module .recap-task-detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.report-module .recap-task-detail-heading h3 { margin: 0; color: #1e293b; font-size: 15px; line-height: 1.45; }
+.report-module .recap-submission-status { flex: 0 0 auto; padding: 4px 8px; border: 1px solid #bfdbfe; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 11px; }
+.report-module .recap-task-description,
+.report-module .recap-task-feedback { margin: 10px 0; color: #526174; font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+.report-module .recap-task-meta { display: flex; flex-wrap: wrap; gap: 12px 28px; margin: 14px 0 0; }
+.report-module .recap-task-meta div { min-width: 125px; }
+.report-module .recap-task-meta dt { color: #8290a2; font-size: 11px; }
+.report-module .recap-task-meta dd { margin: 3px 0 0; color: #334155; font-size: 13px; font-weight: 600; }
+.report-module .recap-download-button { margin-top: 12px; cursor: pointer; }
+.report-module .recap-task-empty { padding: 28px 12px; color: #64748b; text-align: center; }
+.report-module .report-grade {
+  display: inline-block;
+  max-width: 100%;
+  padding: 5px 8px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.report-module .report-date-cell { display: flex; flex-direction: column; gap: 3px; white-space: nowrap; }
+.report-module .report-date-cell strong { color: #273449; font-size: 13px; }
+.report-module .report-date-cell span { color: #8996a6; font-size: 12px; }
+.report-module .action-buttons { flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.report-module .btn-action { padding: 7px 9px; font-size: 12px; }
+
+.report-module .evaluation-table { min-width: 1280px; table-layout: fixed; }
+.report-module .evaluation-card-header { justify-content: flex-start; }
+.report-module .evaluation-table thead th { font-size: 12px; line-height: 1.4; }
+.report-module .evaluation-table-mentor th:nth-child(1),
+.report-module .evaluation-table-mentor td:nth-child(1) { width: 5%; }
+.report-module .evaluation-table-mentor th:nth-child(2),
+.report-module .evaluation-table-mentor td:nth-child(2) { width: 24%; }
+.report-module .evaluation-table-mentor th:nth-child(3),
+.report-module .evaluation-table-mentor td:nth-child(3) { width: 18%; }
+.report-module .evaluation-table-mentor th:nth-child(4),
+.report-module .evaluation-table-mentor td:nth-child(4) { width: 15%; }
+.report-module .evaluation-table-mentor th:nth-child(5),
+.report-module .evaluation-table-mentor td:nth-child(5) { width: 10%; }
+.report-module .evaluation-table-mentor th:nth-child(6),
+.report-module .evaluation-table-mentor td:nth-child(6) { width: 13%; }
+.report-module .evaluation-table-mentor th:nth-child(7),
+.report-module .evaluation-table-mentor td:nth-child(7) { width: 15%; }
+.report-module .evaluation-table-admin th:nth-child(1),
+.report-module .evaluation-table-admin td:nth-child(1) { width: 5%; }
+.report-module .evaluation-table-admin th:nth-child(2),
+.report-module .evaluation-table-admin td:nth-child(2) { width: 26%; }
+.report-module .evaluation-table-admin th:nth-child(3),
+.report-module .evaluation-table-admin td:nth-child(3) { width: 20%; }
+.report-module .evaluation-table-admin th:nth-child(4),
+.report-module .evaluation-table-admin td:nth-child(4) { width: 17%; }
+.report-module .evaluation-table-admin th:nth-child(5),
+.report-module .evaluation-table-admin td:nth-child(5) { width: 16%; }
+.report-module .evaluation-table-admin th:nth-child(6),
+.report-module .evaluation-table-admin td:nth-child(6) { width: 16%; }
+.report-module .evaluation-title { color: #334155; font-size: 13px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.report-module .evaluation-grade { display: inline-block; padding: 5px 9px; border: 1px solid #a7f3d0; border-radius: 7px; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 700; line-height: 1.35; white-space: nowrap; }
+.report-module .evaluation-score { color: #059669; font-size: 15px; font-weight: 700; white-space: nowrap; }
+.report-module .evaluation-date { color: #64748b; font-size: 13px; white-space: nowrap; }
+.report-module .evaluation-notes { color: #475569; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+
+@media (max-width: 760px) {
+  .report-module .custom-table { min-width: 1120px; }
+  .report-module .custom-table th,
+  .report-module .custom-table td { padding: 13px 10px; }
 }
 
 .report-module .custom-table tbody tr:hover {

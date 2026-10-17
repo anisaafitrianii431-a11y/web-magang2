@@ -1,3 +1,10 @@
+function formatEvaluatedAt(value) {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export default function PenilaianPage({ laporanList, currentRole }) {
   const evaluatedList = laporanList.filter(item => item.nilai_laporan !== null);
 
@@ -13,14 +20,14 @@ export default function PenilaianPage({ laporanList, currentRole }) {
       </div>
 
       <div className="table-card">
-        <div className="table-card-header">
+        <div className="table-card-header evaluation-card-header">
           <svg className="table-card-header-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
           </svg>
           Daftar Laporan yang Sudah Dinilai Pembimbing
         </div>
 
-        <table className="custom-table">
+        <table className={`custom-table evaluation-table ${currentRole === 'pembimbing' ? 'evaluation-table-mentor' : 'evaluation-table-admin'}`}>
           <thead>
             <tr>
               <th>#</th>
@@ -51,30 +58,30 @@ export default function PenilaianPage({ laporanList, currentRole }) {
                       <div className="cell-subtitle">{item.judul_laporan}</div>
                     </td>
                     <td>
-                      <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                      <span className="evaluation-title">
                         {pen ? pen.judul_nilai : 'Penilaian Akhir Laporan'}
                       </span>
                     </td>
                     <td>
-                      <span style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '0.25rem 0.65rem', borderRadius: '8px', fontWeight: 800, fontSize: '0.82rem' }}>
+                      <span className="evaluation-grade">
                         {predikatText}
                       </span>
                     </td>
                     {currentRole === 'pembimbing' && (
                       <td>
-                        <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#059669' }}>
+                        <span className="evaluation-score">
                           {item.nilai_laporan} / 100
                         </span>
                       </td>
                     )}
                     <td>
-                      <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
-                        {item.tanggal_dinilai ? item.tanggal_dinilai.split(' ')[0] : '2026-09-15'}
+                      <div className="evaluation-date">
+                        {formatEvaluatedAt(item.tanggal_dinilai || pen?.tanggal_nilai)}
                       </div>
                     </td>
                     <td>
-                      <div style={{ fontSize: '0.82rem', color: '#334155', maxWidth: '280px' }}>
-                        "{pen ? pen.catatan : 'Hasil implementasi dan dokumentasi sangat baik.'}"
+                      <div className="evaluation-notes">
+                        {pen?.catatan || 'Tidak ada catatan evaluasi.'}
                       </div>
                     </td>
                   </tr>

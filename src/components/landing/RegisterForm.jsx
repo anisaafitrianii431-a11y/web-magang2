@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { User, Mail, Lock, Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import { User, Hash, Mail, Lock, Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
+import api from '../../services/api';
 
 function RegisterForm({ onRegisterSuccess }) {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [formData, setFormData] = useState({ name: '', nim: '', email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -17,18 +18,11 @@ function RegisterForm({ onRegisterSuccess }) {
     setIsLoading(true);
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-      const result = await res.json();
+      const response = await api.post('/register', formData);
+      const result = response.data;
 
       if (result.status === 'success') {
-        setSuccessMessage('Registrasi Berhasil! Silakan masuk dengan akun baru Anda.');
+        setSuccessMessage('Akun berhasil dibuat. Silakan masuk untuk melengkapi dan mengirim pengajuan magang.');
         if (onRegisterSuccess) {
           onRegisterSuccess(formData.email);
         }
@@ -36,16 +30,15 @@ function RegisterForm({ onRegisterSuccess }) {
       } else {
         const msg = result.message || 'Registrasi gagal. Silakan periksa kembali data pendaftaran Anda.';
         setErrorMessage(msg);
-        if (result.errors) {
-          setFieldErrors(result.errors);
-        }
-        alert('Registrasi Gagal: ' + msg);
+        setFieldErrors(result.errors || {});
       }
     } catch (error) {
-      console.error('Register error:', error);
-      const errTxt = 'Gagal terhubung ke layanan server. Silakan periksa koneksi internet Anda.';
-      setErrorMessage(errTxt);
-      alert('Registrasi Gagal: ' + errTxt);
+      const responseErrors = error.response?.data?.errors || {};
+      setFieldErrors(responseErrors);
+      setErrorMessage(
+        error.response?.data?.message
+          || 'Gagal terhubung ke layanan server. Silakan periksa koneksi internet Anda.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -76,6 +69,10 @@ function RegisterForm({ onRegisterSuccess }) {
         </div>
       )}
 
+      <p className="auth-subtitle">
+        Buat akun terlebih dahulu. Setelah masuk, Anda dapat melengkapi data diri dan mengirim pengajuan magang.
+      </p>
+
       <div className="form-group">
         <label htmlFor="reg-name">Nama Lengkap Peserta</label>
         <div className="input-wrapper">
@@ -91,6 +88,24 @@ function RegisterForm({ onRegisterSuccess }) {
           />
         </div>
         {fieldErrors.name && <span className="field-error">{fieldErrors.name[0]}</span>}
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="reg-nim">NIM</label>
+        <div className="input-wrapper">
+          <Hash className="input-icon" size={18} />
+          <input
+            id="reg-nim"
+            type="text"
+            value={formData.nim}
+            onChange={e => setFormData({ ...formData, nim: e.target.value })}
+            placeholder="Masukkan Nomor Induk Mahasiswa"
+            required
+            maxLength={50}
+            autoComplete="off"
+          />
+        </div>
+        {fieldErrors.nim && <span className="field-error">{fieldErrors.nim[0]}</span>}
       </div>
 
       <div className="form-group">
@@ -119,10 +134,10 @@ function RegisterForm({ onRegisterSuccess }) {
             type={showPassword ? 'text' : 'password'}
             value={formData.password}
             onChange={e => setFormData({...formData, password: e.target.value})}
-            placeholder="Minimal 6 karakter"
+            placeholder="Minimal 8 karakter"
             required
             autoComplete="new-password"
-            minLength={6}
+            minLength={8}
           />
           <button
             type="button"

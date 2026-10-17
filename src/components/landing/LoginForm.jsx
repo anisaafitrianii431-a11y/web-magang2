@@ -1,21 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle, CheckCircle2 } from 'lucide-react';
 import api from '../../services/api';
 import { getLoginData } from '../../utils/auth';
 
-function LoginForm({ onSuccess, noticeMessage = '' }) {
-  const [email, setEmail] = useState('');
+function LoginForm({ onSuccess, noticeMessage = '', initialEmail = '' }) {
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState(noticeMessage);
-
-  useEffect(() => {
-    if (noticeMessage) {
-      setSuccessMessage(noticeMessage);
-    }
-  }, [noticeMessage]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
