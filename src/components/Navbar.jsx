@@ -13,7 +13,7 @@ function Navbar() {
     const role = String(currentUser?.role || "peserta").toLowerCase();
     const reportPageTitles = {
         "/laporan": "Laporan Magang",
-        "/laporan/penilaian": "Penilaian Laporan",
+        "/laporan/penilaian": "Tabel Penilaian",
         "/laporan/rekapitulasi": "Rekapitulasi Magang",
     };
     const reportTitle = reportPageTitles[location.pathname];

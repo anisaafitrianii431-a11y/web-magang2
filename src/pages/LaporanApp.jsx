@@ -48,9 +48,10 @@ export default function LaporanApp() {
   const handleUploadSubmit = async (formData) => {
     setUploadModal(prev => ({ ...prev, isSubmitting: true, submitError: null }));
     try {
-      await api.post('/laporan', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await api.post('/laporan', formData);
       setUploadModal({ isOpen: false, isSubmitting: false, submitError: null });
       fetchLaporan();
+      return true;
     } catch (err) {
       setUploadModal(prev => ({ ...prev, isSubmitting: false, submitError: err.response?.data?.message || 'Gagal upload' }));
     }

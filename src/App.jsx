@@ -10,13 +10,11 @@ import Register from "./pages/Register";
 import Absensi from "./pages/Absensi";
 import Dashboard from "./pages/Dashboard";
 import KelolaAkunPeserta from "./pages/KelolaAkunPeserta";
-import LaporanApp from "./pages/LaporanApp";
 import LaporanMagang from "./pages/LaporanMagang";
 import LaporanModule from "./pages/LaporanModule";
 import Pembimbing from "./pages/Pembimbing";
 import DashboardPembimbing from "./pages/pembimbing/DashboardPembimbing";
 import Periode from "./pages/Periode";
-import Penilaian from "./pages/Penilaian";
 import Peserta from "./pages/Peserta";
 import FormPendaftaran from "./pages/pemagang/FromPendaftaran";
 import Rekapitulasi from "./pages/Rekapitulasi";
@@ -73,12 +71,12 @@ function App() {
                 <Route path="/pemagang/daftar" element={<ProtectedRoute allowedRole="pemagang"><FormPendaftaran /></ProtectedRoute>} />
 
                 <Route path="/laporan" element={<ProtectedRoute><LaporanModule /></ProtectedRoute>} />
-                <Route path="/laporan/penilaian" element={<ProtectedRoute><LaporanModule /></ProtectedRoute>} />
+                <Route path="/laporan/penilaian" element={<ProtectedRoute allowedRole="pembimbing"><LaporanModule /></ProtectedRoute>} />
                 <Route path="/laporan/rekapitulasi" element={<ProtectedRoute><LaporanModule /></ProtectedRoute>} />
                 <Route path="/laporan-magang" element={<ProtectedRoute><LaporanMagang /></ProtectedRoute>} />
                 <Route path="/rekapitulasi" element={<ProtectedRoute><Rekapitulasi /></ProtectedRoute>} />
-                <Route path="/penilaian" element={<ProtectedRoute><Penilaian /></ProtectedRoute>} />
-                <Route path="/laporan-app" element={<ProtectedRoute><LaporanApp /></ProtectedRoute>} />
+                <Route path="/penilaian" element={<ProtectedRoute allowedRole="pembimbing"><Navigate to="/laporan/penilaian" replace /></ProtectedRoute>} />
+                <Route path="/laporan-app" element={<ProtectedRoute allowedRole="pembimbing"><Navigate to="/laporan/penilaian" replace /></ProtectedRoute>} />
 
                 <Route
                     path="/admin"

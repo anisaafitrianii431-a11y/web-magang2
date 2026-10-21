@@ -2,9 +2,10 @@ import { useState } from 'react';
 import api from '../services/api';
 import StatusBadge from './StatusBadge';
 
-export default function DetailModal({ isOpen, onClose, laporan }) {
+export default function DetailModal({ isOpen, onClose, laporan, canModerate = false, onSubmitStatus, isSavingStatus = false, statusError = '' }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
 
   if (!isOpen || !laporan) return null;
 
@@ -31,11 +32,17 @@ export default function DetailModal({ isOpen, onClose, laporan }) {
     }
   };
 
+  const handleSaveStatus = async () => {
+    if (!selectedStatus || !onSubmitStatus) return;
+    const saved = await onSubmitStatus(laporan.id_laporan, 'Disetujui');
+    if (saved) setSelectedStatus('');
+  };
+
   return (
     <div className="modal-overlay">
       <div className="modal-content" style={{ maxWidth: '680px' }}>
         <div className="modal-header">
-          <h3 className="modal-title">Detail & Unduh Laporan Magang</h3>
+          <h3 className="modal-title">Detail Laporan Magang</h3>
           <button className="modal-close-btn" onClick={onClose}>&times;</button>
         </div>
         
@@ -52,41 +59,51 @@ export default function DetailModal({ isOpen, onClose, laporan }) {
             </div>
           </div>
 
-          {/* Abstrak */}
-          <div className="form-group">
-            <label className="form-label">Abstrak Laporan</label>
-            <div style={{ padding: '0.85rem', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.88rem', color: '#334155' }}>
-              {laporan.abstrak || 'Tidak ada ringkasan abstrak.'}
-            </div>
-          </div>
-
-          {/* File Download Section */}
-          <div className="form-group">
-            <label className="form-label">Berkas PDF Laporan</label>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', backgroundColor: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                </svg>
-                <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e40af' }}>{laporan.file_laporan_pdf}</span>
-              </div>
-              <button
-                type="button"
-                onClick={handleDownload}
-                disabled={isDownloading}
-                style={{ backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '0.45rem 0.9rem', borderRadius: '6px', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+          {laporan.link_google_doc ? (
+            <div className="form-group">
+              <label className="form-label">Link Laporan Google Docs</label>
+              <a
+                href={laporan.link_google_doc}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: 'block', padding: '0.85rem 1rem', backgroundColor: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe', color: '#1d4ed8', wordBreak: 'break-all' }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="7 10 12 15 17 10"></polyline>
-                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-                {isDownloading ? 'Mengunduh...' : 'Unduh PDF'}
-              </button>
+                Buka laporan di Google Docs
+              </a>
             </div>
-            {downloadError && <p role="alert" style={{ color: '#b91c1c', marginTop: '0.5rem' }}>{downloadError}</p>}
-          </div>
+          ) : (
+            <div className="form-group">
+              <label className="form-label">Berkas PDF Laporan</label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', backgroundColor: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e40af' }}>{laporan.file_laporan_pdf}</span>
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                  style={{ backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '0.45rem 0.9rem', borderRadius: '6px', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}
+                >
+                  {isDownloading ? 'Mengunduh...' : 'Unduh PDF'}
+                </button>
+              </div>
+              {downloadError && <p role="alert" style={{ color: '#b91c1c', marginTop: '0.5rem' }}>{downloadError}</p>}
+            </div>
+          )}
+
+          {canModerate && (
+            <div className="form-group">
+              <label className="form-label" htmlFor="laporan-status">Status Laporan</label>
+              <select
+                id="laporan-status"
+                className="form-control"
+                value={selectedStatus}
+                onChange={(event) => setSelectedStatus(event.target.value)}
+              >
+                <option value="">Pilih status</option>
+                <option value="Diterima">Diterima</option>
+              </select>
+              {statusError && <p role="alert" style={{ color: '#b91c1c', marginTop: '0.5rem' }}>{statusError}</p>}
+            </div>
+          )}
 
           {/* Catatan Revisi jika ada */}
           {laporan.catatan_revisi && (
@@ -142,6 +159,16 @@ export default function DetailModal({ isOpen, onClose, laporan }) {
 
         <div className="modal-footer">
           <button className="btn-secondary" onClick={onClose}>Tutup</button>
+          {canModerate && (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleSaveStatus}
+              disabled={!selectedStatus || isSavingStatus}
+            >
+              {isSavingStatus ? 'Menyimpan...' : 'Simpan'}
+            </button>
+          )}
         </div>
       </div>
     </div>
