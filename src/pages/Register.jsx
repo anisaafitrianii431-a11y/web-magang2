@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { GraduationCap } from 'lucide-react';
+import { Eye, EyeOff, GraduationCap } from 'lucide-react';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -13,6 +13,7 @@ export default function RegisterPage() {
     no_hp: '',
   });
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
@@ -167,17 +168,42 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="register-password" style={labelStyle}>Password</label>
-            <input
-              id="register-password"
-              type="password"
-              value={formData.password}
-              onChange={(event) => setFormData({ ...formData, password: event.target.value })}
-              placeholder="Minimal 8 karakter"
-              style={inputStyle}
-              autoComplete="new-password"
-              minLength={8}
-              required
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                id="register-password"
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={(event) => setFormData({ ...formData, password: event.target.value })}
+                placeholder="Minimal 8 karakter"
+                style={{ ...inputStyle, paddingRight: '48px' }}
+                autoComplete="new-password"
+                minLength={8}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                aria-pressed={showPassword}
+                title={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  right: '12px',
+                  transform: 'translateY(-50%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '4px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                }}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <div>

@@ -51,11 +51,16 @@ export default function FormPendaftaran() {
         }
         setListPeriode(periodeRes.data.data);
         if (pendaftaranRes.data.data) {
-          setMyRegistration(pendaftaranRes.data.data);
-          if (pendaftaranRes.data.data.user) {
-            setLoggedInUser(pendaftaranRes.data.data.user);
+          const reg = pendaftaranRes.data.data;
+          setMyRegistration(reg);
+          if (reg.user) {
+            setLoggedInUser(reg.user);
           }
           setIsSubmitted(true);
+          if (reg.status === 'Pemagang Aktif' && (!reg.file_surat_balasan || reg.surat_balasan_diterima_at)) {
+            window.location.replace('/absensi');
+            return;
+          }
         }
       } catch (error) {
         console.error('Error fetching data', error);
@@ -116,7 +121,10 @@ export default function FormPendaftaran() {
         ...current,
         surat_balasan_diterima_at: new Date().toISOString(),
       }));
-      setReplyLetterMessage('Surat balasan berhasil diunduh. Setelah logout dan login kembali, Anda akan langsung masuk ke halaman absensi.');
+      setReplyLetterMessage('Surat balasan berhasil diunduh. Mengalihkan ke halaman absensi...');
+      window.setTimeout(() => {
+        window.location.replace('/absensi');
+      }, 1200);
     } catch (error) {
       setReplyLetterMessage(error.response?.status === 404
         ? 'Berkas surat balasan belum tersedia. Silakan hubungi admin.'

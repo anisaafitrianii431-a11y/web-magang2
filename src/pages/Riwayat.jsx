@@ -10,6 +10,7 @@ function Riwayat() {
     const [error, setError] = useState("");
     const [reviewMessage, setReviewMessage] = useState("");
     const [reviewingId, setReviewingId] = useState(null);
+    const [downloadingLetter, setDownloadingLetter] = useState(false);
     const [clock, setClock] = useState(new Date());
     const [role] = useState(() => {
         try {
@@ -18,6 +19,31 @@ function Riwayat() {
             return "peserta";
         }
     });
+
+    const handleDownloadReplyLetter = async () => {
+        setDownloadingLetter(true);
+        try {
+            const response = await api.get('/pendaftaran/me/surat-balasan/download', {
+                responseType: 'blob',
+            });
+            const url = URL.createObjectURL(response.data);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'surat-balasan-magang.pdf';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+            setError("");
+            await loadData();
+        } catch (downloadError) {
+            alert(downloadError.response?.status === 404
+                ? "Berkas surat balasan belum tersedia di server. Silakan hubungi admin."
+                : "Gagal mengunduh surat balasan. Silakan coba lagi.");
+        } finally {
+            setDownloadingLetter(false);
+        }
+    };
 
     const fetchAttendance = useCallback(async () => {
         const endpoint = role === "admin" || role === "pembimbing" ? "/absensi" : "/absensi-saya";
@@ -158,7 +184,41 @@ function Riwayat() {
 
                     {reviewMessage && <div className="message" role="status" style={{ marginBottom: "16px" }}>{reviewMessage}</div>}
                     {error ? (
-                        <div className="message error" role="alert">{error}</div>
+                        <div
+                            className="message error"
+                            role="alert"
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                flexWrap: "wrap",
+                                gap: "12px",
+                                marginBottom: "16px",
+                            }}
+                        >
+                            <span>{error}</span>
+                            {error.toLowerCase().includes("surat balasan") && (
+                                <button
+                                    type="button"
+                                    onClick={handleDownloadReplyLetter}
+                                    disabled={downloadingLetter}
+                                    style={{
+                                        background: "#16a34a",
+                                        color: "#ffffff",
+                                        padding: "8px 16px",
+                                        border: "none",
+                                        borderRadius: "6px",
+                                        fontWeight: "600",
+                                        cursor: downloadingLetter ? "wait" : "pointer",
+                                        fontSize: "13px",
+                                        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    {downloadingLetter ? "Mengunduh..." : "📥 Unduh Surat Balasan Sekarang"}
+                                </button>
+                            )}
+                        </div>
                     ) : (
                         <div className="table-card">
                             <table>

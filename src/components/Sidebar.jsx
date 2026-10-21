@@ -16,8 +16,11 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
     const roleLabel = isAdmin ? "Admin" : isPembimbing ? "Pembimbing" : "Peserta";
     const menu = isAdmin
         ? [
-            { to: "/riwayat", label: "Absensi & Riwayat", icon: "📅" },
-            { to: "/akun-peserta", label: "Akun Peserta", icon: "👤" },
+            { to: "/admin/pendaftaran", label: "Pendaftaran Magang", icon: "📝" },
+            { to: "/admin/periode", label: "Kelola Periode", icon: "🗓️" },
+            { to: "/admin/pembimbing", label: "Kelola Pembimbing", icon: "👨‍🏫" },
+            { to: "/admin/lokasi", label: "Lokasi Absensi", icon: "📍" },
+            { to: "/riwayat", label: "Absensi Magang", icon: "📅" },
             { to: "/tugas", label: "Tugas Magang", icon: "📋" },
         ]
         : isPembimbing
@@ -26,6 +29,8 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                 { to: "/periode", label: "Kelola Periode", icon: "🗓️" },
                 { to: "/tugas", label: "Tugas Magang", icon: "📋" },
                 { to: "/laporan", label: "Laporan Magang", icon: "📁" },
+                { to: "/laporan/penilaian", label: "Penilaian Laporan", icon: "⭐" },
+                { to: "/laporan/rekapitulasi", label: "Rekapitulasi", icon: "📊" },
             ]
             : [
                 { to: "/beranda", label: "Landing Page", icon: "🌐" },
@@ -34,7 +39,6 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                 { to: "/tugas", label: "Tugas Magang", icon: "📋" },
                 { to: "/riwayat", label: "Kehadiran", icon: "🗓️" },
                 { to: "/laporan", label: "Laporan Magang", icon: "📁" },
-                { to: "/pemagang/daftar", label: "Pendaftaran Magang", icon: "👥" },
             ];
 
     const handleLogout = () => {
@@ -71,7 +75,12 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                     <Link
                         key={item.to}
                         to={item.to}
-                        className={location.pathname === item.to ? "active" : ""}
+                        className={
+                            location.pathname === item.to ||
+                                (item.to.startsWith("/admin/") && location.pathname.startsWith(item.to))
+                                ? "active"
+                                : ""
+                        }
                     >
                         <span className="nav-icon" aria-hidden="true">{item.icon}</span>
                         <span>{item.label}</span>

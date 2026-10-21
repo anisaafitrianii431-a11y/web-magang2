@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AdminLayout from "./pages/admin/AdminLayout";
 import DaftarPemagang from "./components/DaftarPemagang";
+import KelolaLokasi from "./components/KelolaLokasi";
 import KelolaPembimbing from "./components/KelolaPembimbing";
 import KelolaPeriode from "./components/KelolaPeriode";
 import LandingPage from "./pages/LandingPage";
@@ -87,6 +88,7 @@ function App() {
                     <Route path="pendaftaran" element={<DaftarPemagang />} />
                     <Route path="periode" element={<KelolaPeriode />} />
                     <Route path="pembimbing" element={<KelolaPembimbing />} />
+                    <Route path="lokasi" element={<KelolaLokasi />} />
                     <Route path="*" element={<Navigate to="/admin/pendaftaran" replace />} />
                 </Route>
 

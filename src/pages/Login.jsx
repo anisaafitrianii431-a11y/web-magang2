@@ -39,19 +39,22 @@ function Login() {
             localStorage.setItem("user", JSON.stringify(user));
 
             if (normalizeRole(user.role) === "pemagang") {
-                // Active participants land in the participant feature portal.
-                // Applicants who are still pending stay on their registration status page.
+                // Alur:
+                // 1. Peserta yang belum mengunduh surat balasan diarahkan untuk mengunduh terlebih dahulu (/pemagang/daftar).
+                // 2. Jika berkas surat balasan sudah diunduh (cukup 1 kali), login berikutnya langsung masuk ke halaman absensi (/absensi).
                 try {
                     const registrationResponse = await api.get("/pendaftaran/me");
                     const registration = registrationResponse.data?.data;
-                    const hasReceivedReplyLetter = Boolean(
+                    const isAccepted = registration?.status === "Pemagang Aktif";
+                    const hasDownloadedReplyLetter = Boolean(
                         registration?.file_surat_balasan && registration?.surat_balasan_diterima_at
                     );
-                    navigate(
-                        registration?.status === "Pemagang Aktif" && hasReceivedReplyLetter
-                            ? "/absensi"
-                            : "/pemagang/daftar"
-                    );
+
+                    if (isAccepted && hasDownloadedReplyLetter) {
+                        navigate("/absensi");
+                    } else {
+                        navigate("/pemagang/daftar");
+                    }
                 } catch {
                     navigate("/pemagang/daftar");
                 }
