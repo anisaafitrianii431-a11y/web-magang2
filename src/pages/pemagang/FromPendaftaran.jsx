@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
 export default function FormPendaftaran() {
@@ -85,7 +85,9 @@ export default function FormPendaftaran() {
       <nav style={{ background: '#1e293b', padding: '15px 30px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ width: '32px', height: '32px', background: '#3b82f6', borderRadius: '6px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '16px' }}>🎓</div>
-          <h3 style={{ margin: 0, fontWeight: '600' }}>Portal Calon Pemagang</h3>
+          <h3 style={{ margin: 0, fontWeight: '600' }}>
+            {myRegistration?.status === 'Pemagang Aktif' ? 'Portal Peserta Magang' : 'Portal Calon Pemagang'}
+          </h3>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <span style={{ fontSize: '14px', color: '#cbd5e1' }}>Halo, {loggedInUser.nama || 'Siswa/Mahasiswa'}!</span>
@@ -167,6 +169,28 @@ export default function FormPendaftaran() {
                 </div>
               )}
             </>
+          )}
+
+          {myRegistration?.status === 'Pemagang Aktif' && (
+            <section style={{ background: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(15, 23, 42, 0.04)' }}>
+              <h3 style={{ margin: '0 0 16px', color: '#0f172a', fontSize: '18px' }}>Fitur Peserta Magang</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                {[
+                  { to: '/absensi', title: 'Absensi Magang', description: 'Lihat dan catat kehadiran.' },
+                  { to: '/tugas', title: 'Tugas Magang', description: 'Lihat tugas dan kumpulkan hasil.' },
+                  { to: '/laporan-magang', title: 'Laporan Magang', description: 'Kelola dan kirim laporan.' },
+                ].map((feature) => (
+                  <Link
+                    key={feature.to}
+                    to={feature.to}
+                    style={{ display: 'block', padding: '16px', border: '1px solid #cbd5e1', borderRadius: '10px', color: '#1e293b', textDecoration: 'none', background: '#f8fafc' }}
+                  >
+                    <strong style={{ display: 'block', marginBottom: '6px', color: '#4338ca' }}>{feature.title}</strong>
+                    <span style={{ fontSize: '13px', color: '#64748b' }}>{feature.description}</span>
+                  </Link>
+                ))}
+              </div>
+            </section>
           )}
 
           {/* Main Form Card (Hanya muncul jika belum daftar) */}

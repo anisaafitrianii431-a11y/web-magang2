@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
-import { getLoginData, getRoleHome } from "../utils/auth";
+import { getLoginData, getRoleHome, normalizeRole } from "../utils/auth";
+import { Eye, EyeOff, GraduationCap } from "lucide-react";
 
 function Login() {
 
@@ -9,6 +10,7 @@ function Login() {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
 
     const handleLogin = async (e) => {
@@ -32,6 +34,26 @@ function Login() {
 
             localStorage.setItem("token", token);
             localStorage.setItem("user", JSON.stringify(user));
+
+            if (normalizeRole(user.role) === "pemagang") {
+                // Active participants land in the participant feature portal.
+                // Applicants who are still pending stay on their registration status page.
+                try {
+                    const registrationResponse = await api.get("/pendaftaran/me");
+                    const registration = registrationResponse.data?.data;
+                    if (registration?.status !== "Pemagang Aktif") {
+                        navigate("/pemagang/daftar");
+                        return;
+                    }
+
+                    const letterKey = `surat-balasan-dilihat:${user.id}:${registration.id}:${registration.file_surat_balasan || "tanpa-surat"}`;
+                    navigate(localStorage.getItem(letterKey) ? "/tugas" : "/pemagang/diterima");
+                } catch {
+                    navigate("/pemagang/daftar");
+                }
+                return;
+            }
+
             navigate(getRoleHome(user.role));
 
         } catch (error) {
@@ -104,7 +126,7 @@ function Login() {
                             boxShadow: "0 4px 6px -1px rgba(59, 130, 246, 0.5)",
                         }}
                     >
-                        🎓
+                        <GraduationCap size={30} color="#fff" strokeWidth={1.8} />
                     </div>
                     <h1 style={{ fontSize: "24px", lineHeight: 1.3, fontWeight: "bold", color: "#0f172a", margin: "0 0 5px", letterSpacing: 0 }}>
                         Selamat Datang
@@ -147,16 +169,31 @@ function Login() {
                     </div>
                     <div>
                         <label htmlFor="login-password" style={labelStyle}>Password</label>
+                        <div style={{ position: "relative" }}>
                         <input
                             id="login-password"
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             value={password}
                             onChange={(event) => setPassword(event.target.value)}
                             placeholder="••••••••"
-                            style={inputStyle}
+                            style={{ ...inputStyle, paddingRight: "48px" }}
                             autoComplete="current-password"
                             required
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword((visible) => !visible)}
+                            aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                            title={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                            style={{
+                                position: "absolute", top: "50%", right: "12px",
+                                transform: "translateY(-50%)", display: "flex", padding: "4px",
+                                border: "none", background: "transparent", color: "#64748b", cursor: "pointer",
+                            }}
+                        >
+                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
+                        </div>
                     </div>
                     <button
                         type="submit"

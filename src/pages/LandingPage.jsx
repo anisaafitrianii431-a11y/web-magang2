@@ -60,12 +60,7 @@ function LandingPage({ initialAuthTab }) {
   };
 
   const openAuthView = (tab = 'login') => {
-    if (token) {
-      setActiveSection('beranda');
-      return;
-    }
-    setActiveTab(tab);
-    setActiveSection('auth');
+    navigate(tab === 'register' ? '/register' : '/login');
   };
 
   const handleSelectAktivitas = (id) => {

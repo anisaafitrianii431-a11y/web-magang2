@@ -75,7 +75,6 @@ function LaporanModule() {
     setApiError('');
 
     const formData = new FormData();
-    formData.append('id_peserta', String(currentUser?.id_peserta ?? currentUser?.id ?? 1));
     formData.append('judul_laporan', laporan.judul_laporan);
     formData.append('kategori_laporan', laporan.kategori_laporan);
     formData.append('abstrak', laporan.abstrak);
@@ -190,6 +189,7 @@ function LaporanModule() {
             <LaporanMagangPage
               laporanList={laporanList}
               currentRole={currentRole}
+              currentUserName={currentUser?.name || currentUser?.nama || 'Peserta Magang'}
               onOpenUpload={() => {
                 setApiError('');
                 setIsUploadOpen(true);

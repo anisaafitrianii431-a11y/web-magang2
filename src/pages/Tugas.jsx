@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 import Login from '../Login';
 import Sidebar from '../components/Sidebar';
-import { getLoginData } from '../utils/auth';
 
 // Helper: Format nilai angka menjadi predikat huruf
 function formatNilaiAkhir(nilai) {
@@ -67,16 +66,13 @@ function hitungTerlambat(submisiList, deadline) {
 }
 
 // Top Navbar Component
-function TopNavbar({ user, isConnected, onChangeRole }) {
+function TopNavbar({ user, isConnected }) {
   const currentRole = user?.role || 'peserta';
 
   return (
     <header className="top-navbar">
       <div className="topbar-left">
         <h2 className="topbar-title">Sistem Tugas Magang</h2>
-        <span className="topbar-subtitle">
-          Magang Core &bull; Laravel 8.83.29 &bull; {isConnected ? 'REST API Terhubung' : 'REST API Standby (http://127.0.0.1:8000)'}
-        </span>
       </div>
 
       <div className="topbar-right">
@@ -105,13 +101,13 @@ function TopNavbar({ user, isConnected, onChangeRole }) {
           <span>{isConnected ? 'REST API Active' : 'REST API Standby'}</span>
         </div>
 
-        {/* Role Switcher */}
+        {/* Pergantian mode hanya tersedia untuk akun pengelola, bukan akun peserta. */}
         <div className="actor-mode-container" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>Role:</span>
           <select
             className="actor-select"
             value={currentRole}
-            onChange={(e) => onChangeRole && onChangeRole(e.target.value)}
+            disabled
             style={{
               fontWeight: 700,
               cursor: 'pointer',
@@ -138,6 +134,7 @@ function TopNavbar({ user, isConnected, onChangeRole }) {
 
 // Main App Component
 function Tugas() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('user');
@@ -149,10 +146,11 @@ function Tugas() {
   });
 
   // Role checks
-  const isAdminOrPembimbing = user?.role === 'admin' || user?.role === 'pembimbing';
-  const isPembimbing = user?.role === 'pembimbing';
-  const isAdmin = user?.role === 'admin';
-  const isPeserta = user?.role === 'peserta';
+  const normalizedRole = String(user?.role || '').trim().toLowerCase();
+  const isAdmin = ['admin', 'administrator'].includes(normalizedRole);
+  const isPembimbing = normalizedRole === 'pembimbing';
+  const isPeserta = ['peserta', 'pemagang', 'peserta magang'].includes(normalizedRole);
+  const isAdminOrPembimbing = isAdmin || isPembimbing;
 
   const [daftarTugas, setDaftarTugas] = useState([]);
   const [taskLoadError, setTaskLoadError] = useState('');
@@ -194,6 +192,7 @@ function Tugas() {
   const clearSession = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('participant');
     setUser(null);
   }, []);
 
@@ -205,6 +204,7 @@ function Tugas() {
       /* abaikan error logout */
     }
     clearSession();
+    navigate('/login', { replace: true });
   };
 
   // Fetch tasks
@@ -450,33 +450,6 @@ function Tugas() {
     return <Login onLogin={setUser} />;
   }
 
-  const handleChangeRole = async (newRole) => {
-    const roleCreds = {
-      admin:      { email: 'admin@gmail.com',      password: 'password123' },
-      pembimbing: { email: 'pembimbing@gmail.com', password: 'password123' },
-      peserta:    { email: 'peserta@gmail.com',    password: 'password123' },
-    };
-    const creds = roleCreds[newRole];
-    if (!creds) return;
-
-    try {
-      setLoading(true);
-      const res = await api.post('/login', { email: creds.email, password: creds.password });
-      const { token, user: authenticatedUser } = getLoginData(res.data);
-      if (!token || !authenticatedUser) {
-        throw new Error('Respons login tidak berisi token atau data pengguna.');
-      }
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(authenticatedUser));
-      setUser(authenticatedUser);
-      fetchTugas();
-    } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Gagal beralih role ke ' + newRole;
-      alert('⚠️ ' + msg);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="app-shell">
@@ -486,7 +459,7 @@ function Tugas() {
       {/* MAIN CONTENT AREA */}
       <div className="main-wrapper">
         {/* TOPBAR */}
-        <TopNavbar user={user} isConnected={isBackendConnected} onChangeRole={handleChangeRole} />
+        <TopNavbar user={user} isConnected={isBackendConnected} />
 
         {/* CONTENT BODY */}
         <main className="content-body">
@@ -571,7 +544,7 @@ function Tugas() {
             </div>
 
             <div className="table-responsive">
-              <table className="enterprise-table">
+              <table className="enterprise-table task-table">
                 <thead>
                   <tr>
                     <th style={{ width: '40px' }}>#</th>
@@ -671,8 +644,8 @@ function Tugas() {
                           </td>
 
                           {/* Col 7: Aksi */}
-                          <td style={{ textAlign: 'right' }}>
-                            <div className="table-action-group" style={{ justifyContent: 'flex-end' }}>
+                          <td className="task-actions-cell">
+                            <div className="table-action-group task-action-group">
                               {/* USE CASE: Lihat Detail Tugas */}
                               <button
                                 className="action-btn"

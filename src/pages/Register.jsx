@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { GraduationCap } from 'lucide-react';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -88,7 +89,7 @@ export default function RegisterPage() {
               boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.5)',
             }}
           >
-            🚀
+            <GraduationCap size={30} color="#fff" strokeWidth={1.8} />
           </div>
           <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#0f172a', margin: '0 0 5px' }}>
             Buat Akun Baru

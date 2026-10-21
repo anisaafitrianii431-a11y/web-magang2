@@ -1,6 +1,4 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
-// Modul Auth & Admin & Pendaftaran
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -8,14 +6,11 @@ import DaftarPemagang from "./components/DaftarPemagang";
 import KelolaPeriode from "./components/KelolaPeriode";
 import KelolaPembimbing from "./components/KelolaPembimbing";
 import FormPendaftaran from "./pages/pemagang/FromPendaftaran";
-
-// Modul Publik & Fitur Utama
 import LandingPage from "./pages/LandingPage";
 import Absensi from "./pages/Absensi";
 import Dashboard from "./pages/Dashboard";
 import Tugas from "./pages/Tugas";
 import Pembimbing from "./pages/Pembimbing";
-import DashboardPembimbing from "./pages/pembimbing/DashboardPembimbing";
 import Periode from "./pages/Periode";
 import Peserta from "./pages/Peserta";
 import Riwayat from "./pages/Riwayat";
@@ -24,6 +19,7 @@ import Rekapitulasi from "./pages/Rekapitulasi";
 import LaporanMagang from "./pages/LaporanMagang";
 import Penilaian from "./pages/Penilaian";
 import LaporanApp from "./pages/LaporanApp";
+import SuratBalasan from "./pages/SuratBalasan";
 import { getRoleHome, getStoredUser, normalizeRole } from "./utils/auth";
 
 const ProtectedRoute = ({ children, allowedRole }) => {
@@ -48,11 +44,16 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/beranda" element={<LandingPage />} />
         <Route path="/landing" element={<LandingPage />} />
-
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/tugas" element={<Tugas />} />
         <Route path="/absensi" element={<Absensi />} />
         <Route path="/peserta" element={<Peserta />} />
@@ -65,6 +66,14 @@ export default function App() {
         <Route path="/rekapitulasi" element={<Rekapitulasi />} />
         <Route path="/penilaian" element={<Penilaian />} />
         <Route path="/laporan-app" element={<LaporanApp />} />
+        <Route
+          path="/pemagang/diterima"
+          element={
+            <ProtectedRoute allowedRole="pemagang">
+              <SuratBalasan />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/pemagang/daftar"
@@ -87,7 +96,7 @@ export default function App() {
           path="/pembimbing/dashboard"
           element={
             <ProtectedRoute allowedRole="pembimbing">
-              <DashboardPembimbing />
+              <Navigate to="/dashboard" replace />
             </ProtectedRoute>
           }
         />

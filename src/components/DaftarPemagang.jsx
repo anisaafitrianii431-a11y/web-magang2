@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
+import { CalendarDays } from 'lucide-react';
 
 export default function DaftarPemagang() {
+  const tanggalSelesaiRef = useRef(null);
   const [dataPendaftaran, setDataPendaftaran] = useState([]);
   const [listPeriode, setListPeriode] = useState([]);
   const [listPembimbing, setListPembimbing] = useState([]);
@@ -11,11 +13,17 @@ export default function DaftarPemagang() {
       const [pendaftaranRes, periodeRes, pembimbingRes] = await Promise.all([
         api.get('/pendaftaran'),
         api.get('/periode'),
-        api.get('/pembimbing')
+        // The pendaftaran approval API expects a pembimbing user ID, so use
+        // the admin endpoint that returns users with role "pembimbing".
+        api.get('/admin/pembimbing')
       ]);
-      setDataPendaftaran(pendaftaranRes.data.data);
-      setListPeriode(periodeRes.data.data);
-      setListPembimbing(pembimbingRes.data.data);
+      const pendaftaran = pendaftaranRes.data?.data;
+      const periode = periodeRes.data?.data;
+      const pembimbing = pembimbingRes.data?.data ?? pembimbingRes.data;
+
+      setDataPendaftaran(Array.isArray(pendaftaran) ? pendaftaran : []);
+      setListPeriode(Array.isArray(periode) ? periode : []);
+      setListPembimbing(Array.isArray(pembimbing) ? pembimbing : []);
     } catch (error) {
       console.error('Failed to fetch data', error);
     }
@@ -74,16 +82,16 @@ export default function DaftarPemagang() {
   const handleEdit = (item) => {
     setEditingId(item.id);
     setFormData({
-      nama_user: item.user?.nama,
+      nama_user: item.user?.nama || item.user?.name || '',
       email_user: item.user?.email,
-      no_hp_user: item.no_hp_user,
+      no_hp_user: item.user?.no_hp || item.no_hp_user || '',
       periode_id: item.periode_id ? item.periode_id.toString() : '1',
       pembimbing_id: item.pembimbing_id ? item.pembimbing_id.toString() : '',
       asal_instansi: item.asal_instansi,
       file_surat_pengantar: item.file_surat_pengantar, // Tetap set supaya tampil namanya
       status: item.status,
       tanggal_daftar: item.tanggal_daftar,
-      tanggal_selesai: item.tanggal_selesai || '',
+      tanggal_selesai: item.tanggal_selesai ? String(item.tanggal_selesai).slice(0, 10) : '',
       file_surat_balasan: item.file_surat_balasan || null
     });
   };
@@ -183,12 +191,29 @@ export default function DaftarPemagang() {
 
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>Set Tanggal Selesai Magang</label>
-              <input 
-                type="date" 
-                value={formData.tanggal_selesai} 
-                onChange={(e) => setFormData({...formData, tanggal_selesai: e.target.value})}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', color: '#0f172a', background: 'white' }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                <input
+                  ref={tanggalSelesaiRef}
+                  type="date"
+                  value={formData.tanggal_selesai}
+                  onChange={(e) => setFormData({...formData, tanggal_selesai: e.target.value})}
+                  style={{ width: '100%', padding: '10px 44px 10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', color: '#0f172a', background: 'white' }}
+                />
+                <button
+                  type="button"
+                  aria-label="Pilih tanggal selesai magang dari kalender"
+                  title="Pilih tanggal dari kalender"
+                  onClick={() => {
+                    const input = tanggalSelesaiRef.current;
+                    if (!input) return;
+                    if (typeof input.showPicker === 'function') input.showPicker();
+                    else input.focus();
+                  }}
+                  style={{ position: 'absolute', right: '6px', display: 'grid', placeItems: 'center', width: '32px', height: '32px', border: 0, borderRadius: '5px', color: '#4f46e5', background: '#eef2ff', cursor: 'pointer' }}
+                >
+                  <CalendarDays size={18} />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -234,7 +259,7 @@ export default function DaftarPemagang() {
               {dataPendaftaran.map((item, index) => (
                 <tr key={item.id} style={{ borderBottom: index === dataPendaftaran.length - 1 ? 'none' : '1px solid #e2e8f0', transition: 'background 0.2s', ':hover': { background: '#f8fafc' } }}>
                   <td style={{ padding: '15px 20px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>{item.user?.nama}</div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>{item.user?.nama || item.user?.name || 'Peserta Magang'}</div>
                     <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>{item.asal_instansi}</div>
                   </td>
                   <td style={{ padding: '15px 20px' }}>

@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 function Navbar() {
     const location = useLocation();
@@ -11,6 +11,7 @@ function Navbar() {
     })();
     
     const role = currentUser?.role || "peserta";
+    const isParticipantRole = ["peserta", "pemagang", "peserta magang"].includes(String(role).toLowerCase());
     const reportPageTitles = {
         "/laporan": "Laporan Magang",
         "/laporan/penilaian": "Penilaian Laporan",
@@ -29,17 +30,17 @@ function Navbar() {
     return (
         <header className="navbar">
             <div>
-                <h3>{reportTitle || (role === "pembimbing" ? "Admin Portal" : "Ruang kehadiran")}</h3>
+                    <h3>{reportTitle || (role === "pembimbing" ? "Portal Pembimbing" : "Ruang Kehadiran")}</h3>
                 <p>
                     {reportTitle
                         ? `Kelola ${reportTitle.toLowerCase()} peserta magang`
                         : role === "pembimbing"
-                            ? "Manajemen sistem absensi"
+                            ? "Pemantauan peserta dan kehadiran magang"
                             : "Selamat datang di portal absensi magang"}
                 </p>
             </div>
             <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                <button 
+                {false && !isParticipantRole && <button 
                     onClick={handleRoleToggle} 
                     style={{
                         padding: "8px 16px",
@@ -57,11 +58,9 @@ function Navbar() {
                     }}
                 >
                     {role === "pembimbing" ? "🔄 Mode Pembimbing" : "🔄 Mode Peserta"}
-                </button>
-                {role === "peserta" && (
-                    <Link className="history-button" to="/riwayat">
-                        Lihat riwayat <span>↗</span>
-                    </Link>
+                </button>}
+                {role === "pembimbing" && (
+                    <span className="mentor-mode-label">🎓 Mode Pembimbing</span>
                 )}
             </div>
         </header>

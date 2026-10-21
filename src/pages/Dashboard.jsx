@@ -21,6 +21,7 @@ function Dashboard() {
     });
 
     const [absensi, setAbsensi] = useState(null);
+    const [mentorSummary, setMentorSummary] = useState({ peserta: 0, hadir: 0, belumHadir: 0 });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -57,13 +58,27 @@ function Dashboard() {
 
     useEffect(() => {
         const loadData = async () => {
-            if (!isParticipant) {
-                setAbsensi(null);
-                setLoading(false);
-                return;
-            }
-
             try {
+                if (role === "pembimbing" && localStorage.getItem("token")) {
+                    const today = new Date().toISOString().slice(0, 10);
+                    const [participantsResponse, attendanceResponse] = await Promise.all([
+                        api.get("/magang"),
+                        api.get("/absensi", { params: { tanggal: today } }),
+                    ]);
+                    const participants = Array.isArray(participantsResponse.data) ? participantsResponse.data : [];
+                    const attendance = Array.isArray(attendanceResponse.data) ? attendanceResponse.data : [];
+                    const assignedCodes = new Set(participants.map((item) => item.participant_code));
+                    const assignedAttendance = attendance.filter((item) => assignedCodes.has(item.participant_code));
+                    const hadir = assignedAttendance.filter((item) => item.status === "Hadir").length;
+                    setMentorSummary({ peserta: participants.length, hadir, belumHadir: Math.max(0, participants.length - hadir) });
+                    return;
+                }
+
+                if (!isParticipant) {
+                    setAbsensi(null);
+                    return;
+                }
+
                 // If it's a real logged-in user with token
                 if (localStorage.getItem("token")) {
                     const response = await api.get("/absensi-saya");
@@ -134,6 +149,12 @@ function Dashboard() {
                                     <h2>Memuat data...</h2>
                                 </div>
                             </div>
+                        </div>
+                    ) : role === "pembimbing" ? (
+                        <div className="stats">
+                            <div className="stat-card"><span>👥</span><div><small>Peserta Bimbingan Aktif</small><h2>{mentorSummary.peserta}</h2></div></div>
+                            <div className="stat-card"><span>✅</span><div><small>Hadir Hari Ini</small><h2>{mentorSummary.hadir}</h2></div></div>
+                            <div className="stat-card"><span>🕒</span><div><small>Belum Hadir Hari Ini</small><h2>{mentorSummary.belumHadir}</h2></div></div>
                         </div>
                     ) : isParticipant ? (
                         <div className="stats">

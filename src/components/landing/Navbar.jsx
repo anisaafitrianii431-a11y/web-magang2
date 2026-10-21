@@ -79,26 +79,28 @@ function Navbar({ activeSection, setActiveSection, user, token, onOpenAuth, onLo
         </div>
 
         <div className="nav-auth" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Link
-            to="/dashboard"
-            className="btn-link-dashboard"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              borderRadius: '8px',
-              background: 'rgba(99, 102, 241, 0.15)',
-              border: '1px solid rgba(99, 102, 241, 0.4)',
-              color: '#c7d2fe',
-              textDecoration: 'none',
-              fontSize: '13px',
-              fontWeight: 600,
-            }}
-          >
-            <LayoutDashboard size={16} />
-            <span>Ke Dashboard</span>
-          </Link>
+          {token && (
+            <Link
+              to="/dashboard"
+              className="btn-link-dashboard"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                background: 'rgba(99, 102, 241, 0.15)',
+                border: '1px solid rgba(99, 102, 241, 0.4)',
+                color: '#c7d2fe',
+                textDecoration: 'none',
+                fontSize: '13px',
+                fontWeight: 600,
+              }}
+            >
+              <LayoutDashboard size={16} />
+              <span>Ke Dashboard</span>
+            </Link>
+          )}
           {token ? (
             <div className="user-menu">
               <button
@@ -116,10 +118,10 @@ function Navbar({ activeSection, setActiveSection, user, token, onOpenAuth, onLo
               </button>
             </div>
           ) : (
-            <button type="button" className="btn btn-nav-login" onClick={onOpenAuth}>
+            <Link to="/login" className="btn btn-nav-login">
               <LogIn size={16} />
               <span>Masuk / Daftar</span>
-            </button>
+            </Link>
           )}
         </div>
       </div>

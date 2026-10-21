@@ -1,9 +1,20 @@
 import { useState } from 'react';
 import StatusBadge from '../components/StatusBadge';
 
+function formatSubmittedAt(value) {
+  if (!value) return { date: '—', time: '' };
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return { date: String(value), time: '' };
+  return {
+    date: parsed.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+    time: parsed.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+  };
+}
+
 export default function LaporanMagangPage({ 
   laporanList, 
   currentRole, 
+  currentUserName,
   onOpenUpload, 
   onOpenReview, 
   onOpenRevisi, 
@@ -31,7 +42,7 @@ export default function LaporanMagangPage({
       {/* Alert Banner from Image */}
       <div className="alert-welcome">
         <div className="alert-icon">✓</div>
-        <span>Selamat datang kembali, {currentRole === 'anak_magang' ? 'anak magang!' : 'pembimbing!'}</span>
+        <span>Selamat datang kembali, {currentRole === 'anak_magang' ? `${currentUserName}!` : `${currentUserName || 'Pembimbing'}!`}</span>
       </div>
 
       {/* Page Header */}
@@ -142,12 +153,15 @@ export default function LaporanMagangPage({
                     <span className="badge badge-kategori">{item.kategori_laporan}</span>
                   </td>
                   <td>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-                      {item.tgl_submit ? item.tgl_submit.split(' ')[0] : '2026-09-15'}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                      {item.tgl_submit ? item.tgl_submit.split(' ')[1] || '' : ''}
-                    </div>
+                    {(() => {
+                      const submittedAt = formatSubmittedAt(item.tgl_submit);
+                      return (
+                        <div className="report-date-cell">
+                          <strong>{submittedAt.date}</strong>
+                          {submittedAt.time && <span>{submittedAt.time}</span>}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td>
                     <StatusBadge status={item.status_laporan} />
@@ -195,15 +209,11 @@ export default function LaporanMagangPage({
                       }
 
                       return (
-                        <span style={{
+                          <span className="report-grade" style={{
                           backgroundColor: badgeBg,
                           color: badgeColor,
                           border: `1px solid ${badgeBorder}`,
-                          padding: '0.35rem 0.75rem',
-                          borderRadius: '8px',
-                          fontWeight: 800,
-                          fontSize: '0.85rem',
-                          display: 'inline-block'
+                          borderRadius: '8px'
                         }}>
                           {poin}
                         </span>
