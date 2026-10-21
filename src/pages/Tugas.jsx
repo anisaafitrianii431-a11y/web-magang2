@@ -547,7 +547,7 @@ function Tugas() {
             </div>
 
             <div className="table-responsive">
-              <table className="enterprise-table">
+              <table className="enterprise-table task-table">
                 <thead>
                   <tr>
                     <th style={{ width: '40px' }}>#</th>
@@ -646,8 +646,8 @@ function Tugas() {
                           </td>
 
                           {/* Col 7: Aksi */}
-                          <td style={{ textAlign: 'right' }}>
-                            <div className="table-action-group" style={{ justifyContent: 'flex-end' }}>
+                          <td className="task-actions-cell">
+                            <div className="table-action-group task-action-group">
                               {/* USE CASE: Lihat Detail Tugas */}
                               <button
                                 className="action-btn"

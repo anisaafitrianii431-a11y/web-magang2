@@ -21,6 +21,7 @@ import Peserta from "./pages/Peserta";
 import FormPendaftaran from "./pages/pemagang/FromPendaftaran";
 import Rekapitulasi from "./pages/Rekapitulasi";
 import Riwayat from "./pages/Riwayat";
+import SuratBalasan from "./pages/SuratBalasan";
 import Tugas from "./pages/Tugas";
 import { getRoleHome, getStoredUser, normalizeRole } from "./utils/auth";
 
@@ -71,6 +72,7 @@ function App() {
                 <Route path="/pembimbing" element={<ProtectedRoute allowedRole="pembimbing"><Pembimbing /></ProtectedRoute>} />
                 <Route path="/pembimbing/dashboard" element={<ProtectedRoute allowedRole="pembimbing"><DashboardPembimbing /></ProtectedRoute>} />
                 <Route path="/pemagang/daftar" element={<ProtectedRoute allowedRole="pemagang"><FormPendaftaran /></ProtectedRoute>} />
+                <Route path="/surat-balasan" element={<ProtectedRoute allowedRole="pemagang"><SuratBalasan /></ProtectedRoute>} />
 
                 <Route path="/laporan" element={<ProtectedRoute><LaporanModule /></ProtectedRoute>} />
                 <Route path="/laporan/penilaian" element={<ProtectedRoute><LaporanModule /></ProtectedRoute>} />

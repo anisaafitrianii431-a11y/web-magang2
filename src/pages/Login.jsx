@@ -52,6 +52,8 @@ function Login() {
 
                     if (isAccepted && hasDownloadedReplyLetter) {
                         navigate("/absensi");
+                    } else if (isAccepted) {
+                        navigate("/surat-balasan");
                     } else {
                         navigate("/pemagang/daftar");
                     }
