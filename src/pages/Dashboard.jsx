@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import api from "../services/api";
@@ -59,27 +58,6 @@ function Dashboard() {
             ? "Kelola periode, tugas, dan data absensi peserta magang."
             : "Silakan lakukan absensi sesuai kegiatan magang yang sedang berjalan.";
 
-    const managementLinks = role === "admin"
-        ? [
-            { to: "/akun-peserta", icon: "👤", title: "Akun Peserta", description: "Lihat akun peserta dan NPM terkait." },
-            { to: "/periode", icon: "🗓️", title: "Periode Magang", description: "Kelola periode dan peserta magang." },
-            { to: "/tugas", icon: "📋", title: "Tugas Magang", description: "Kelola tugas dan evaluasi submisi." },
-            { to: "/riwayat", icon: "📅", title: "Absensi & Riwayat", description: "Pantau rekapitulasi data kehadiran." },
-        ]
-        : role === "pembimbing"
-            ? [
-                { to: "/riwayat", icon: "📅", title: "Absensi Magang", description: "Pantau kehadiran peserta." },
-                { to: "/periode", icon: "🗓️", title: "Periode Magang", description: "Lihat periode peserta magang." },
-                { to: "/tugas", icon: "📋", title: "Tugas Magang", description: "Periksa dan nilai submisi tugas." },
-                { to: "/laporan", icon: "📁", title: "Laporan Magang", description: "Tinjau laporan peserta." },
-            ]
-            : [
-                { to: "/absensi", icon: "📅", title: "Absensi Hari Ini", description: "Catat kehadiran magang." },
-                { to: "/tugas", icon: "📋", title: "Tugas Magang", description: "Lihat tugas dan status pengumpulan." },
-                { to: "/laporan", icon: "📁", title: "Laporan Magang", description: "Lihat dan kelola laporan magang." },
-                { to: "/pemagang/daftar", icon: "👥", title: "Pendaftaran Magang", description: "Lihat status pendaftaran magang." },
-            ];
-
     return (
         <div className="layout">
             <Sidebar />
@@ -121,18 +99,6 @@ function Dashboard() {
                         </div>
                     )}
 
-                    <div className="management-links">
-                        {managementLinks.map((item) => (
-                            <Link key={item.to} to={item.to} className="management-link">
-                                <span className="management-icon">{item.icon}</span>
-                                <span>
-                                    <strong>{item.title}</strong>
-                                    <small>{item.description}</small>
-                                </span>
-                                <span className="management-arrow">→</span>
-                            </Link>
-                        ))}
-                    </div>
                 </main>
             </div>
         </div>

@@ -87,13 +87,26 @@ function Riwayat() {
     const participantsList = useMemo(() => {
         const unique = new Map();
         data.forEach((item) => {
-            const code = item.participant_code || (item.user_id ? `USER-${item.user_id}` : item.participant_name);
-            if (code && !unique.has(code)) {
-                unique.set(code, {
+            const rawName = (item.participant_name || item.user?.name || "").trim();
+            if (!rawName) return;
+            const normalizedKey = rawName.toLowerCase();
+            const code = item.participant_code || (item.user_id ? `USER-${item.user_id}` : rawName);
+
+            if (!unique.has(normalizedKey)) {
+                unique.set(normalizedKey, {
                     code,
-                    name: item.participant_name || item.user?.name || "Peserta Magang",
+                    name: rawName,
                     institution: item.institution || item.instansi || "Sekolah Tinggi Teknologi Payakumbuh",
+                    codes: [code],
                 });
+            } else {
+                const existing = unique.get(normalizedKey);
+                if (code && !existing.codes.includes(code)) {
+                    existing.codes.push(code);
+                }
+                if (item.participant_code && !String(item.participant_code).startsWith("USER-")) {
+                    existing.code = item.participant_code;
+                }
             }
         });
         return Array.from(unique.values());
@@ -107,13 +120,18 @@ function Riwayat() {
             result = result.filter((item) => String(item.tanggal || "").slice(0, 7) === activeMonth);
         }
         if (selectedParticipant !== "all") {
+            const selectedObj = participantsList.find((p) => p.code === selectedParticipant);
             result = result.filter((item) => {
                 const code = item.participant_code || (item.user_id ? `USER-${item.user_id}` : item.participant_name);
+                const name = (item.participant_name || item.user?.name || "").trim().toLowerCase();
+                if (selectedObj) {
+                    return selectedObj.codes.includes(code) || (selectedObj.name && name === selectedObj.name.toLowerCase());
+                }
                 return code === selectedParticipant;
             });
         }
         return result;
-    }, [data, activeMonth, selectedParticipant]);
+    }, [data, activeMonth, selectedParticipant, participantsList]);
     const displayedData = role === "pembimbing" ? filteredData : data;
 
     const formatDate = (dateStr) => {
@@ -169,8 +187,11 @@ function Riwayat() {
             const participantRecords = data.filter((item) => {
                 const dateMatch = String(item.tanggal || "").slice(0, 7) === activeMonth;
                 if (!dateMatch) return false;
-                if (participant.code === "template") return false;
                 const code = item.participant_code || (item.user_id ? `USER-${item.user_id}` : item.participant_name);
+                const name = (item.participant_name || item.user?.name || "").trim().toLowerCase();
+                if (participant.codes) {
+                    return participant.codes.includes(code) || (participant.name && name === participant.name.toLowerCase());
+                }
                 return code === participant.code;
             });
 
@@ -244,11 +265,11 @@ function Riwayat() {
                 : "........ %";
 
             // ---------------- PAGE 1 ----------------
-            // Title
+            // Title: tulisan rekap diganti jadi laporan absensi magang
             doc.setFont("helvetica", "bold");
             doc.setFontSize(15);
             doc.setTextColor(26, 54, 93);
-            doc.text("REKAP LAPORAN ABSENSI MAGANG", 14, 18);
+            doc.text("LAPORAN ABSENSI MAGANG", 14, 18);
 
             doc.setFont("helvetica", "normal");
             doc.setFontSize(8);
@@ -434,13 +455,13 @@ function Riwayat() {
                 doc.text(row.keterangan, cellX + 3, yPos + 4.2, { maxWidth: colWidths[4] - 6 });
             });
 
-            // Page 1 Footer
+            // Page 1 Footer: tulisan rekap diganti jadi laporan absensi magang
             doc.setDrawColor(226, 232, 240);
             doc.line(14, 282, 196, 282);
             doc.setFont("helvetica", "italic");
             doc.setFontSize(7.5);
             doc.setTextColor(148, 163, 184);
-            doc.text("Format rekap absensi magang bulanan", 14, 287);
+            doc.text("Format laporan absensi magang bulanan", 14, 287);
             doc.setFont("helvetica", "normal");
             doc.text("Halaman 1", 196, 287, { align: "right" });
 
@@ -557,20 +578,20 @@ function Riwayat() {
             doc.setFont("helvetica", "bold");
             doc.text(`( ${participant.name || "......................................."} )`, 155, sigY + 30.5, { align: "center" });
 
-            // Page 2 Footer
+            // Page 2 Footer: tulisan rekap diganti jadi laporan absensi magang
             doc.setDrawColor(226, 232, 240);
             doc.line(14, 282, 196, 282);
             doc.setFont("helvetica", "italic");
             doc.setFontSize(7.5);
             doc.setTextColor(148, 163, 184);
-            doc.text("Format rekap absensi magang bulanan", 14, 287);
+            doc.text("Format laporan absensi magang bulanan", 14, 287);
             doc.setFont("helvetica", "normal");
             doc.text("Halaman 2", 196, 287, { align: "right" });
         });
 
         const filename = selectedParticipant !== "all"
-            ? `rekap-absensi-${selectedParticipant}-${activeMonth}.pdf`
-            : `rekap-absensi-${activeMonth}.pdf`;
+            ? `laporan-absensi-${selectedParticipant}-${activeMonth}.pdf`
+            : `laporan-absensi-${activeMonth}.pdf`;
         doc.save(filename);
     };
 
@@ -584,7 +605,7 @@ function Riwayat() {
                         <div>
                             <p className="eyebrow">{role === "admin" ? "PORTAL ADMINISTRATOR" : role === "pembimbing" ? "PORTAL PEMBIMBING" : "ARSIP KEHADIRAN"}</p>
                             <h1>{role === "admin" ? "Kelola Data Absensi" : "Absensi Magang"}</h1>
-                            <p className="subtitle">{role === "admin" ? "Kelola, ubah, dan pantau seluruh rekapan data absensi peserta magang." : role === "pembimbing" ? "Rekap kehadiran peserta magang." : "Riwayat absensi ini hanya dapat dilihat oleh akun Anda."}</p>
+                            <p className="subtitle">{role === "admin" ? "Kelola, ubah, dan pantau seluruh data absensi peserta magang." : role === "pembimbing" ? "Lihat kehadiran peserta magang." : "Riwayat absensi ini hanya dapat dilihat oleh akun Anda."}</p>
                         </div>
                         <div className="live-clock">
                             <strong>{clock.toLocaleTimeString("id-ID")}</strong>
@@ -617,14 +638,6 @@ function Riwayat() {
                     {/* Menu Navigasi Khusus Pembimbing */}
                     {role === "pembimbing" && (
                         <nav className="management-links attendance-management-links" aria-label="Menu pembimbing">
-                            <Link to="/riwayat" className="management-link" aria-current="page">
-                                <span className="management-icon">📅</span>
-                                <span>
-                                    <strong>Absensi Magang</strong>
-                                    <small>Lihat rekap kehadiran peserta.</small>
-                                </span>
-                                <span className="management-arrow">→</span>
-                            </Link>
                             <Link to="/pembimbing/jadwal-absensi" className="management-link">
                                 <span className="management-icon">🕒</span>
                                 <span>
@@ -690,7 +703,7 @@ function Riwayat() {
                                         disabled={!filteredData.length}
                                         style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: "8px", padding: "9px 14px", fontWeight: 600, cursor: filteredData.length ? "pointer" : "not-allowed", opacity: filteredData.length ? 1 : 0.5 }}
                                     >
-                                        Export PDF Bulanan
+                                        Export Laporan Absensi (PDF)
                                     </button>
                                 </div>
                             )}

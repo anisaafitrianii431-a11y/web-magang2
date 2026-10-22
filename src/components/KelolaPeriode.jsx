@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { Search } from 'lucide-react';
 import api from '../services/api';
 
 export default function KelolaPeriode() {
   const [listPeriode, setListPeriode] = useState([]);
   const [formPeriode, setFormPeriode] = useState({ tanggal_mulai: '', tanggal_selesai: '' });
   const [editingId, setEditingId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedYear, setSelectedYear] = useState('all');
 
   const fetchPeriode = async () => {
     try {
@@ -19,6 +22,27 @@ export default function KelolaPeriode() {
     const timeoutId = setTimeout(fetchPeriode, 0);
     return () => clearTimeout(timeoutId);
   }, []);
+
+  const years = useMemo(() => [...new Set(
+    listPeriode
+      .map((periode) => periode.tanggal_mulai?.slice(0, 4))
+      .filter(Boolean)
+  )].sort((a, b) => b.localeCompare(a)), [listPeriode]);
+
+  const filteredPeriode = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    return listPeriode.filter((periode) => {
+      const year = periode.tanggal_mulai?.slice(0, 4);
+      const matchesYear = selectedYear === 'all' || year === selectedYear;
+      const matchesQuery = !query || [
+        periode.id,
+        periode.nama_periode,
+        periode.tanggal_mulai,
+        periode.tanggal_selesai,
+      ].some((value) => String(value || '').toLowerCase().includes(query));
+      return matchesYear && matchesQuery;
+    });
+  }, [listPeriode, searchTerm, selectedYear]);
 
   const handleTambahPeriode = async (e) => {
     e.preventDefault();
@@ -111,6 +135,43 @@ export default function KelolaPeriode() {
             <span style={{ fontSize: '16px' }}>📅</span>
             <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>Daftar Periode Magang ({listPeriode.length} Data)</h3>
         </div>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <label style={{ position: 'relative', display: 'block', maxWidth: '420px' }}>
+            <Search size={17} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Cari periode berdasarkan tahun atau tanggal..."
+              aria-label="Cari periode berdasarkan tahun atau tanggal"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px 10px 38px', border: '1px solid #cbd5e1', borderRadius: '9px', outline: 'none', fontSize: '14px', color: '#334155' }}
+            />
+          </label>
+          <div role="group" aria-label="Filter periode berdasarkan tahun" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px', borderRadius: '12px', background: '#f1f5f9', width: 'fit-content', maxWidth: '100%', overflowX: 'auto' }}>
+            {[
+              { year: 'all', label: 'Semua Periode', count: listPeriode.length },
+              ...years.map((year) => ({
+                year,
+                label: `Periode ${year}`,
+                count: listPeriode.filter((periode) => periode.tanggal_mulai?.slice(0, 4) === year).length,
+              })),
+            ].map((option) => {
+              const isSelected = selectedYear === option.year;
+              return (
+                <button
+                  key={option.year}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => setSelectedYear(option.year)}
+                  style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', border: 'none', borderRadius: '9px', background: isSelected ? '#fff' : 'transparent', color: isSelected ? '#2563eb' : '#64748b', boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.08)' : 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  <span>{option.label}</span>
+                  <span style={{ minWidth: '22px', padding: '2px 6px', borderRadius: '12px', background: isSelected ? '#dbeafe' : '#e2e8f0', color: isSelected ? '#1d4ed8' : '#64748b', fontSize: '11px', fontWeight: 700, textAlign: 'center' }}>{option.count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -121,8 +182,8 @@ export default function KelolaPeriode() {
             </tr>
           </thead>
           <tbody>
-            {listPeriode.map((p, index) => (
-              <tr key={p.id} style={{ borderBottom: index === listPeriode.length - 1 ? 'none' : '1px solid #e2e8f0', transition: 'background 0.2s', ':hover': { background: '#f8fafc' } }}>
+            {filteredPeriode.length ? filteredPeriode.map((p, index) => (
+              <tr key={p.id} style={{ borderBottom: index === filteredPeriode.length - 1 ? 'none' : '1px solid #e2e8f0', transition: 'background 0.2s', ':hover': { background: '#f8fafc' } }}>
                 <td style={{ padding: '15px 20px', fontSize: '14px', color: '#334155' }}>{p.id}</td>
                 <td style={{ padding: '15px 20px', fontSize: '14px', color: '#334155' }}>{new Date(p.tanggal_mulai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
                 <td style={{ padding: '15px 20px', fontSize: '14px', color: '#334155' }}>{new Date(p.tanggal_selesai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
@@ -141,7 +202,13 @@ export default function KelolaPeriode() {
                   </button>
                 </td>
               </tr>
-            ))}
+            )) : (
+              <tr>
+                <td colSpan="4" style={{ padding: '24px 20px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+                  Periode yang dicari tidak ditemukan.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

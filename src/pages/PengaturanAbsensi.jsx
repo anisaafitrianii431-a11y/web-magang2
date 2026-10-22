@@ -74,14 +74,6 @@ export default function PengaturanAbsensi() {
 
                     {/* Menu Navigasi Khusus Pembimbing */}
                     <nav className="management-links attendance-management-links" aria-label="Menu pembimbing" style={{ marginBottom: "20px" }}>
-                        <Link to="/riwayat" className="management-link">
-                            <span className="management-icon">📅</span>
-                            <span>
-                                <strong>Absensi Magang</strong>
-                                <small>Lihat rekap kehadiran peserta.</small>
-                            </span>
-                            <span className="management-arrow">→</span>
-                        </Link>
                         <Link to="/pembimbing/jadwal-absensi" className="management-link" aria-current="page">
                             <span className="management-icon">🕒</span>
                             <span>

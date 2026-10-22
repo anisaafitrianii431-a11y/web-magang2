@@ -22,11 +22,12 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      await api.post('/register', formData);
+      const response = await api.post('/register', formData);
       navigate('/login', {
         state: {
           registeredEmail: formData.email,
-          registrationNotice: 'Akun berhasil dibuat. Masuk untuk melengkapi data diri dan mengirim pengajuan magang.',
+          registrationNotice: response.data?.message
+            || 'Akun berhasil dibuat. Masuk untuk melengkapi data diri dan mengirim pengajuan magang.',
         },
       });
     } catch (requestError) {
@@ -194,7 +195,7 @@ export default function RegisterPage() {
           </div>
 
           <p style={{ margin: 0, color: '#64748b', fontSize: '13px' }}>
-            Pendaftaran mandiri membuat akun Pemagang. Akun Admin dan Pembimbing diberikan oleh pengelola.
+            Pendaftaran mandiri membuat akun Pemagang. Jika email sudah terdaftar tanpa NIM, gunakan password akun tersebut untuk melengkapi data. Akun Admin dan Pembimbing diberikan oleh pengelola.
           </p>
 
           <button

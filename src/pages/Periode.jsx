@@ -12,7 +12,8 @@ import {
     CheckCircle2, 
     X,
     Sparkles,
-    Check
+    Check,
+    Search
 } from "lucide-react";
 
 function Periode() {
@@ -147,6 +148,8 @@ function Periode() {
     };
 
     const [selectedPeriodeId, setSelectedPeriodeId] = useState(periodes[0]?.id || 1);
+    const [periodeSearch, setPeriodeSearch] = useState("");
+    const [isPeriodeSearchOpen, setIsPeriodeSearchOpen] = useState(false);
     const [toastMessage, setToastMessage] = useState("");
 
     const currentUser = (() => {
@@ -160,6 +163,9 @@ function Periode() {
     const isPembimbing = role === "pembimbing";
 
     const activePeriode = periodes.find(p => p.id === selectedPeriodeId) || periodes[0];
+    const matchingPeriodes = periodes.filter((periode) =>
+        periode.nama.toLowerCase().includes(periodeSearch.trim().toLowerCase())
+    );
 
     const showToast = (msg) => {
         setToastMessage(msg);
@@ -388,35 +394,32 @@ function Periode() {
                                     </div>
                                 </div>
 
-                                 {/* Header Action: Hanya tampil untuk admin/bukan pembimbing */}
-                                {!isPembimbing && (
-                                    <button
-                                        onClick={() => {
-                                            setAddData({ npm: "", nama: "", periodeId: activePeriode.id });
-                                            setIsAddModalOpen(true);
-                                        }}
-                                        style={{
-                                            display: "inline-flex",
-                                            alignItems: "center",
-                                            gap: "8px",
-                                            background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-                                            color: "#ffffff",
-                                            border: "none",
-                                            padding: "12px 22px",
-                                            borderRadius: "12px",
-                                            fontSize: "14px",
-                                            fontWeight: "600",
-                                            cursor: "pointer",
-                                            boxShadow: "0 10px 20px -5px rgba(37, 99, 235, 0.4)",
-                                            transition: "all 0.2s ease"
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
-                                        onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
-                                    >
-                                        <Plus size={18} />
-                                        Tambah Peserta Baru
-                                    </button>
-                                )}
+                                <button
+                                    onClick={() => {
+                                        setAddData({ npm: "", nama: "", periodeId: activePeriode.id });
+                                        setIsAddModalOpen(true);
+                                    }}
+                                    style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                        background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                                        color: "#ffffff",
+                                        border: "none",
+                                        padding: "12px 22px",
+                                        borderRadius: "12px",
+                                        fontSize: "14px",
+                                        fontWeight: "600",
+                                        cursor: "pointer",
+                                        boxShadow: "0 10px 20px -5px rgba(37, 99, 235, 0.4)",
+                                        transition: "all 0.2s ease"
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
+                                    onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                                >
+                                    <Plus size={18} />
+                                    Tambah Peserta Baru
+                                </button>
                             </div>
                         </div>
 
@@ -462,61 +465,68 @@ function Periode() {
                             </div>
                         </div>
 
-                        {/* Control Bar: Tabs */}
+                        {/* Searchable period selector */}
                         <div style={{
                             background: "#ffffff",
                             padding: "12px 16px",
                             borderRadius: "16px",
                             border: "1px solid #e2e8f0",
-                            display: "flex",
-                            alignItems: "center",
                             marginBottom: "20px"
                         }}>
-                            {/* Segmented Period Tabs */}
-                            <div style={{
-                                display: "flex",
-                                background: "#f1f5f9",
-                                padding: "4px",
-                                borderRadius: "12px",
-                                gap: "4px",
-                                flexWrap: "wrap"
-                            }}>
-                                {periodes.map(p => {
-                                    const isSelected = selectedPeriodeId === p.id;
-                                    return (
-                                        <button
-                                            key={p.id}
-                                            onClick={() => setSelectedPeriodeId(p.id)}
-                                            style={{
-                                                padding: "9px 18px",
-                                                borderRadius: "9px",
-                                                border: "none",
-                                                background: isSelected ? "#ffffff" : "transparent",
-                                                color: isSelected ? "#2563eb" : "#64748b",
-                                                fontWeight: isSelected ? "700" : "600",
-                                                fontSize: "13.5px",
-                                                cursor: "pointer",
-                                                boxShadow: isSelected ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "8px",
-                                                transition: "all 0.2s ease"
-                                            }}
-                                        >
-                                            <span>{p.nama}</span>
-                                            <span style={{
-                                                fontSize: "11px",
-                                                padding: "2px 8px",
-                                                borderRadius: "12px",
-                                                background: isSelected ? "#dbeafe" : "#e2e8f0",
-                                                color: isSelected ? "#1d4ed8" : "#64748b",
-                                                fontWeight: "700"
-                                            }}>
-                                                {p.peserta?.length || 0}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
+                            <div style={{ position: "relative", width: "220px", maxWidth: "100%" }}>
+                                <Search size={16} aria-hidden="true" style={{ position: "absolute", left: "11px", top: "50%", transform: "translateY(-50%)", color: "#64748b", pointerEvents: "none" }} />
+                                <input
+                                    type="search"
+                                    value={periodeSearch}
+                                    onChange={(event) => {
+                                        setPeriodeSearch(event.target.value);
+                                        setIsPeriodeSearchOpen(true);
+                                    }}
+                                    onFocus={() => setIsPeriodeSearchOpen(true)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Escape") setIsPeriodeSearchOpen(false);
+                                        if (event.key === "Enter" && matchingPeriodes.length) {
+                                            event.preventDefault();
+                                            setSelectedPeriodeId(matchingPeriodes[0].id);
+                                            setPeriodeSearch("");
+                                            setIsPeriodeSearchOpen(false);
+                                        }
+                                    }}
+                                    placeholder={`Cari periode... (${activePeriode?.nama || "Pilih periode"})`}
+                                    aria-label="Cari periode magang"
+                                    aria-expanded={isPeriodeSearchOpen}
+                                    aria-controls="periode-search-results"
+                                    style={{ display: "block", width: "220px", maxWidth: "100%", boxSizing: "border-box", padding: "7px 10px 7px 32px", borderRadius: "8px", border: "1px solid #cbd5e1", outline: "none", fontSize: "12px", color: "#334155", background: "#fff" }}
+                                />
+                                {isPeriodeSearchOpen && (
+                                    <div id="periode-search-results" role="listbox" aria-label="Hasil pencarian periode" style={{ position: "absolute", zIndex: 10, top: "calc(100% + 6px)", left: 0, right: 0, maxHeight: "260px", overflowY: "auto", padding: "5px", border: "1px solid #e2e8f0", borderRadius: "12px", background: "#fff", boxShadow: "0 12px 24px rgba(15, 23, 42, 0.12)" }}>
+                                        {matchingPeriodes.length ? matchingPeriodes.map((periode) => {
+                                            const isSelected = selectedPeriodeId === periode.id;
+                                            return (
+                                                <button
+                                                    key={periode.id}
+                                                    type="button"
+                                                    role="option"
+                                                    aria-selected={isSelected}
+                                                    onMouseDown={(event) => event.preventDefault()}
+                                                    onClick={() => {
+                                                        setSelectedPeriodeId(periode.id);
+                                                        setPeriodeSearch("");
+                                                        setIsPeriodeSearchOpen(false);
+                                                    }}
+                                                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", padding: "10px 12px", border: "none", borderRadius: "8px", background: isSelected ? "#eff6ff" : "#fff", color: isSelected ? "#2563eb" : "#475569", fontWeight: isSelected ? 700 : 600, fontSize: "14px", textAlign: "left", cursor: "pointer" }}
+                                                >
+                                                    <span>{periode.nama}</span>
+                                                    <span style={{ minWidth: "22px", padding: "2px 7px", borderRadius: "12px", background: isSelected ? "#dbeafe" : "#e2e8f0", color: isSelected ? "#1d4ed8" : "#64748b", fontSize: "11px", textAlign: "center" }}>
+                                                        {periode.peserta?.length || 0}
+                                                    </span>
+                                                </button>
+                                            );
+                                        }) : (
+                                            <p style={{ margin: 0, padding: "12px", color: "#64748b", fontSize: "13px" }}>Periode tidak ditemukan.</p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -535,7 +545,7 @@ function Periode() {
                                         borderBottom: "1px solid #e2e8f0"
                                     }}>
                                         <th style={{ padding: "16px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", width: "8%" }}>No</th>
-                                        <th style={{ padding: "16px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", width: "16%" }}>NPM</th>
+                                        <th style={{ padding: "16px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", width: "16%" }}>NPM/NIM</th>
                                         <th style={{ padding: "16px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", width: "44%" }}>Nama Peserta</th>
                                         <th style={{ padding: "16px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", width: isPembimbing ? "16%" : "32%" }}>Status</th>
                                         {isPembimbing && <th style={{ padding: "16px 24px", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", textAlign: "center", width: "16%" }}>Aksi</th>}
@@ -739,7 +749,7 @@ function Periode() {
                         <form onSubmit={handleSaveEdit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                             <div>
                                 <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "700", color: "#334155" }}>
-                                    NPM (Nomor Pokok Mahasiswa)
+                                    NPM/NIM
                                 </label>
                                 <input 
                                     type="text" 
@@ -877,7 +887,7 @@ function Periode() {
                             </div>
                             <div>
                                 <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "700", color: "#334155" }}>
-                                    NPM (Nomor Pokok Mahasiswa)
+                                    NPM/NIM
                                 </label>
                                 <input 
                                     type="text" 

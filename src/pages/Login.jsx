@@ -9,11 +9,12 @@ function Login() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const [email, setEmail] = useState(location.state?.registeredEmail || "");
+    const [identifier, setIdentifier] = useState(location.state?.registeredEmail || "");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
     const [notice, setNotice] = useState(location.state?.registrationNotice || "");
+    const [loading, setLoading] = useState(false);
 
     const handleLogin = async (e) => {
 
@@ -21,11 +22,12 @@ function Login() {
 
         setError("");
         setNotice("");
+        setLoading(true);
 
         try {
 
             const response = await api.post("/login", {
-                email: email,
+                email: identifier.trim(),
                 password: password,
             });
 
@@ -68,6 +70,8 @@ function Login() {
                 "Email atau password salah"
             );
 
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -176,15 +180,14 @@ function Login() {
 
                 <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                     <div>
-                        <label htmlFor="login-email" style={labelStyle}>Email Address</label>
+                        <label htmlFor="login-identifier" style={labelStyle}>Email atau NPM/NIM</label>
                         <input
-                            id="login-email"
-                            type="email"
-                            value={email}
-                            onChange={(event) => setEmail(event.target.value)}
-                            placeholder="nama@email.com"
+                            type="text"
+                            value={identifier}
+                            onChange={(event) => setIdentifier(event.target.value)}
+                            placeholder="Masukkan email atau NPM/NIM"
                             style={inputStyle}
-                            autoComplete="email"
+                            autoComplete="username"
                             required
                         />
                     </div>
@@ -228,20 +231,21 @@ function Login() {
                     </div>
                     <button
                         type="submit"
+                        disabled={loading}
                         style={{
                             background: "#4f46e5",
                             color: "#fff",
                             padding: "14px",
                             border: "none",
                             borderRadius: "8px",
-                            cursor: "pointer",
+                            cursor: loading ? "not-allowed" : "pointer",
                             fontWeight: "bold",
                             fontSize: "15px",
                             marginTop: "4px",
                             boxShadow: "0 4px 6px -1px rgba(79, 70, 229, 0.4)",
                         }}
                     >
-                        Masuk
+                        {loading ? "Memproses..." : "Masuk"}
                     </button>
                 </form>
 

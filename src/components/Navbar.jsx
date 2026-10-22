@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 function Navbar() {
     const location = useLocation();
@@ -11,6 +11,7 @@ function Navbar() {
     })();
 
     const role = String(currentUser?.role || "peserta").toLowerCase();
+    const isParticipant = role !== "admin" && role !== "pembimbing";
     const reportPageTitles = {
         "/laporan": "Laporan Magang",
         "/laporan/penilaian": "Penilaian Laporan",
@@ -31,31 +32,30 @@ function Navbar() {
                 : "Selamat datang di portal absensi magang";
 
     return (
-        <header className="navbar">
+        <header className={`navbar${isParticipant ? " navbar-participant" : ""}`}>
             <div>
                 <h3>{title}</h3>
                 <p>{description}</p>
             </div>
-            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                <span
-                    style={{
-                        padding: "6px 12px",
-                        background: role === "admin" || role === "pembimbing" ? "#dbeafe" : "#f1f5f9",
-                        color: role === "admin" || role === "pembimbing" ? "#1e40af" : "#475569",
-                        borderRadius: "8px",
-                        fontSize: "12px",
-                        fontWeight: "700",
-                        letterSpacing: "0.02em",
-                    }}
-                >
-                    {role === "admin" ? "Mode Admin" : role === "pembimbing" ? "Mode Pembimbing" : "Mode Peserta"}
-                </span>
-                {role !== "admin" && role !== "pembimbing" && localStorage.getItem("token") && (
-                    <Link className="history-button" to="/riwayat">
-                        Lihat riwayat <span>↗</span>
-                    </Link>
-                )}
-            </div>
+            {isParticipant ? (
+                <span className="navbar-participant-mode">Mode Peserta</span>
+            ) : (
+                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                    <span
+                        style={{
+                            padding: "6px 12px",
+                            background: "#dbeafe",
+                            color: "#1e40af",
+                            borderRadius: "8px",
+                            fontSize: "12px",
+                            fontWeight: "700",
+                            letterSpacing: "0.02em",
+                        }}
+                    >
+                        {role === "admin" ? "Mode Admin" : "Mode Pembimbing"}
+                    </span>
+                </div>
+            )}
         </header>
     );
 }
