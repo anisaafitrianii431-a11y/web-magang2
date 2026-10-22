@@ -32,7 +32,7 @@ export function getRoleHome(role) {
   const normalizedRole = normalizeRole(role);
 
   if (normalizedRole === 'admin') return '/admin';
-  if (normalizedRole === 'pemagang') return '/pemagang/daftar';
+  if (normalizedRole === 'pemagang') return '/absensi';
   if (normalizedRole === 'pembimbing') return '/pembimbing';
 
   return '/';

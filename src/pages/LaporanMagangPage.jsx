@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import StatusBadge from '../components/StatusBadge';
 
 function formatSubmittedAt(value) {
@@ -16,27 +15,10 @@ export default function LaporanMagangPage({
   currentRole, 
   currentUserName,
   onOpenUpload, 
-  onOpenReview, 
   onOpenRevisi, 
-  onOpenPenilaian, 
   onOpenDetail, 
   onDelete 
 }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterKategori, setFilterKategori] = useState('Semua');
-  const [filterStatus, setFilterStatus] = useState('Semua');
-
-  const filteredData = laporanList.filter(item => {
-    const matchSearch = item.judul_laporan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        (item.nama_peserta && item.nama_peserta.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                        (item.asal_instansi && item.asal_instansi.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchKategori = filterKategori === 'Semua' || item.kategori_laporan === filterKategori;
-    const matchStatus = filterStatus === 'Semua' || item.status_laporan === filterStatus;
-
-    return matchSearch && matchKategori && matchStatus;
-  });
-
   return (
     <div>
       {/* Alert Banner from Image */}
@@ -66,48 +48,6 @@ export default function LaporanMagangPage({
         )}
       </div>
 
-      {/* Filter Card matching image */}
-      <div className="filter-card">
-        <div className="search-input-group">
-          <input 
-            type="text" 
-            className="search-input"
-            placeholder="Cari judul laporan, peserta, atau instansi..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        <select 
-          className="filter-select"
-          value={filterKategori}
-          onChange={(e) => setFilterKategori(e.target.value)}
-        >
-          <option value="Semua">-- Semua Kategori --</option>
-          <option value="Individu">Individu</option>
-          <option value="Kelompok">Kelompok</option>
-        </select>
-
-        <select 
-          className="filter-select"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-        >
-          <option value="Semua">-- Semua Status --</option>
-          <option value="Menunggu Review">Menunggu Review</option>
-          <option value="Revisi">Revisi</option>
-          <option value="Disetujui">Disetujui</option>
-        </select>
-
-        <button className="btn-search">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          Cari
-        </button>
-      </div>
-
       {/* Table Card */}
       <div className="table-card">
         <div className="table-card-header">
@@ -117,30 +57,29 @@ export default function LaporanMagangPage({
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
           </svg>
-          Daftar Laporan Magang ({filteredData.length} Data)
+          Daftar Laporan Magang ({laporanList.length} Data)
         </div>
 
-        <table className="custom-table">
+        <table className="custom-table" style={{ width: '100%', tableLayout: 'fixed' }}>
           <thead>
             <tr>
-              <th style={{ width: '40px' }}>#</th>
-              <th>JUDUL LAPORAN & PESERTA</th>
-              <th>KATEGORI</th>
-              <th>TANGGAL SUBMIT</th>
-              <th>STATUS LAPORAN</th>
-              <th>NILAI AKHIR</th>
-              <th style={{ textAlign: 'right' }}>AKSI</th>
+              <th style={{ width: '5%' }}>#</th>
+              <th style={{ width: '34%' }}>JUDUL LAPORAN & PESERTA</th>
+              <th style={{ width: '12%' }}>KATEGORI</th>
+              <th style={{ width: '15%' }}>TANGGAL SUBMIT</th>
+              <th style={{ width: '18%' }}>STATUS LAPORAN</th>
+              <th style={{ width: '16%', textAlign: 'right' }}>AKSI</th>
             </tr>
           </thead>
           <tbody>
-            {filteredData.length === 0 ? (
+            {laporanList.length === 0 ? (
               <tr>
-                <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
                   Tidak ada data laporan magang ditemukan.
                 </td>
               </tr>
             ) : (
-              filteredData.map((item, index) => (
+              laporanList.map((item, index) => (
                 <tr key={item.id_laporan}>
                   <td style={{ fontWeight: 600, color: '#64748b' }}>{index + 1}</td>
                   <td>
@@ -167,61 +106,7 @@ export default function LaporanMagangPage({
                     <StatusBadge status={item.status_laporan} />
                   </td>
                   <td>
-                    {(() => {
-                      let poin = item.poin_nilai;
-                      if (!poin && item.penilaian && item.penilaian[0]) {
-                        poin = item.penilaian[0].poin_nilai;
-                      }
-
-                      if (!poin && item.nilai_laporan) {
-                        const score = parseFloat(item.nilai_laporan);
-                        if (score >= 85) poin = 'A (Sangat Baik)';
-                        else if (score >= 75) poin = 'B+ (Baik)';
-                        else if (score >= 65) poin = 'B (Cukup)';
-                        else if (score >= 50) poin = 'C (Perlu Evaluasi)';
-                        else poin = 'D (Kurang)';
-                      }
-
-                      if (!poin) {
-                        return (
-                          <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontStyle: 'italic' }}>
-                            Belum Dinilai
-                          </span>
-                        );
-                      }
-
-                      let badgeBg = '#ecfdf5';
-                      let badgeColor = '#047857';
-                      let badgeBorder = '#a7f3d0';
-
-                      if (poin.startsWith('B')) {
-                        badgeBg = '#eff6ff';
-                        badgeColor = '#1d4ed8';
-                        badgeBorder = '#bfdbfe';
-                      } else if (poin.startsWith('C')) {
-                        badgeBg = '#fffbeb';
-                        badgeColor = '#b45309';
-                        badgeBorder = '#fde68a';
-                      } else if (poin.startsWith('D')) {
-                        badgeBg = '#fef2f2';
-                        badgeColor = '#b91c1c';
-                        badgeBorder = '#fca5a5';
-                      }
-
-                      return (
-                          <span className="report-grade" style={{
-                          backgroundColor: badgeBg,
-                          color: badgeColor,
-                          border: `1px solid ${badgeBorder}`,
-                          borderRadius: '8px'
-                        }}>
-                          {poin}
-                        </span>
-                      );
-                    })()}
-                  </td>
-                  <td>
-                    <div className="action-buttons" style={{ justifyContent: 'flex-end' }}>
+                    <div className="action-buttons" style={{ justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem' }}>
                       {/* UC-06 Detail & Download Button */}
                       <button className="btn-action btn-action-detail" onClick={() => onOpenDetail(item)}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -231,16 +116,6 @@ export default function LaporanMagangPage({
                         Detail
                       </button>
 
-                      {/* UC-03 Review & Moderasi Button (Pembimbing) */}
-                      {currentRole === 'pembimbing' && (
-                        <button className="btn-action btn-action-review" onClick={() => onOpenReview(item)}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                          </svg>
-                          Review
-                        </button>
-                      )}
-
                       {/* UC-04 Mengunggah Revisi Button (Anak Magang) */}
                       {currentRole === 'anak_magang' && item.status_laporan === 'Revisi' && (
                         <button className="btn-action btn-action-revisi" onClick={() => onOpenRevisi(item)}>
@@ -248,16 +123,6 @@ export default function LaporanMagangPage({
                             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
                           </svg>
                           Revisi
-                        </button>
-                      )}
-
-                      {/* UC-05 Penilaian Button (Pembimbing) */}
-                      {currentRole === 'pembimbing' && (
-                        <button className="btn-action btn-action-nilai" onClick={() => onOpenPenilaian(item)}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                          </svg>
-                          Nilai
                         </button>
                       )}
 

@@ -14,7 +14,7 @@ function Navbar() {
     const isParticipant = role !== "admin" && role !== "pembimbing";
     const reportPageTitles = {
         "/laporan": "Laporan Magang",
-        "/laporan/penilaian": "Penilaian Laporan",
+        "/laporan/penilaian": "Tabel Penilaian",
         "/laporan/rekapitulasi": "Rekapitulasi Magang",
     };
     const reportTitle = reportPageTitles[location.pathname];

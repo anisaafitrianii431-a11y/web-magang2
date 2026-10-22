@@ -32,6 +32,8 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                 { to: "/riwayat", label: "Absensi Magang", icon: "📅" },
                 { to: "/tugas", label: "Tugas Magang", icon: "📋" },
                 { to: "/laporan", label: "Laporan Magang", icon: "📁" },
+                { to: "/laporan/penilaian", label: "Tabel Penilaian", icon: "⭐" },
+                { to: "/laporan/rekapitulasi", label: "Rekapitulasi", icon: "📊" },
             ]
             : [
                 { to: "/beranda", label: "Landing Page", icon: "🌐" },
@@ -39,7 +41,6 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                 { to: "/absensi", label: "Absen Hari Ini", icon: "📅" },
                 { to: "/tugas", label: "Tugas Magang", icon: "📋" },
                 { to: "/laporan", label: "Laporan Magang", icon: "📁" },
-                { to: "/pemagang/daftar", label: "Pendaftaran Magang", icon: "👥" },
             ];
 
     useEffect(() => {

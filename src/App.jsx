@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import AdminLayout from "./pages/admin/AdminLayout";
 import DaftarPemagang from "./components/DaftarPemagang";
+import KelolaLokasi from "./components/KelolaLokasi";
 import KelolaPembimbing from "./components/KelolaPembimbing";
 import KelolaPeriode from "./components/KelolaPeriode";
 import LandingPage from "./pages/LandingPage";
@@ -9,10 +10,10 @@ import Register from "./pages/Register";
 import Absensi from "./pages/Absensi";
 import Dashboard from "./pages/Dashboard";
 import LaporanApp from "./pages/LaporanApp";
+import KelolaAkunPeserta from "./pages/KelolaAkunPeserta";
 import LaporanMagang from "./pages/LaporanMagang";
 import LaporanModule from "./pages/LaporanModule";
 import Periode from "./pages/Periode";
-import Penilaian from "./pages/Penilaian";
 import Peserta from "./pages/Peserta";
 import FormPendaftaran from "./pages/pemagang/FromPendaftaran";
 import Rekapitulasi from "./pages/Rekapitulasi";
@@ -71,12 +72,12 @@ function App() {
                 <Route path="/pemagang/daftar" element={<ProtectedRoute allowedRole="pemagang"><FormPendaftaran /></ProtectedRoute>} />
 
                 <Route path="/laporan" element={<ProtectedRoute><LaporanModule /></ProtectedRoute>} />
-                <Route path="/laporan/penilaian" element={<ProtectedRoute><LaporanModule /></ProtectedRoute>} />
+                <Route path="/laporan/penilaian" element={<ProtectedRoute allowedRole="pembimbing"><LaporanModule /></ProtectedRoute>} />
                 <Route path="/laporan/rekapitulasi" element={<ProtectedRoute><LaporanModule /></ProtectedRoute>} />
                 <Route path="/laporan-magang" element={<ProtectedRoute><LaporanMagang /></ProtectedRoute>} />
                 <Route path="/rekapitulasi" element={<ProtectedRoute><Rekapitulasi /></ProtectedRoute>} />
-                <Route path="/penilaian" element={<ProtectedRoute><Penilaian /></ProtectedRoute>} />
-                <Route path="/laporan-app" element={<ProtectedRoute><LaporanApp /></ProtectedRoute>} />
+                <Route path="/penilaian" element={<ProtectedRoute allowedRole="pembimbing"><Navigate to="/laporan/penilaian" replace /></ProtectedRoute>} />
+                <Route path="/laporan-app" element={<ProtectedRoute allowedRole="pembimbing"><Navigate to="/laporan/penilaian" replace /></ProtectedRoute>} />
 
                 <Route
                     path="/admin"
@@ -86,6 +87,7 @@ function App() {
                     <Route path="pendaftaran" element={<DaftarPemagang />} />
                     <Route path="periode" element={<KelolaPeriode />} />
                     <Route path="pembimbing" element={<KelolaPembimbing />} />
+                    <Route path="lokasi" element={<KelolaLokasi />} />
                     <Route path="*" element={<Navigate to="/admin/pendaftaran" replace />} />
                 </Route>
 

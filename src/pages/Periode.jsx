@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
+import api from "../services/api";
 import { 
     Calendar, 
     Users, 
@@ -17,38 +18,36 @@ import {
 } from "lucide-react";
 
 function Periode() {
-    // Mock data for UI demonstration
+    // Data default dengan NIM riil peserta magang
     const defaultPeriodes = [
         {
-            id: 1,
+            id: 2,
             nama: "Periode 2026",
             tanggalMulai: "2026-08-31",
             tanggalSelesai: "2026-11-30",
             waktuMulai: "08:00",
             waktuSelesai: "17:00",
             status: "Aktif",
-            pembimbing: "Widya Anjelina",
+            pembimbing: "Putra",
             peserta: [
-                { npm: "2310001", nama: "Hanifa Khairunisa" },
-                { npm: "2310002", nama: "Nadia Nurhaliza" },
-                { npm: "2310003", nama: "Anisa Fitriani" },
-                { npm: "2310004", nama: "Widya Anjelina" },
-                { npm: "2310005", nama: "Tiara Agus Fajri" }
+                { nim: "231013018", nama: "Hanifa Khairunisa" },
+                { nim: "231013008", nama: "Nadia Nurhaliza" },
+                { nim: "231013002", nama: "Anisa Fitriani" },
+                { nim: "231013021", nama: "Widya Anjelina" },
+                { nim: "231013027", nama: "Tiara Agus Fajri" }
             ],
         },
         {
-            id: 2,
-            nama: "Periode 2025",
-            tanggalMulai: "2025-08-01",
-            tanggalSelesai: "2025-11-30",
+            id: 1,
+            nama: "Gelombang 1 2026",
+            tanggalMulai: "2026-01-01",
+            tanggalSelesai: "2026-03-01",
             waktuMulai: "08:00",
             waktuSelesai: "17:00",
-            status: "Selesai",
-            pembimbing: "Ahmad Rizal",
+            status: "Aktif",
+            pembimbing: "Putra",
             peserta: [
-                { npm: "221013006", nama: "Jovi" },
-                { npm: "221013007", nama: "Dinda" },
-                { npm: "221013008", nama: "Afiifah" }
+                { nim: "86593836", nama: "candra" }
             ],
         },
         {
@@ -61,85 +60,120 @@ function Periode() {
             status: "Selesai",
             pembimbing: "Siti Sarah",
             peserta: [
-                { npm: "211013005", nama: "Wita" },
-                { npm: "211013007", nama: "Tasya" }
+                { nim: "211013005", nama: "Wita" },
+                { nim: "211013007", nama: "Tasya" }
             ],
         },
     ];
 
-    const [periodes, setPeriodes] = useState(() => {
-        const normalizeDates = (data) => data.map(periode => {
-            const tahun = periode.nama === "Periode 2025" ? "2025"
-                : periode.nama === "Periode 2024" ? "2024"
-                : null;
+    const [periodes, setPeriodes] = useState(defaultPeriodes);
 
-            return tahun
-                ? { ...periode, tanggalMulai: `${tahun}-08-01`, tanggalSelesai: `${tahun}-11-30` }
-                : periode;
-        });
-
-        let periodesLama = [];
-        try {
-            const savedV2 = JSON.parse(localStorage.getItem("periodesDataV2") || "[]");
-            if (Array.isArray(savedV2)) periodesLama = normalizeDates(savedV2);
-        } catch (e) {
-            // ignore
-        }
-
-        const savedV3 = localStorage.getItem("periodesDataV3");
-        if (savedV3) {
-            try {
-                const npmYangSempatTertimpa = {
-                    "Hanifa Khairunisa": ["231013018", "2310001"],
-                    "Nadia Nurhaliza": ["23013008", "2310002"],
-                    "Anisa Fitriani": ["231013002", "2310003"],
-                    "Widya Anjelina": ["201013021", "2310004"],
-                    "Tiara Agus Fajri": ["231013027", "2310005"]
-                };
-                const savedPeriodes = normalizeDates(JSON.parse(savedV3)).map(periode => ({
-                    ...periode,
-                    peserta: periode.nama === "Periode 2026"
-                        ? periode.peserta.map(peserta => {
-                            const npmLama = npmYangSempatTertimpa[peserta.nama];
-                            return npmLama && peserta.npm === npmLama[0]
-                                ? { ...peserta, npm: npmLama[1] }
-                                : peserta;
-                        })
-                        : periode.peserta
-                }));
-                return savedPeriodes.map(periode => {
-                    const periodeLama = periodesLama.find(item => item.id === periode.id || item.nama === periode.nama);
-                    if (!periodeLama?.peserta?.length) return periode;
-
-                    const periodeDefault = defaultPeriodes.find(item => item.nama === periode.nama);
-                    const peserta = periode.peserta || [];
-                    const isDefault = JSON.stringify(peserta) === JSON.stringify(periodeDefault?.peserta || []);
-                    if (isDefault || peserta.length === 0) {
-                        return { ...periode, peserta: [...periodeLama.peserta] };
-                    }
-
-                    return {
-                        ...periode,
-                        peserta: peserta.map(item => {
-                            const pesertaDefault = periodeDefault?.peserta.find(entry => entry.nama === item.nama);
-                            const pesertaLama = periodeLama.peserta.find(entry => entry.nama === item.nama);
-                            return pesertaDefault && pesertaLama && item.npm === pesertaDefault.npm
-                                ? { ...item, npm: pesertaLama.npm }
-                                : item;
-                        })
-                    };
-                });
-            } catch (e) {
-                return defaultPeriodes;
-            }
-        }
-
-        return periodesLama.length ? periodesLama : defaultPeriodes;
-    });
-
+    // Muat data periode dan pendaftar magang riil secara otomatis dari API backend
     useEffect(() => {
-        localStorage.setItem("periodesDataV3", JSON.stringify(periodes));
-    }, [periodes]);
+        const fetchRealData = async () => {
+            try {
+                const [periodeRes, pendaftaranRes, magangRes] = await Promise.allSettled([
+                    api.get('/periode'),
+                    api.get('/pendaftaran'),
+                    api.get('/magang')
+                ]);
+
+                const dbPeriodes = periodeRes.status === 'fulfilled' ? (periodeRes.value.data?.data || []) : [];
+                const dbPendaftarans = pendaftaranRes.status === 'fulfilled' ? (pendaftaranRes.value.data?.data || []) : [];
+                const dbMagangs = magangRes.status === 'fulfilled' ? (magangRes.value.data?.data || magangRes.value.data || []) : [];
+
+                if (dbPeriodes.length > 0) {
+                    const mapped = dbPeriodes.map((p) => {
+                        // Kumpulkan peserta yang mendaftar di periode ini
+                        const pendaftaransInPeriode = (p.pendaftarans || []).length > 0
+                            ? p.pendaftarans
+                            : dbPendaftarans.filter(reg => Number(reg.periode_id) === Number(p.id));
+
+                        const magangsInPeriode = (p.magangs && p.magangs.length > 0)
+                            ? p.magangs
+                            : (Array.isArray(dbMagangs) ? dbMagangs.filter(m => Number(m.periode_id) === Number(p.id)) : []);
+
+                        const pesertaMap = new Map();
+
+                        // 1. Data dari master magang (termasuk NIM riil mahasiswa)
+                        magangsInPeriode.forEach((m) => {
+                            const nama = m.participant_name || "Peserta";
+                            const key = nama.toLowerCase().trim();
+                            pesertaMap.set(key, {
+                                id: m.id,
+                                nim: m.participant_code || "-",
+                                nama: nama,
+                                status: m.status || "Terdaftar",
+                                instansi: m.institution || "",
+                                email: ""
+                            });
+                        });
+
+                        // 2. Data dari pendaftar magang resmi (User NIM dan Nama)
+                        pendaftaransInPeriode.forEach((reg) => {
+                            if (reg.status === "Dibatalkan" || reg.status === "Ditolak") return;
+
+                            const nama = reg.user?.name || reg.user?.nama || "Peserta";
+                            const key = nama.toLowerCase().trim();
+                            const nim = reg.user?.nim;
+
+                            // Cocokkan key secara presisi atau parsial
+                            let matchedKey = null;
+                            for (const existingKey of pesertaMap.keys()) {
+                                if (existingKey === key || existingKey.includes(key) || key.includes(existingKey)) {
+                                    matchedKey = existingKey;
+                                    break;
+                                }
+                            }
+
+                            if (matchedKey) {
+                                const existing = pesertaMap.get(matchedKey);
+                                if (nim && nim !== "-" && (!existing.nim || existing.nim === "-")) {
+                                    existing.nim = nim;
+                                }
+                                if (reg.status) existing.status = reg.status;
+                                if (reg.user?.email) existing.email = reg.user.email;
+                                if (reg.asal_instansi) existing.instansi = reg.asal_instansi;
+                            } else {
+                                pesertaMap.set(key, {
+                                    id: reg.id,
+                                    nim: nim || "-",
+                                    nama: nama,
+                                    status: reg.status || "Terdaftar",
+                                    instansi: reg.asal_instansi || "",
+                                    email: reg.user?.email || ""
+                                });
+                            }
+                        });
+
+                        const pesertaList = Array.from(pesertaMap.values());
+
+                        return {
+                            id: p.id,
+                            nama: p.nama_periode,
+                            tanggalMulai: p.tanggal_mulai,
+                            tanggalSelesai: p.tanggal_selesai,
+                            waktuMulai: "08:00",
+                            waktuSelesai: "17:00",
+                            status: new Date(p.tanggal_selesai) >= new Date() ? "Aktif" : "Selesai",
+                            pembimbing: pendaftaransInPeriode.find(r => r.pembimbing?.name)?.pembimbing?.name || "Putra",
+                            peserta: pesertaList
+                        };
+                    });
+
+                    mapped.sort((a, b) => b.id - a.id);
+                    setPeriodes(mapped);
+                    if (mapped.length > 0) {
+                        setSelectedPeriodeId(prev => mapped.some(item => item.id === prev) ? prev : mapped[0].id);
+                    }
+                }
+            } catch (err) {
+                console.error("Gagal memuat data periode dari API:", err);
+            }
+        };
+
+        void fetchRealData();
+    }, []);
 
     const formatDate = (dateString) => {
         if (!dateString) return "-";
@@ -175,9 +209,9 @@ function Periode() {
     const pesertaList = activePeriode?.peserta || [];
 
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [editData, setEditData] = useState({ oldNpm: "", newNpm: "", newNama: "", periodeId: null });
+    const [editData, setEditData] = useState({ oldNpm: "", newNpm: "", oldNim: "", newNim: "", newNama: "", periodeId: null });
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [addData, setAddData] = useState({ npm: "", nama: "", periodeId: 1 });
+    const [addData, setAddData] = useState({ nim: "", npm: "", nama: "", periodeId: 1 });
 
     const [isEditPeriodeModalOpen, setIsEditPeriodeModalOpen] = useState(false);
     const [editPeriodeForm, setEditPeriodeForm] = useState({
@@ -217,7 +251,6 @@ function Periode() {
             }
             return p;
         });
-        localStorage.setItem("periodesDataV3", JSON.stringify(updatedPeriodes));
         setPeriodes(updatedPeriodes);
         setIsEditPeriodeModalOpen(false);
         showToast("Data pembimbing & periode berhasil diperbarui ✨");
@@ -226,36 +259,38 @@ function Periode() {
     const handleSaveAdd = (e) => {
         e.preventDefault();
         const targetId = Number(addData.periodeId);
+        const nimVal = addData.nim || addData.npm;
         setPeriodes(prev => prev.map(p => {
             if (p.id === targetId) {
                 return {
                     ...p,
-                    peserta: [...p.peserta, { npm: addData.npm, nama: addData.nama }]
+                    peserta: [...p.peserta, { nim: nimVal, npm: nimVal, nama: addData.nama }]
                 };
             }
             return p;
         }));
         setIsAddModalOpen(false);
-        setAddData({ npm: "", nama: "", periodeId: activePeriode.id });
+        setAddData({ nim: "", npm: "", nama: "", periodeId: activePeriode.id });
         showToast("Peserta baru berhasil ditambahkan 🎉");
     };
 
     const handleSaveEdit = (e) => {
         e.preventDefault();
+        const newNimVal = editData.newNim || editData.newNpm;
+        const oldNimVal = editData.oldNim || editData.oldNpm;
         const updatedPeriodes = periodes.map(p => {
             if (p.id === editData.periodeId) {
                 return {
                     ...p,
                     peserta: p.peserta.map(peserta => 
-                        peserta.npm === editData.oldNpm 
-                            ? { ...peserta, npm: editData.newNpm, nama: editData.newNama } 
+                        (peserta.nim === oldNimVal || peserta.npm === oldNimVal)
+                            ? { ...peserta, nim: newNimVal, npm: newNimVal, nama: editData.newNama } 
                             : peserta
                     )
                 };
             }
             return p;
         });
-        localStorage.setItem("periodesDataV3", JSON.stringify(updatedPeriodes));
         setPeriodes(updatedPeriodes);
         setIsEditModalOpen(false);
         showToast("Data peserta berhasil diperbarui ✨");
@@ -558,7 +593,7 @@ function Periode() {
                                             const initial = peserta.nama ? peserta.nama.charAt(0).toUpperCase() : "P";
                                             return (
                                                 <tr
-                                                    key={peserta.npm || index}
+                                                    key={peserta.nim || peserta.npm || index}
                                                     style={{
                                                         borderBottom: "1px solid #f1f5f9",
                                                         transition: "background-color 0.15s ease"
@@ -571,7 +606,7 @@ function Periode() {
                                                         {index + 1}
                                                     </td>
 
-                                                    {/* Col 2: NPM Pill */}
+                                                    {/* Col 2: NIM Pill */}
                                                     <td style={{ padding: "16px 24px" }}>
                                                         <span style={{
                                                             fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace",
@@ -583,7 +618,7 @@ function Periode() {
                                                             borderRadius: "6px",
                                                             border: "1px solid #e2e8f0"
                                                         }}>
-                                                            {peserta.npm}
+                                                            {peserta.nim || peserta.npm || "-"}
                                                         </span>
                                                     </td>
 
@@ -753,8 +788,8 @@ function Periode() {
                                 </label>
                                 <input 
                                     type="text" 
-                                    value={editData.newNpm} 
-                                    onChange={(e) => setEditData({...editData, newNpm: e.target.value})}
+                                    value={editData.newNim || editData.newNpm || ""} 
+                                    onChange={(e) => setEditData({...editData, newNim: e.target.value, newNpm: e.target.value})}
                                     style={{
                                         width: "100%",
                                         padding: "10px 14px",
@@ -891,9 +926,9 @@ function Periode() {
                                 </label>
                                 <input 
                                     type="text" 
-                                    placeholder="Contoh: 2310006"
-                                    value={addData.npm} 
-                                    onChange={(e) => setAddData({...addData, npm: e.target.value})}
+                                    placeholder="Contoh: 231013002"
+                                    value={addData.nim || addData.npm || ""} 
+                                    onChange={(e) => setAddData({...addData, nim: e.target.value, npm: e.target.value})}
                                     style={{
                                         width: "100%",
                                         padding: "10px 14px",

@@ -21,24 +21,29 @@ function getFinalGrade(participant) {
   const taskScore = gradedTaskScores.length
     ? gradedTaskScores.reduce((sum, score) => sum + score, 0) / gradedTaskScores.length
     : null;
-  const report = participant.laporan_terakhir;
-  const reportScores = (participant.daftar_laporan || [])
-    .map((item) => toScore(item.nilai_laporan) ?? toScore(item.penilaian?.[0]?.poin_nilai))
-    .filter((score) => score !== null);
-  const reportScore = reportScores.length
-    ? reportScores.reduce((sum, score) => sum + score, 0) / reportScores.length
-    : toScore(report?.nilai_laporan) ?? toScore(report?.penilaian?.[0]?.poin_nilai);
   const attendanceScore = toScore(participant.persentase_absensi) ?? 0;
   const totalTasks = Number(participant.total_tugas) || 0;
   const submittedTasks = Number(participant.tugas_selesai) || 0;
+  const assessmentScore = toScore(participant.nilai_akhir_penilaian);
   const allTasksGraded = gradedTaskScores.length > 0
     && gradedTaskScores.length === tasks.length
     && (totalTasks === 0 || submittedTasks >= totalTasks);
-  const finalScore = taskScore !== null && reportScore !== null && allTasksGraded
-    ? attendanceScore * 0.10 + taskScore * 0.55 + reportScore * 0.35
+  const weightedAttendanceAndTaskScore = taskScore !== null && allTasksGraded
+    ? attendanceScore * 0.20 + taskScore * 0.80
+    : null;
+  const finalScore = weightedAttendanceAndTaskScore !== null && assessmentScore !== null
+    ? (weightedAttendanceAndTaskScore + assessmentScore) / 2
     : null;
 
-  return { attendanceScore, taskScore, reportScore, finalScore, gradedTaskCount: gradedTaskScores.length, allTasksGraded };
+  return {
+    attendanceScore,
+    taskScore,
+    assessmentScore,
+    weightedAttendanceAndTaskScore,
+    finalScore,
+    gradedTaskCount: gradedTaskScores.length,
+    allTasksGraded,
+  };
 }
 
 function RekapitulasiPage() {
@@ -65,14 +70,18 @@ function RekapitulasiPage() {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadData();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadData]);
 
   const downloadParticipantRecap = async () => {
     if (!selectedParticipant) return;
 
     try {
       const { AlignmentType, BorderStyle, Document, Packer, Paragraph, ShadingType, Table, TableBorders, TableCell, TableRow, TextRun, WidthType } = await import('docx');
-      const reports = selectedParticipant.daftar_laporan || [];
       const tasks = selectedParticipant.detail_tugas || [];
       const grade = getFinalGrade(selectedParticipant);
       const font = 'Times New Roman';
@@ -182,17 +191,6 @@ function RekapitulasiPage() {
             task.feedback || '-',
           ])
         : [['Belum ada tugas yang dikumpulkan', '-', '-', '-', '-']];
-      const reportRows = reports.length
-        ? reports.map((report) => [
-            report.kategori_laporan || '-',
-            report.judul_laporan || '-',
-            report.status_laporan || '-',
-            report.tgl_submit ? formatDate(report.tgl_submit) : '-',
-            toScore(report.nilai_laporan) ?? 'Belum dinilai',
-            report.penilaian?.[0]?.judul_nilai || '-',
-            report.penilaian?.[0]?.catatan || '-',
-          ])
-        : [['-', 'Belum ada laporan', '-', '-', '-', '-', '-']];
       const filename = String(selectedParticipant.nama_peserta || 'peserta')
         .trim()
         .replace(/[^a-z0-9-_]+/gi, '-')
@@ -240,25 +238,20 @@ function RekapitulasiPage() {
               ['Persentase Absensi', `${selectedParticipant.persentase_absensi ?? 0}%`],
               ['Tugas Selesai', `${selectedParticipant.tugas_selesai ?? 0} / ${selectedParticipant.total_tugas ?? 0}`],
             ]),
-            sectionHeading('Detail Tugas'),
+            sectionHeading('Recap Tugas'),
             createTable(
               ['Judul Tugas', 'Status', 'Tenggat / Pengumpulan', 'Nilai', 'Feedback'],
               taskRows,
               [2400, 1200, 2200, 800, 3300],
             ),
-            sectionHeading('Rekapitulasi Laporan Magang'),
-            createTable(
-              ['Jenis', 'Judul Laporan', 'Status', 'Tanggal Dikirim', 'Nilai', 'Hasil Penilaian', 'Catatan'],
-              reportRows,
-              [950, 1900, 1050, 1250, 650, 1900, 2200],
-              18,
-            ),
             sectionHeading('Penilaian Akhir Magang'),
             createDetailsTable([
-              ['Nilai Absensi (10%)', `${grade.attendanceScore}% → ${(grade.attendanceScore * 0.10).toFixed(2)}`],
-              ['Nilai Tugas (55%)', grade.taskScore === null ? 'Belum dinilai' : `${grade.taskScore.toFixed(2)} → ${(grade.taskScore * 0.55).toFixed(2)} (${grade.gradedTaskCount} tugas dinilai)`],
-              ['Rata-rata Nilai Laporan (35%)', grade.reportScore === null ? 'Belum dinilai' : `${grade.reportScore.toFixed(2)} → ${(grade.reportScore * 0.35).toFixed(2)}`],
-              ['Nilai Akhir', grade.finalScore === null ? 'Belum lengkap - seluruh tugas harus dinilai dan nilai laporan harus tersedia' : `${grade.finalScore.toFixed(2)} / 100`],
+              ['Nilai Absensi (20%)', `${grade.attendanceScore}% → ${(grade.attendanceScore * 0.20).toFixed(2)}`],
+              ['Rata-rata Nilai Tugas (80%)', grade.taskScore === null ? 'Belum dinilai' : `${grade.taskScore.toFixed(2)} → ${(grade.taskScore * 0.80).toFixed(2)} (${grade.gradedTaskCount} tugas dinilai)`],
+              ['Nilai Akhir (Tabel Penilaian)', grade.assessmentScore === null ? 'Belum dinilai' : grade.assessmentScore.toFixed(2)],
+              ['Nilai Absensi + Tugas (20% + 80%)', grade.weightedAttendanceAndTaskScore === null ? 'Belum lengkap — seluruh tugas harus dikumpulkan dan dinilai' : grade.weightedAttendanceAndTaskScore.toFixed(2)],
+              ['Nilai Akhir Magang', grade.finalScore === null ? 'Belum lengkap — nilai tugas dan Tabel Penilaian harus tersedia' : grade.finalScore.toFixed(2)],
+              ['Rumus Nilai Akhir Magang', '((Absensi × 20%) + (rata-rata nilai tugas × 80%) + Nilai Akhir Tabel Penilaian) ÷ 2'],
             ]),
             new Table({
               rows: [new TableRow({
@@ -325,17 +318,16 @@ function RekapitulasiPage() {
               <tr>
                 <th>#</th>
                 <th>PESERTA &amp; INSTANSI</th>
-                <th>PROJEK / TUGAS</th>
-                <th>LAMPIRAN TANGGAL PROJEK</th>
                 <th>PERSENTASE ABSENSI</th>
-                <th>TUGAS SELESAI</th>
+                <th>NILAI TUGAS</th>
+                <th>NILAI AKHIR</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="6" className="empty">Memuat rekapitulasi dari server…</td></tr>
+                <tr><td colSpan="5" className="empty">Memuat rekapitulasi dari server…</td></tr>
               ) : data.length === 0 ? (
-                <tr><td colSpan="6" className="empty">{error ? 'Data belum bisa ditampilkan.' : isMentor ? 'Belum ada peserta magang aktif yang ditugaskan kepada Anda. Admin perlu menetapkan Anda sebagai pembimbing lapangan pada data pendaftaran.' : 'Belum ada peserta dengan status Pemagang Aktif.'}</td></tr>
+                <tr><td colSpan="5" className="empty">{error ? 'Data belum bisa ditampilkan.' : isMentor ? 'Belum ada peserta magang aktif yang ditugaskan kepada Anda. Admin perlu menetapkan Anda sebagai pembimbing lapangan pada data pendaftaran.' : 'Belum ada peserta dengan status Pemagang Aktif.'}</td></tr>
               ) : data.map((item, index) => (
                 <tr key={item.user_id}>
                   <td>{index + 1}</td>
@@ -344,30 +336,28 @@ function RekapitulasiPage() {
                     <div className="cell-subtitle">{item.instansi || 'Instansi belum diisi'}{item.jurusan ? ` • ${item.jurusan}` : ''}</div>
                   </td>
                   <td>
-                    <div className="recap-project">{item.projek || 'Belum ada tugas yang dikumpulkan'}</div>
+                    <span className="recap-metric recap-attendance">{item.persentase_absensi ?? 0}%</span>
                   </td>
                   <td>
-                    {item.lampiran_tanggal_mulai ? (
-                      <span className="recap-date-range">
-                        {formatDate(item.lampiran_tanggal_mulai)}
-                        {item.lampiran_tanggal_akhir && item.lampiran_tanggal_akhir !== item.lampiran_tanggal_mulai
-                          ? ` – ${formatDate(item.lampiran_tanggal_akhir)}`
-                          : ''}
-                      </span>
-                    ) : <span className="cell-subtitle">Belum ada lampiran tugas</span>}
+                    {(() => {
+                      const grade = getFinalGrade(item);
+                      return (
+                        <button
+                          type="button"
+                          className="recap-metric recap-tasks recap-task-button"
+                          onClick={() => setSelectedParticipant(item)}
+                          aria-label={`Lihat nilai dan detail tugas ${item.nama_peserta}`}
+                        >
+                          {grade.taskScore === null ? 'Lihat tugas' : grade.taskScore.toFixed(2)} →
+                        </button>
+                      );
+                    })()}
                   </td>
                   <td>
-                    <span className="recap-metric recap-attendance">{item.persentase_absensi ?? 0}% →</span>
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="recap-metric recap-tasks recap-task-button"
-                      onClick={() => setSelectedParticipant(item)}
-                      aria-label={`Lihat detail ${item.tugas_selesai ?? 0} tugas yang dikumpulkan ${item.nama_peserta}`}
-                    >
-                      {item.tugas_selesai ?? 0} / {item.total_tugas ?? 0} Tugas →
-                    </button>
+                    {(() => {
+                      const grade = getFinalGrade(item);
+                      return grade.finalScore === null ? 'Belum lengkap' : grade.finalScore.toFixed(2);
+                    })()}
                   </td>
                 </tr>
               ))}
@@ -376,7 +366,7 @@ function RekapitulasiPage() {
         </div>
       </div>
       <p className="page-description" style={{ marginTop: 12 }}>
-        Judul tugas dan tanggal lampiran diambil dari pengumpulan tugas peserta. Persentase kehadiran dihitung dari hari kerja Senin–Sabtu selama periode magang.
+        Nilai akhir magang adalah rata-rata dari nilai absensi dan tugas berbobot (20% + 80%) dengan nilai dari Tabel Penilaian.
       </p>
 
       {selectedParticipant && (
@@ -386,7 +376,7 @@ function RekapitulasiPage() {
           <section className="modal-content recap-task-modal" role="dialog" aria-modal="true" aria-labelledby="recap-task-modal-title">
             <header className="modal-header">
               <div>
-                <h2 className="modal-title" id="recap-task-modal-title">Detail Rekapitulasi Peserta</h2>
+                <h2 className="modal-title" id="recap-task-modal-title">Recap Tugas</h2>
                 <p className="recap-modal-subtitle">{selectedParticipant.nama_peserta} · {selectedParticipant.instansi || 'Instansi belum diisi'}</p>
               </div>
               <button type="button" className="modal-close-btn" onClick={() => setSelectedParticipant(null)} aria-label="Tutup">×</button>
@@ -402,52 +392,28 @@ function RekapitulasiPage() {
                   <div><dt>Tugas selesai</dt><dd>{selectedParticipant.tugas_selesai ?? 0} / {selectedParticipant.total_tugas ?? 0}</dd></div>
                 </dl>
               </section>
-              {(selectedParticipant.detail_tugas || []).length === 0 ? (
-                <div className="recap-task-empty">Peserta ini belum mengumpulkan tugas.</div>
-              ) : selectedParticipant.detail_tugas.map((task) => (
-                <article className="recap-task-detail" key={task.tugas_id}>
-                  <div className="recap-task-detail-heading">
-                    <h3>{task.judul}</h3>
-                    <span className="recap-submission-status">{task.status || 'Terkumpul'}</span>
-                  </div>
-                  {task.deskripsi && <p className="recap-task-description">{task.deskripsi}</p>}
-                  <dl className="recap-task-meta">
-                    <div><dt>Tenggat</dt><dd>{formatDate(task.deadline)}</dd></div>
-                    <div><dt>Tanggal dikumpulkan</dt><dd>{formatDate(task.tanggal_submit)}</dd></div>
-                    <div><dt>Nilai</dt><dd>{task.nilai ?? 'Belum dinilai'}</dd></div>
-                  </dl>
-                  {task.feedback && <p className="recap-task-feedback"><strong>Catatan pembimbing:</strong> {task.feedback}</p>}
-                </article>
-              ))}
-              <section className="recap-task-detail recap-report-summary" aria-labelledby="recap-report-summary-title">
-                <div className="recap-task-detail-heading">
-                  <h3 id="recap-report-summary-title">Rekapitulasi Laporan Magang</h3>
-                  <span className="recap-submission-status">
-                    {(selectedParticipant.daftar_laporan || []).length} laporan
-                  </span>
-                </div>
-                {(selectedParticipant.daftar_laporan || []).length ? (
-                  (selectedParticipant.daftar_laporan || []).map((report) => (
-                    <article className="recap-task-detail" key={report.id_laporan}>
-                      <div className="recap-task-detail-heading">
-                        <h4>{report.judul_laporan}</h4>
-                        <span className="recap-submission-status">{report.status_laporan}</span>
-                      </div>
-                      <dl className="recap-task-meta">
-                        <div><dt>Jenis laporan</dt><dd>{report.kategori_laporan || 'Tidak ditentukan'}</dd></div>
-                        <div><dt>Tanggal dikirim</dt><dd>{formatDate(report.tgl_submit)}</dd></div>
-                        <div><dt>Nilai</dt><dd>{toScore(report.nilai_laporan) ?? 'Belum dinilai'}</dd></div>
-                        {report.penilaian?.[0]?.judul_nilai && (
-                          <div><dt>Hasil penilaian</dt><dd>{report.penilaian[0].judul_nilai}</dd></div>
-                        )}
-                      </dl>
-                      {report.penilaian?.[0]?.catatan && (
-                        <p className="recap-task-feedback"><strong>Catatan pembimbing:</strong> {report.penilaian[0].catatan}</p>
-                      )}
-                    </article>
-                  ))
+              <section className="recap-task-detail" aria-labelledby="recap-tasks-title">
+                <h3 id="recap-tasks-title">Recap Tugas</h3>
+                {(selectedParticipant.detail_tugas || []).length === 0 ? (
+                  <div className="recap-task-empty">Peserta ini belum mengumpulkan tugas.</div>
                 ) : (
-                  <p className="recap-task-description">Peserta ini belum mengirim laporan magang.</p>
+                  <div className="recap-task-entries">
+                    {selectedParticipant.detail_tugas.map((task) => (
+                      <article className="recap-task-entry" key={task.tugas_id}>
+                        <div className="recap-task-detail-heading">
+                          <h4>{task.judul}</h4>
+                          <span className="recap-submission-status">{task.status || 'Terkumpul'}</span>
+                        </div>
+                        {task.deskripsi && <p className="recap-task-description">{task.deskripsi}</p>}
+                        <dl className="recap-task-meta">
+                          <div><dt>Tenggat</dt><dd>{formatDate(task.deadline)}</dd></div>
+                          <div><dt>Tanggal dikumpulkan</dt><dd>{formatDate(task.tanggal_submit)}</dd></div>
+                          <div><dt>Nilai</dt><dd>{task.nilai ?? 'Belum dinilai'}</dd></div>
+                        </dl>
+                        {task.feedback && <p className="recap-task-feedback"><strong>Catatan pembimbing:</strong> {task.feedback}</p>}
+                      </article>
+                    ))}
+                  </div>
                 )}
               </section>
               <section className="recap-task-detail" aria-labelledby="recap-final-grade-title">
@@ -457,12 +423,13 @@ function RekapitulasiPage() {
                   return (
                     <>
                       <dl className="recap-task-meta">
-                        <div><dt>Absensi (10%)</dt><dd>{grade.attendanceScore}% = {(grade.attendanceScore * 0.10).toFixed(2)}</dd></div>
-                        <div><dt>Rata-rata tugas (55%)</dt><dd>{grade.taskScore === null ? 'Belum dinilai' : `${grade.taskScore.toFixed(2)} = ${(grade.taskScore * 0.55).toFixed(2)}`}</dd></div>
-                        <div><dt>Rata-rata laporan (35%)</dt><dd>{grade.reportScore === null ? 'Belum dinilai' : `${grade.reportScore.toFixed(2)} = ${(grade.reportScore * 0.35).toFixed(2)}`}</dd></div>
-                        <div><dt>Nilai akhir</dt><dd>{grade.finalScore === null ? 'Belum lengkap' : `${grade.finalScore.toFixed(2)} / 100`}</dd></div>
+                        <div><dt>Absensi (20%)</dt><dd>{grade.attendanceScore}% = {(grade.attendanceScore * 0.20).toFixed(2)}</dd></div>
+                        <div><dt>Tugas (80%)</dt><dd>{grade.taskScore === null ? 'Belum dinilai' : `${grade.taskScore.toFixed(2)} = ${(grade.taskScore * 0.80).toFixed(2)}`}</dd></div>
+                        <div><dt>Nilai akhir (Tabel Penilaian)</dt><dd>{grade.assessmentScore === null ? 'Belum dinilai' : grade.assessmentScore.toFixed(2)}</dd></div>
+                        <div><dt>Nilai absensi + tugas</dt><dd>{grade.weightedAttendanceAndTaskScore === null ? 'Belum lengkap' : grade.weightedAttendanceAndTaskScore.toFixed(2)}</dd></div>
+                        <div><dt>Nilai akhir magang</dt><dd>{grade.finalScore === null ? 'Belum lengkap — lengkapi nilai tugas dan Tabel Penilaian' : grade.finalScore.toFixed(2)}</dd></div>
                       </dl>
-                      <p className="recap-task-description">Rumus: (Absensi × 10%) + (rata-rata nilai tugas × 55%) + (rata-rata nilai semua laporan yang dinilai × 35%). Nilai akhir ditampilkan setelah seluruh tugas dikumpulkan dan dinilai, serta minimal satu laporan dinilai.</p>
+                      <p className="recap-task-description">Rumus: ((Absensi × 20%) + (rata-rata nilai tugas × 80%) + nilai akhir Tabel Penilaian) ÷ 2.</p>
                     </>
                   );
                 })()}
