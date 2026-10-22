@@ -7,9 +7,7 @@ import LaporanMagangPage from './LaporanMagangPage';
 import PenilaianPage from './PenilaianPage';
 import RekapitulasiPage from './RekapitulasiPage';
 import UploadLaporanModal from '../components/UploadLaporanModal';
-import PenilaianModal from '../components/PenilaianModal';
 import RevisiModal from '../components/RevisiModal';
-import ReviewModal from '../components/ReviewModal';
 import DetailModal from '../components/DetailModal';
 import '../App.css';
 
@@ -37,14 +35,12 @@ function LaporanModule() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedLaporan, setSelectedLaporan] = useState(null);
-  const [isPenilaianOpen, setIsPenilaianOpen] = useState(false);
   const [isRevisiOpen, setIsRevisiOpen] = useState(false);
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [apiError, setApiError] = useState('');
-  const [penilaianError, setPenilaianError] = useState('');
   const [revisiError, setRevisiError] = useState('');
-  const [reviewError, setReviewError] = useState('');
+  const [assessmentError, setAssessmentError] = useState('');
+  const [statusError, setStatusError] = useState('');
 
   const fetchLaporan = useCallback(async () => {
     try {
@@ -85,16 +81,8 @@ function LaporanModule() {
     setIsSaving(true);
     setApiError('');
 
-    const formData = new FormData();
-    formData.append('judul_laporan', laporan.judul_laporan);
-    formData.append('kategori_laporan', laporan.kategori_laporan);
-    formData.append('abstrak', laporan.abstrak);
-    formData.append('file_laporan_pdf', laporan.file_laporan_pdf);
-
     try {
-      const response = await api.post(laporanEndpoint, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await api.post(laporanEndpoint, laporan);
       setLaporanList((items) => [response.data.data, ...items]);
       await fetchLaporan();
       return true;
@@ -106,25 +94,15 @@ function LaporanModule() {
     }
   };
 
-  const handleSubmitPenilaian = async (idLaporan, penilaian) => {
+  const handleSubmitPenilaian = async (penilaian) => {
     setIsSaving(true);
-    setPenilaianError('');
+    setAssessmentError('');
 
     try {
-      const response = await api.post('/v1/penilaian', penilaian);
-      const savedPenilaian = response.data.data;
-      setLaporanList((items) => items.map((item) => item.id_laporan === idLaporan
-        ? {
-            ...item,
-            nilai_laporan: penilaian.nilai_laporan,
-            tanggal_dinilai: savedPenilaian.tanggal_nilai,
-            status_laporan: 'Disetujui',
-            penilaian: [savedPenilaian, ...(item.penilaian || [])],
-          }
-        : item));
+      await api.post('/v1/penilaian', penilaian);
       return true;
     } catch (error) {
-      setPenilaianError(getApiError(error, 'Penilaian gagal disimpan ke database.'));
+      setAssessmentError(getApiError(error, 'Penilaian gagal disimpan ke database.'));
       return false;
     } finally {
       setIsSaving(false);
@@ -154,18 +132,24 @@ function LaporanModule() {
     }
   };
 
-  const handleSubmitReview = async (idLaporan, review) => {
+  const handleSaveDetailStatus = async (idLaporan, status) => {
     setIsSaving(true);
-    setReviewError('');
+    setStatusError('');
 
     try {
-      const response = await api.post(`${laporanEndpoint}/${idLaporan}/review`, review);
+      const response = await api.post(`${laporanEndpoint}/${idLaporan}/review`, {
+        status_laporan: status,
+      });
+      const updatedLaporan = response.data.data;
       setLaporanList((items) => items.map((item) => item.id_laporan === idLaporan
-        ? { ...item, ...response.data.data }
+        ? { ...item, ...updatedLaporan }
         : item));
+      setSelectedLaporan((item) => item?.id_laporan === idLaporan
+        ? { ...item, ...updatedLaporan }
+        : item);
       return true;
     } catch (error) {
-      setReviewError(getApiError(error, 'Review gagal disimpan ke database.'));
+      setStatusError(getApiError(error, 'Status laporan gagal disimpan.'));
       return false;
     } finally {
       setIsSaving(false);
@@ -206,29 +190,24 @@ function LaporanModule() {
                 setApiError('');
                 setIsUploadOpen(true);
               }}
-              onOpenReview={(laporan) => {
-                setSelectedLaporan(laporan);
-                setReviewError('');
-                setIsReviewOpen(true);
-              }}
               onOpenRevisi={(laporan) => {
                 setSelectedLaporan(laporan);
                 setRevisiError('');
                 setIsRevisiOpen(true);
               }}
-              onOpenPenilaian={(laporan) => {
-                setSelectedLaporan(laporan);
-                setPenilaianError('');
-                setIsPenilaianOpen(true);
-              }}
               onOpenDetail={(laporan) => {
+                setStatusError('');
                 setSelectedLaporan(laporan);
                 setIsDetailOpen(true);
               }}
               onDelete={handleDelete}
             />
           ) : activeView === 'penilaian' ? (
-            <PenilaianPage laporanList={laporanList} currentRole={currentRole} />
+            <PenilaianPage
+              onSubmit={handleSubmitPenilaian}
+              isSaving={isSaving}
+              submitError={assessmentError}
+            />
           ) : (
             <RekapitulasiPage />
           )}
@@ -241,17 +220,6 @@ function LaporanModule() {
         isSubmitting={isSaving}
         submitError={apiError}
       />
-      {isPenilaianOpen && selectedLaporan && (
-        <PenilaianModal
-          key={selectedLaporan.id_laporan}
-          isOpen={isPenilaianOpen}
-          onClose={() => setIsPenilaianOpen(false)}
-          laporan={selectedLaporan}
-          onSubmit={handleSubmitPenilaian}
-          isSubmitting={isSaving}
-          submitError={penilaianError}
-        />
-      )}
       {isRevisiOpen && selectedLaporan && (
         <RevisiModal
           key={selectedLaporan.id_laporan}
@@ -263,22 +231,16 @@ function LaporanModule() {
           submitError={revisiError}
         />
       )}
-      {isReviewOpen && selectedLaporan && (
-        <ReviewModal
-          key={selectedLaporan.id_laporan}
-          isOpen={isReviewOpen}
-          onClose={() => setIsReviewOpen(false)}
-          laporan={selectedLaporan}
-          onSubmit={handleSubmitReview}
-          isSubmitting={isSaving}
-          submitError={reviewError}
-        />
-      )}
       {isDetailOpen && selectedLaporan && (
         <DetailModal
+          key={selectedLaporan.id_laporan}
           isOpen={isDetailOpen}
           onClose={() => setIsDetailOpen(false)}
           laporan={selectedLaporan}
+          canModerate={currentRole === 'pembimbing'}
+          onSubmitStatus={handleSaveDetailStatus}
+          isSavingStatus={isSaving}
+          statusError={statusError}
         />
       )}
     </div>

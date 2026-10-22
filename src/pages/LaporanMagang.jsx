@@ -42,9 +42,10 @@ export default function LaporanMagang() {
   const handleUploadSubmit = async (formData) => {
     setUploadModal(prev => ({ ...prev, isSubmitting: true, submitError: null }));
     try {
-      await api.post('/laporan', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await api.post('/laporan', formData);
       setUploadModal({ isOpen: false, isSubmitting: false, submitError: null });
       fetchLaporan();
+      return true;
     } catch (err) {
       setUploadModal(prev => ({ ...prev, isSubmitting: false, submitError: err.response?.data?.message || 'Gagal upload' }));
     }
@@ -55,7 +56,7 @@ export default function LaporanMagang() {
     try {
       await api.delete(`/laporan/${id}`);
       fetchLaporan();
-    } catch (err) {
+    } catch {
       alert('Gagal menghapus laporan');
     }
   };

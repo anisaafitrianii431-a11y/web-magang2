@@ -29,7 +29,7 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                 { to: "/periode", label: "Kelola Periode", icon: "🗓️" },
                 { to: "/tugas", label: "Tugas Magang", icon: "📋" },
                 { to: "/laporan", label: "Laporan Magang", icon: "📁" },
-                { to: "/laporan/penilaian", label: "Penilaian Laporan", icon: "⭐" },
+                { to: "/laporan/penilaian", label: "Tabel Penilaian", icon: "⭐" },
                 { to: "/laporan/rekapitulasi", label: "Rekapitulasi", icon: "📊" },
             ]
             : [

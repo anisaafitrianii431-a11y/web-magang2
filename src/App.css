@@ -383,23 +383,19 @@
 .report-module .custom-table .cell-subtitle { font-size: 12px; line-height: 1.5; }
 .report-module .recap-card-header { justify-content: flex-start; }
 .report-module .recap-table-scroll { width: 100%; overflow-x: auto; }
-.report-module .recap-table { min-width: 900px; table-layout: fixed; }
+.report-module .recap-table { min-width: 820px; table-layout: fixed; }
 .report-module .recap-table th:nth-child(1),
-.report-module .recap-table td:nth-child(1) { width: 4%; }
+.report-module .recap-table td:nth-child(1) { width: 5%; }
 .report-module .recap-table th:nth-child(2),
-.report-module .recap-table td:nth-child(2) { width: 25%; }
+.report-module .recap-table td:nth-child(2) { width: 35%; }
 .report-module .recap-table th:nth-child(3),
-.report-module .recap-table td:nth-child(3) { width: 23%; }
+.report-module .recap-table td:nth-child(3) { width: 18%; }
 .report-module .recap-table th:nth-child(4),
 .report-module .recap-table td:nth-child(4) { width: 20%; }
 .report-module .recap-table th:nth-child(5),
-.report-module .recap-table td:nth-child(5) { width: 14%; }
-.report-module .recap-table th:nth-child(6),
-.report-module .recap-table td:nth-child(6) { width: 14%; }
+.report-module .recap-table td:nth-child(5) { width: 22%; }
 .report-module .recap-table td:nth-child(2),
 .report-module .recap-table td:nth-child(3) { overflow-wrap: anywhere; }
-.report-module .recap-project { color: #1e293b; font-size: 13px; font-weight: 600; line-height: 1.5; }
-.report-module .recap-date-range { display: inline-block; padding: 4px 7px; border-radius: 6px; background: #f1f5f9; color: #475569; font-size: 12px; line-height: 1.5; }
 .report-module .recap-metric { display: inline-block; padding: 5px 7px; border: 1px solid; border-radius: 7px; font-size: 12px; font-weight: 700; line-height: 1.4; white-space: nowrap; }
 .report-module .recap-attendance { border-color: #bfdbfe; background: #eff6ff; color: #2563eb; }
 .report-module .recap-tasks { border-color: #a7f3d0; background: #ecfdf5; color: #059669; }
@@ -409,8 +405,12 @@
 .report-module .recap-modal-subtitle { margin: 5px 0 0; color: #64748b; font-size: 13px; }
 .report-module .recap-task-list { display: grid; gap: 12px; padding: 18px 22px 22px; }
 .report-module .recap-task-detail { padding: 16px; border: 1px solid #dce4ec; border-radius: 9px; background: #fff; }
+.report-module .recap-task-detail > h3 { margin: 0; color: #1e293b; font-size: 15px; line-height: 1.45; }
+.report-module .recap-task-entries { margin-top: 10px; }
+.report-module .recap-task-entry { padding: 14px 0; border-top: 1px solid #e8edf3; }
+.report-module .recap-task-entry:first-child { padding-top: 10px; border-top: 0; }
 .report-module .recap-task-detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.report-module .recap-task-detail-heading h3 { margin: 0; color: #1e293b; font-size: 15px; line-height: 1.45; }
+.report-module .recap-task-detail-heading h4 { margin: 0; color: #1e293b; font-size: 14px; line-height: 1.45; }
 .report-module .recap-submission-status { flex: 0 0 auto; padding: 4px 8px; border: 1px solid #bfdbfe; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 11px; }
 .report-module .recap-task-description,
 .report-module .recap-task-feedback { margin: 10px 0; color: #526174; font-size: 13px; line-height: 1.55; white-space: pre-wrap; }

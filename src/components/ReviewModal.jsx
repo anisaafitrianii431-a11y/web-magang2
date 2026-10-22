@@ -1,16 +1,10 @@
-import { useState } from 'react';
-
 export default function ReviewModal({ isOpen, onClose, laporan, onSubmit, isSubmitting, submitError }) {
-  const [status, setStatus] = useState(laporan?.status_laporan === 'Revisi' ? 'Revisi' : 'Disetujui');
-  const [catatan, setCatatan] = useState(laporan?.catatan_revisi || '');
-
   if (!isOpen || !laporan) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const saved = await onSubmit(laporan.id_laporan, {
-      status_laporan: status,
-      catatan_revisi: catatan
+      status_laporan: 'Disetujui',
     });
     if (saved) onClose();
   };
@@ -34,32 +28,17 @@ export default function ReviewModal({ isOpen, onClose, laporan, onSubmit, isSubm
             </div>
 
             <div className="form-group">
-              <label className="form-label">Hasil Moderasi / Review *</label>
-              <select 
-                className="form-control"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-              >
-                <option value="Disetujui">Disetujui (Siap Dinilai)</option>
-                <option value="Revisi">Perlu Revisi</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Catatan Revisi / Masukan Pembimbing</label>
-              <textarea 
-                className="form-control" 
-                placeholder="Tuliskan catatan perbaikan jika status perlu revisi..."
-                value={catatan}
-                onChange={(e) => setCatatan(e.target.value)}
-              />
+              <label className="form-label">Hasil Moderasi / Review</label>
+              <div className="form-control" style={{ backgroundColor: '#f8fafc' }}>
+                Disetujui (Siap Dinilai)
+              </div>
             </div>
           </div>
 
           <div className="modal-footer">
             <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmitting}>Batal</button>
             <button type="submit" className="btn-primary" disabled={isSubmitting}>
-              {isSubmitting ? 'Menyimpan...' : 'Simpan Review'}
+              {isSubmitting ? 'Menyimpan...' : 'Simpan'}
             </button>
           </div>
         </form>
