@@ -1,7 +1,11 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import api from "../services/api";
 
 function Sidebar({ onLogout: onLogoutOverride } = {}) {
     const location = useLocation();
+    const [jamPulang, setJamPulang] = useState("17:00");
+    const [jadwalError, setJadwalError] = useState("");
     const currentUser = (() => {
         try {
             return JSON.parse(localStorage.getItem("user") || "null");
@@ -14,16 +18,18 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
     const isAdmin = role === "admin" || role === "administrator";
     const isPembimbing = role === "pembimbing";
     const roleLabel = isAdmin ? "Admin" : isPembimbing ? "Pembimbing" : "Peserta";
+    const isParticipant = !isAdmin && !isPembimbing;
     const menu = isAdmin
         ? [
-            { to: "/riwayat", label: "Absensi & Riwayat", icon: "📅" },
-            { to: "/akun-peserta", label: "Akun Peserta", icon: "👤" },
+            { to: "/admin/pendaftaran", label: "Pendaftaran Magang", icon: "👥" },
+            { to: "/admin/periode", label: "Kelola Periode", icon: "🗓️" },
+            { to: "/riwayat", label: "Absensi Magang", icon: "📅" },
             { to: "/tugas", label: "Tugas Magang", icon: "📋" },
+            { to: "/laporan", label: "Laporan Magang", icon: "📁" },
         ]
         : isPembimbing
             ? [
                 { to: "/riwayat", label: "Absensi Magang", icon: "📅" },
-                { to: "/periode", label: "Kelola Periode", icon: "🗓️" },
                 { to: "/tugas", label: "Tugas Magang", icon: "📋" },
                 { to: "/laporan", label: "Laporan Magang", icon: "📁" },
             ]
@@ -32,10 +38,38 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                 { to: "/dashboard", label: "Dashboard", icon: "📊" },
                 { to: "/absensi", label: "Absen Hari Ini", icon: "📅" },
                 { to: "/tugas", label: "Tugas Magang", icon: "📋" },
-                { to: "/riwayat", label: "Kehadiran", icon: "🗓️" },
                 { to: "/laporan", label: "Laporan Magang", icon: "📁" },
                 { to: "/pemagang/daftar", label: "Pendaftaran Magang", icon: "👥" },
             ];
+
+    useEffect(() => {
+        if (!isPembimbing && !isParticipant) return undefined;
+
+        let cancelled = false;
+        const endpoint = isPembimbing ? "/pembimbing/jadwal-absensi" : "/absensi/jadwal";
+        const handleScheduleUpdated = (event) => {
+            if (event.detail?.jamPulang) setJamPulang(event.detail.jamPulang);
+        };
+        window.addEventListener("attendance-schedule-updated", handleScheduleUpdated);
+
+        api.get(endpoint)
+            .then((response) => {
+                if (!cancelled) {
+                    setJadwalError("");
+                    setJamPulang(response.data?.data?.jam_pulang || "17:00");
+                }
+            })
+            .catch((requestError) => {
+                if (!cancelled) {
+                    setJadwalError(requestError.response?.data?.message || "Jadwal absensi gagal dimuat.");
+                }
+            });
+
+        return () => {
+            cancelled = true;
+            window.removeEventListener("attendance-schedule-updated", handleScheduleUpdated);
+        };
+    }, [isPembimbing, isParticipant]);
 
     const handleLogout = () => {
         if (onLogoutOverride) {
@@ -71,7 +105,7 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                     <Link
                         key={item.to}
                         to={item.to}
-                        className={location.pathname === item.to ? "active" : ""}
+                        className={location.pathname === item.to || location.pathname.startsWith(`${item.to}/`) ? "active" : ""}
                     >
                         <span className="nav-icon" aria-hidden="true">{item.icon}</span>
                         <span>{item.label}</span>
@@ -97,8 +131,9 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                     </div>
                 )}
                 Jam kerja magang<br />
-                <strong>08.00 - 17.00</strong><br />
+                <strong>08.00 - {jamPulang.replace(":", ".")}</strong><br />
                 <span>Senin - Minggu</span>
+                {jadwalError && <span role="alert" style={{ display: "block", marginTop: "6px", color: "#fecaca", fontSize: "11px" }}>{jadwalError}</span>}
             </div>
         </aside>
     );
