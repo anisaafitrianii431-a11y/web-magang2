@@ -67,6 +67,10 @@ function Periode() {
     ];
 
     const [periodes, setPeriodes] = useState(defaultPeriodes);
+    const [selectedPeriodeId, setSelectedPeriodeId] = useState(defaultPeriodes[0]?.id || 1);
+    const [periodeSearch, setPeriodeSearch] = useState("");
+    const [isPeriodeSearchOpen, setIsPeriodeSearchOpen] = useState(false);
+    const [toastMessage, setToastMessage] = useState("");
 
     // Muat data periode dan pendaftar magang riil secara otomatis dari API backend
     useEffect(() => {
@@ -180,11 +184,6 @@ function Periode() {
         const options = { day: "numeric", month: "long", year: "numeric" };
         return new Date(dateString).toLocaleDateString("id-ID", options);
     };
-
-    const [selectedPeriodeId, setSelectedPeriodeId] = useState(periodes[0]?.id || 1);
-    const [periodeSearch, setPeriodeSearch] = useState("");
-    const [isPeriodeSearchOpen, setIsPeriodeSearchOpen] = useState(false);
-    const [toastMessage, setToastMessage] = useState("");
 
     const currentUser = (() => {
         try {
