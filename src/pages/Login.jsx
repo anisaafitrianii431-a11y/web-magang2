@@ -183,12 +183,12 @@ function Login() {
 
                 <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                     <div>
-                        <label htmlFor="login-identifier" style={labelStyle}>Email atau NPM/NIM</label>
+                        <label htmlFor="login-identifier" style={labelStyle}>Email</label>
                         <input
                             type="text"
                             value={identifier}
                             onChange={(event) => setIdentifier(event.target.value)}
-                            placeholder="Masukkan email atau NPM/NIM"
+                            placeholder="nama@email.com"
                             style={inputStyle}
                             autoComplete="username"
                             required
