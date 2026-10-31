@@ -30,6 +30,7 @@ function Absensi() {
     const [profileLoading, setProfileLoading] = useState(true);
     const [downloadingLetter, setDownloadingLetter] = useState(false);
     const [clock, setClock] = useState(new Date());
+    const [checkoutTime, setCheckoutTime] = useState("17:00");
     const [attendanceStatus, setAttendanceStatus] = useState("Hadir");
     const [keterangan, setKeterangan] = useState("");
 
@@ -181,14 +182,17 @@ function Absensi() {
                 setParticipant(profile);
 
                 if (!profile) {
-                    setError("Absensi hanya tersedia untuk peserta dengan pendaftaran magang aktif.");
+                    setError("Akun peserta bersama tidak dapat dipakai untuk absensi pribadi. Keluar dan masuk dengan NPM/NIM serta password akun pribadi Anda.");
                     return;
                 }
 
                 const attendanceResponse = await api.get("/absensi/hari-ini");
                 if (cancelled) return;
+                const scheduleResponse = await api.get("/absensi/jadwal");
+                if (cancelled) return;
+                setCheckoutTime(scheduleResponse.data?.data?.jam_pulang || "17:00");
                 const attendance = attendanceResponse.data;
-                if (attendance && Object.keys(attendance).length > 0) {
+                if (attendance && typeof attendance === "object" && attendance.id) {
                     setData(attendance);
                     if (attendance.approval_status) {
                         setAttendanceStatus("Izin");
@@ -229,6 +233,39 @@ function Absensi() {
         };
     }, []);
 
+    useEffect(() => {
+        if (profileLoading || !participant || data) return;
+
+        let cancelled = false;
+        const refreshAttendance = async () => {
+            try {
+                const response = await api.get("/absensi/hari-ini");
+                if (cancelled) return;
+
+                const attendance = response.data;
+                if (attendance && typeof attendance === "object" && attendance.id) {
+                    setError("");
+                    setData(attendance);
+                    setAttendanceStatus(attendance.status || "Hadir");
+                    if (attendance.keterangan) setKeterangan(attendance.keterangan);
+                } else {
+                    setData(null);
+                }
+            } catch (requestError) {
+                if (!cancelled) {
+                    setError(requestError.response?.data?.message || "Status absensi belum dapat diperbarui.");
+                }
+            }
+        };
+
+        void refreshAttendance();
+        const timer = setInterval(() => void refreshAttendance(), 15000);
+        return () => {
+            cancelled = true;
+            clearInterval(timer);
+        };
+    }, [data, participant, profileLoading]);
+
     // Calculate geofence distance whenever userCoords or offices change
     useEffect(() => {
         if (offices.length === 0) {
@@ -252,7 +289,8 @@ function Absensi() {
         }
 
         let minDistance = Infinity;
-        let closest = offices[0];
+        let closest = offices[0] || null;
+        let matchedOffice = null;
 
         for (const office of offices) {
             const dist = calculateHaversineDistance(
@@ -261,19 +299,27 @@ function Absensi() {
                 Number(office.latitude),
                 Number(office.longitude)
             );
-            if (dist < minDistance) {
+            const radius = Number(office.radius_meter) || 100;
+
+            if (dist <= radius) {
+                if (!matchedOffice || dist < minDistance) {
+                    matchedOffice = office;
+                    minDistance = dist;
+                    closest = office;
+                }
+            } else if (!matchedOffice && dist < minDistance) {
                 minDistance = dist;
                 closest = office;
             }
         }
 
-        const allowedRadius = Number(closest?.radius_meter) || 100;
-        const isWithin = minDistance <= allowedRadius;
+        const isWithin = matchedOffice !== null;
+        const targetOffice = matchedOffice || closest;
 
         setLocationStatus({
             hasOffices: true,
             isWithinRadius: isWithin,
-            closestOffice: closest,
+            closestOffice: targetOffice,
             distance: Math.round(minDistance),
         });
     }, [userCoords, offices]);
@@ -306,16 +352,6 @@ function Absensi() {
             maxZoom: 19,
         }).addTo(map);
 
-        // Office circle & pin
-        L.circle([officeLat, officeLng], {
-            radius: radius,
-            color: "#6366f1",
-            fillColor: "#818cf8",
-            fillOpacity: 0.2,
-            weight: 2,
-            dashArray: "3, 5",
-        }).addTo(map);
-
         const officeIcon = L.divIcon({
             className: "office-marker",
             html: `
@@ -338,9 +374,30 @@ function Absensi() {
             iconAnchor: [14, 14],
         });
 
-        L.marker([officeLat, officeLng], { icon: officeIcon })
-            .bindPopup(`<b>${locationStatus.closestOffice.nama_lokasi}</b><br>Radius: ${radius}m`)
-            .addTo(map);
+        const boundsPoints = [[userLat, userLng]];
+
+        // Render every active office circle and pin
+        offices.forEach((office) => {
+            const oLat = Number(office.latitude);
+            const oLng = Number(office.longitude);
+            const oRad = Number(office.radius_meter) || 100;
+            const isClosest = locationStatus.closestOffice?.id === office.id;
+
+            L.circle([oLat, oLng], {
+                radius: oRad,
+                color: isClosest ? "#4f46e5" : "#94a3b8",
+                fillColor: isClosest ? "#818cf8" : "#cbd5e1",
+                fillOpacity: isClosest ? 0.22 : 0.12,
+                weight: isClosest ? 2 : 1.5,
+                dashArray: "3, 5",
+            }).addTo(map);
+
+            L.marker([oLat, oLng], { icon: officeIcon })
+                .bindPopup(`<b>${office.nama_lokasi}</b><br>Radius: ${oRad}m${isClosest ? "<br><i>(Lokasi Anda / Terdekat)</i>" : ""}`)
+                .addTo(map);
+
+            boundsPoints.push([oLat, oLng]);
+        });
 
         // User pin
         const userIcon = L.divIcon({
@@ -369,11 +426,8 @@ function Absensi() {
             .bindPopup("<b>Posisi Anda Saat Ini</b>")
             .addTo(map);
 
-        // Fit bounds
-        const bounds = L.latLngBounds([
-            [userLat, userLng],
-            [officeLat, officeLng],
-        ]);
+        // Fit bounds for user and all active offices
+        const bounds = L.latLngBounds(boundsPoints);
         map.fitBounds(bounds, { padding: [35, 35], maxZoom: 17 });
 
         mapInstanceRef.current = map;
@@ -394,7 +448,7 @@ function Absensi() {
 
     const submitAttendance = async (type) => {
         if (!participant) {
-            setError("Akun peserta belum terhubung ke NPM.");
+            setError("Akun peserta belum terhubung ke NPM/NIM.");
             return;
         }
 
@@ -479,14 +533,19 @@ function Absensi() {
             setData(response.data.data);
         } catch (requestError) {
             setError(requestError.response?.data?.message || "Absensi gagal dicatat.");
-            if (requestError.response?.data?.data) setData(requestError.response.data.data);
+            if (requestError.response?.data?.data && requestError.response.data.data.id) {
+                setData(requestError.response.data.data);
+            }
         } finally {
             setLoading(false);
         }
     };
 
     const dateLabel = clock.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const beforeCheckInTime = clock.getHours() < 8;
+    const beforeCheckoutTime = clock.toTimeString().slice(0, 5) < checkoutTime;
     const isZoomAttendance = String(data?.keterangan || "").includes("[ZOOM");
+    const isZoom = attendanceStatus === "Zoom";
     const displayedStatus =
         data?.approval_status === "pending"
             ? "Menunggu persetujuan"
@@ -499,7 +558,6 @@ function Absensi() {
             : data?.status || "Belum hadir";
 
     // Can check in?
-    const isZoom = attendanceStatus === "Zoom";
     const isCheckInDisabled =
         loading ||
         !!data ||
@@ -527,15 +585,9 @@ function Absensi() {
                     <section className="attendance-box">
                         <div className="attendance-profile-box">
                             <div>
-                                <p className="eyebrow">DATA PESERTA MAGANG</p>
-                                <strong>{profileLoading ? "Memuat profil..." : participant?.participant_name || "Akun Peserta"}</strong>
-                                <p className="meta-text">
-                                    {profileLoading
-                                        ? "Memeriksa status akun..."
-                                        : participant
-                                        ? `${participant.institution || "Instansi belum diatur"}`
-                                        : "NPM belum terhubung. Silakan login kembali dengan NPM."}
-                                </p>
+                                <p className="eyebrow">AKUN PESERTA</p>
+                                <h2>{profileLoading ? "Memuat profil..." : participant?.participant_name || "Akun belum terhubung"}</h2>
+                                {participant?.participant_code && <p className="subtitle">NPM: {participant.participant_code}</p>}
                             </div>
                         </div>
 
@@ -549,35 +601,23 @@ function Absensi() {
                                 <div className="attendance-status-box">
                                     <div>
                                         <p className="eyebrow">STATUS HARI INI</p>
-                                        <h2 className={data?.status === "Hadir" || data?.approval_status === "approved" ? "hadir" : "muted-status"}>
-                                            {displayedStatus}
-                                        </h2>
-                                        {data?.keterangan && (
-                                            <p style={{ marginTop: "5px", fontSize: "14px", color: "#666" }}>Catatan: {data.keterangan}</p>
-                                        )}
+                                        <h2 className={data?.status === "Hadir" || data?.approval_status === "approved" ? "hadir" : data?.status === "Alpa" || data?.approval_status === "rejected" ? "alpa-status" : "muted-status"}>{displayedStatus}</h2>
+                                        {data?.keterangan && <p style={{ marginTop: "5px", fontSize: "14px", color: data?.status === "Alpa" ? "#ef4444" : "#666" }}>Catatan: {data.keterangan}</p>}
                                     </div>
                                 </div>
 
                                 <label className="attendance-status-select">
                                     Status kehadiran
-                                    <select
-                                        value={attendanceStatus}
-                                        onChange={(event) => setAttendanceStatus(event.target.value)}
-                                        disabled={loading || !!data}
+                                    <select 
+                                        value={attendanceStatus} 
+                                        onChange={(event) => setAttendanceStatus(event.target.value)} 
+                                        disabled={loading || !!data?.id}
                                     >
-                                        <option value="Hadir">🏢 Hadir di Kantor (WFO - Wajib dalam Area Kantor)</option>
-                                        {policy.allow_zoom && (
-                                            <option value="Zoom">📹 Hadir Daring (Zoom / WFH - Bebas Radius)</option>
-                                        )}
-                                        <option value="Izin">📝 Izin (perlu persetujuan pembimbing)</option>
-                                        <option value="Sakit">🏥 Sakit</option>
-                                        <option value="Alpa">❌ Alpa</option>
+                                        <option value="Hadir">Hadir (Wajib di Area Kantor)</option>
+                                        <option value="Izin">Izin (perlu persetujuan pembimbing)</option>
+                                        <option value="Sakit">Sakit</option>
+                                        <option value="Alpa">Alpa</option>
                                     </select>
-                                    {attendanceStatus === "Zoom" && !data && (
-                                        <small className="attendance-hint" style={{ color: "#4338ca", background: "#eef2ff", padding: "8px 12px", borderRadius: "6px", display: "block", marginTop: "8px", border: "1px solid #c7d2fe" }}>
-                                            💡 <strong>Mode Daring / Zoom:</strong> Anda tidak dibatasi radius kantor. {policy.zoom_note || "Wajib lampirkan screenshot room rapat Zoom sebagai bukti kehadiran."}
-                                        </small>
-                                    )}
                                     {attendanceStatus === "Izin" && !data && (
                                         <small className="attendance-hint">
                                             Status izin baru tercatat setelah disetujui pembimbing. Permohonan izin dapat diajukan tanpa batasan lokasi kantor.
@@ -657,11 +697,11 @@ function Absensi() {
                                 {attendanceStatus !== "Hadir" && attendanceStatus !== "Zoom" && (
                                     <label className="attendance-status-select">
                                         Keterangan / Alasan
-                                        <textarea
-                                            value={keterangan}
-                                            onChange={(e) => setKeterangan(e.target.value)}
+                                        <textarea 
+                                            value={keterangan} 
+                                            onChange={(e) => setKeterangan(e.target.value)} 
                                             placeholder={`Masukkan alasan kenapa Anda ${attendanceStatus.toLowerCase()}...`}
-                                            disabled={loading || !!data}
+                                            disabled={loading || !!data?.id}
                                             className="attendance-reason"
                                             required
                                         ></textarea>
@@ -827,7 +867,9 @@ function Absensi() {
                                         <span>JAM MASUK</span>
                                         <strong>{data?.jam_masuk || "--:--"}</strong>
                                         <small className="time-note">
-                                            {data?.approval_status === "pending"
+                                            {data?.status === "Alpa"
+                                                ? "Ditandai Alpa otomatis (tidak hadir seharian)"
+                                                : data?.approval_status === "pending"
                                                 ? "Menunggu keputusan pembimbing"
                                                 : data?.jam_masuk
                                                 ? "Waktu masuk tercatat"
@@ -836,7 +878,9 @@ function Absensi() {
                                                     ? "Wajib pilih foto screenshot Zoom"
                                                     : "Siap melakukan absensi daring (Zoom)"
                                                 : attendanceStatus === "Hadir"
-                                                ? locationStatus.hasOffices && !locationStatus.isWithinRadius
+                                                ? beforeCheckInTime
+                                                    ? "Absen masuk aktif mulai pukul 08:00"
+                                                    : locationStatus.hasOffices && !locationStatus.isWithinRadius
                                                     ? "Terkunci: Anda berada di luar area kantor"
                                                     : "Belum melakukan absen masuk"
                                                 : `Status ${attendanceStatus.toLowerCase()} tidak memakai jam masuk`}
@@ -845,11 +889,10 @@ function Absensi() {
                                         <button
                                             type="button"
                                             onClick={() => submitAttendance("in")}
-                                            disabled={isCheckInDisabled}
-                                            className="btn-attendance-in"
+                                            disabled={loading || !!data?.id || (isZoom && policy.require_zoom_proof && !zoomFile) || (attendanceStatus === "Hadir" && (beforeCheckInTime || (locationStatus.hasOffices && !locationStatus.isWithinRadius)))}
+                                            className={attendanceStatus === "Hadir" && (beforeCheckInTime || (locationStatus.hasOffices && !locationStatus.isWithinRadius)) && !data?.id ? "btn-secondary" : "btn-attendance-in"}
                                             style={
-                                                (attendanceStatus === "Hadir" && locationStatus.hasOffices && !locationStatus.isWithinRadius && !data) ||
-                                                (isZoom && policy.require_zoom_proof && !zoomFile && !data)
+                                                attendanceStatus === "Hadir" && locationStatus.hasOffices && !locationStatus.isWithinRadius && !data
                                                     ? { background: "#cbd5e1", color: "#64748b", cursor: "not-allowed" }
                                                     : {}
                                             }
@@ -860,12 +903,16 @@ function Absensi() {
                                                 ? "Izin disetujui"
                                                 : data?.approval_status === "rejected"
                                                 ? "Izin ditolak"
-                                                : data
+                                                : data?.status === "Alpa"
+                                                ? "Tidak hadir (Alpa)"
+                                                : data?.id
                                                 ? "Sudah tercatat"
                                                 : isZoom
                                                 ? "Absen Masuk (Zoom)"
                                                 : attendanceStatus === "Hadir"
-                                                ? locationStatus.hasOffices && !locationStatus.isWithinRadius
+                                                ? beforeCheckInTime
+                                                    ? "Belum Buka (08:00)"
+                                                    : locationStatus.hasOffices && !locationStatus.isWithinRadius
                                                     ? "Di Luar Area Kantor"
                                                     : "Absen masuk"
                                                 : `Kirim Status ${attendanceStatus}`}
@@ -876,29 +923,35 @@ function Absensi() {
                                         <span>JAM PULANG</span>
                                         <strong>{data?.jam_pulang || "--:--"}</strong>
                                         <small className="time-note">
-                                            {data?.jam_pulang
+                                            {data?.status === "Alpa"
+                                                ? "Ditandai Alpa otomatis (tidak hadir seharian)"
+                                                : data?.jam_pulang
                                                 ? "Waktu pulang tercatat"
-                                                : clock.getHours() < 17
-                                                ? "Tombol aktif setelah jam 17:00"
+                                                : beforeCheckoutTime
+                                                ? `Absen pulang aktif mulai pukul ${checkoutTime}`
+                                                : data?.jam_masuk
+                                                ? `Absen pulang telah dibuka (mulai pukul ${checkoutTime})`
                                                 : "Aktif setelah absen masuk"}
                                         </small>
                                         <button
+                                            type="button"
                                             onClick={() => submitAttendance("out")}
                                             disabled={
                                                 loading ||
                                                 !data?.jam_masuk ||
                                                 !!data?.jam_pulang ||
-                                                clock.getHours() < 17 ||
+                                                beforeCheckoutTime ||
+                                                data?.status === "Alpa" ||
                                                 (!isZoomAttendance && data?.status === "Hadir" && locationStatus.hasOffices && !locationStatus.isWithinRadius)
                                             }
-                                            className={data?.jam_pulang || clock.getHours() < 17 ? "btn-secondary" : "btn-success"}
+                                            className={data?.jam_pulang || beforeCheckoutTime || data?.status === "Alpa" ? "btn-secondary" : "btn-success"}
                                             style={
-                                                clock.getHours() < 17 && !data?.jam_pulang
+                                                (beforeCheckoutTime || data?.status === "Alpa") && !data?.jam_pulang
                                                     ? { opacity: 0.6, cursor: "not-allowed", background: "#e2e8f0", color: "#64748b" }
                                                     : {}
                                             }
                                         >
-                                            {data?.jam_pulang ? "Sudah tercatat" : "Absen pulang"}
+                                            {data?.status === "Alpa" ? "Tidak hadir (Alpa)" : data?.jam_pulang ? "Sudah tercatat" : "Absen pulang"}
                                         </button>
                                     </div>
                                 </div>
@@ -962,7 +1015,7 @@ function Absensi() {
                                     fontWeight: "600",
                                 }}
                             >
-                                Keluar dan masuk memakai NPM pribadi
+                                Keluar dan masuk memakai NPM/NIM pribadi
                             </button>
                         )}
 

@@ -102,6 +102,12 @@ export default function FormPendaftaran() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.periode_id) {
+      alert('Periode magang belum dipilih. Hubungi admin untuk menambahkan periode pendaftaran.');
+      return;
+    }
+
     setIsSubmitting(true);
     
     const payload = new FormData();
@@ -135,7 +141,6 @@ export default function FormPendaftaran() {
       if (waInfo) {
         setWaNotification(waInfo);
         if (waInfo.wa_url) {
-          // Otomatis langsung buka WhatsApp tanpa ada pop-up pratinjau yang menghalangi
           window.open(waInfo.wa_url, '_blank');
         }
       }
@@ -301,7 +306,6 @@ export default function FormPendaftaran() {
             position: 'relative',
             overflow: 'hidden'
           }}>
-            {/* Background Accent Shapes */}
             <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '200px', height: '200px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(99, 102, 241, 0) 70%)', pointerEvents: 'none' }}></div>
             <div style={{ position: 'absolute', bottom: '-60px', left: '30%', width: '180px', height: '180px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0) 70%)', pointerEvents: 'none' }}></div>
 
@@ -812,14 +816,14 @@ export default function FormPendaftaran() {
 
                 <button 
                   type="submit" 
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || listPeriode.length === 0}
                   style={{
-                    background: isSubmitting ? '#94a3b8' : 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)',
+                    background: isSubmitting || listPeriode.length === 0 ? '#94a3b8' : 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)',
                     color: '#ffffff',
                     padding: '14px 28px',
                     border: 'none',
                     borderRadius: '10px',
-                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    cursor: isSubmitting || listPeriode.length === 0 ? 'not-allowed' : 'pointer',
                     fontWeight: '700',
                     fontSize: '15px',
                     display: 'flex',
@@ -828,7 +832,7 @@ export default function FormPendaftaran() {
                     boxShadow: '0 4px 14px rgba(79, 70, 229, 0.4)',
                     transition: 'all 0.2s ease',
                   }}
-                  onMouseEnter={(e) => { if (!isSubmitting) e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                  onMouseEnter={(e) => { if (!isSubmitting && listPeriode.length > 0) e.currentTarget.style.transform = 'translateY(-1px)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; }}
                 >
                   <Send size={16} />

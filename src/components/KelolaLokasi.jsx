@@ -59,6 +59,7 @@ export default function KelolaLokasi() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [geoLoading, setGeoLoading] = useState(false);
+    const [togglingId, setTogglingId] = useState(null);
 
     // Pengaturan Kebijakan Absensi Daring & Zoom
     const [attendancePolicy, setAttendancePolicy] = useState({
@@ -373,13 +374,30 @@ export default function KelolaLokasi() {
         }
     };
 
-    const handleToggleActive = async (id) => {
+    const handleToggleActive = async (id, currentStatus) => {
+        setTogglingId(id);
+        setError("");
+        setSuccess("");
+
+        // Optimistic UI update for instant feedback
+        const targetStatus = !currentStatus;
+        setLocations((prev) =>
+            prev.map((loc) => (loc.id === id ? { ...loc, is_active: targetStatus } : loc))
+        );
+
         try {
-            const res = await api.patch(`/admin/lokasi/${id}/toggle`);
-            setSuccess(res.data.message || "Status lokasi berhasil diubah.");
-            await loadLocations();
+            const res = await api.patch(`/admin/lokasi/${id}/toggle`, {
+                is_active: targetStatus,
+            });
+            setSuccess(res.data.message || `Status lokasi berhasil ${targetStatus ? "diaktifkan" : "dinonaktifkan"}.`);
         } catch (err) {
+            // Revert back on error
+            setLocations((prev) =>
+                prev.map((loc) => (loc.id === id ? { ...loc, is_active: currentStatus } : loc))
+            );
             setError(err.response?.data?.message || "Gagal mengubah status aktif lokasi.");
+        } finally {
+            setTogglingId(null);
         }
     };
 
@@ -992,11 +1010,41 @@ export default function KelolaLokasi() {
                         alignItems: "center",
                     }}
                 >
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
                         <span style={{ fontSize: "18px" }}>🏢</span>
-                        <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#0f172a" }}>
-                            Daftar Lokasi Absensi ({locations.length} Lokasi Terdaftar)
-                        </h3>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#0f172a" }}>
+                                Daftar Lokasi Absensi ({locations.length} Lokasi Terdaftar)
+                            </h3>
+                        </div>
+                        <div style={{ display: "flex", gap: "6px" }}>
+                            <span
+                                style={{
+                                    fontSize: "12px",
+                                    padding: "2px 8px",
+                                    borderRadius: "12px",
+                                    background: "#ecfdf5",
+                                    color: "#065f46",
+                                    fontWeight: "600",
+                                    border: "1px solid #a7f3d0",
+                                }}
+                            >
+                                {locations.filter((l) => l.is_active).length} Aktif
+                            </span>
+                            <span
+                                style={{
+                                    fontSize: "12px",
+                                    padding: "2px 8px",
+                                    borderRadius: "12px",
+                                    background: "#f1f5f9",
+                                    color: "#64748b",
+                                    fontWeight: "600",
+                                    border: "1px solid #cbd5e1",
+                                }}
+                            >
+                                {locations.filter((l) => !l.is_active).length} Non-aktif
+                            </span>
+                        </div>
                     </div>
 
                     <button
@@ -1106,31 +1154,59 @@ export default function KelolaLokasi() {
                                         <td style={{ padding: "16px 20px" }}>
                                             <button
                                                 type="button"
-                                                onClick={() => handleToggleActive(loc.id)}
-                                                title="Klik untuk ubah status aktif"
+                                                onClick={() => handleToggleActive(loc.id, loc.is_active)}
+                                                disabled={togglingId === loc.id}
+                                                title={loc.is_active ? "Klik untuk menonaktifkan lokasi ini" : "Klik untuk mengaktifkan lokasi ini"}
                                                 style={{
                                                     display: "inline-flex",
                                                     alignItems: "center",
-                                                    gap: "6px",
-                                                    background: loc.is_active ? "#ecfdf5" : "#f1f5f9",
-                                                    color: loc.is_active ? "#065f46" : "#64748b",
-                                                    border: loc.is_active ? "1px solid #a7f3d0" : "1px solid #cbd5e1",
-                                                    padding: "4px 10px",
-                                                    borderRadius: "12px",
-                                                    fontSize: "12px",
-                                                    fontWeight: "600",
-                                                    cursor: "pointer",
+                                                    gap: "8px",
+                                                    background: loc.is_active ? "#ecfdf5" : "#f8fafc",
+                                                    border: loc.is_active ? "1px solid #10b981" : "1px solid #cbd5e1",
+                                                    padding: "4px 12px 4px 6px",
+                                                    borderRadius: "20px",
+                                                    cursor: togglingId === loc.id ? "wait" : "pointer",
+                                                    transition: "all 0.2s ease",
+                                                    boxShadow: loc.is_active ? "0 1px 3px rgba(16, 185, 129, 0.2)" : "none",
                                                 }}
                                             >
+                                                {/* Sliding Switch Pill */}
                                                 <span
                                                     style={{
-                                                        width: "7px",
-                                                        height: "7px",
-                                                        borderRadius: "50%",
-                                                        background: loc.is_active ? "#10b981" : "#94a3b8",
+                                                        width: "34px",
+                                                        height: "18px",
+                                                        background: loc.is_active ? "#10b981" : "#cbd5e1",
+                                                        borderRadius: "20px",
+                                                        display: "inline-flex",
+                                                        alignItems: "center",
+                                                        padding: "2px",
+                                                        transition: "background-color 0.2s ease",
+                                                        boxSizing: "border-box",
                                                     }}
-                                                />
-                                                <span>{loc.is_active ? "Aktif" : "Non-aktif"}</span>
+                                                >
+                                                    <span
+                                                        style={{
+                                                            width: "14px",
+                                                            height: "14px",
+                                                            background: "#ffffff",
+                                                            borderRadius: "50%",
+                                                            boxShadow: "0 1px 2px rgba(0,0,0,0.25)",
+                                                            transform: loc.is_active ? "translateX(16px)" : "translateX(0)",
+                                                            transition: "transform 0.2s ease",
+                                                        }}
+                                                    />
+                                                </span>
+
+                                                {/* Status Label */}
+                                                <span
+                                                    style={{
+                                                        fontSize: "12px",
+                                                        fontWeight: "700",
+                                                        color: loc.is_active ? "#065f46" : "#64748b",
+                                                    }}
+                                                >
+                                                    {togglingId === loc.id ? "Menyimpan..." : loc.is_active ? "Aktif" : "Non-aktif"}
+                                                </span>
                                             </button>
                                         </td>
                                         <td style={{ padding: "16px 20px", textAlign: "right" }}>
