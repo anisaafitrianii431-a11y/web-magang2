@@ -42,7 +42,6 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                 { to: "/beranda", label: "Landing Page", icon: "🌐" },
                 { to: "/dashboard", label: "Dashboard", icon: "📊" },
                 { to: "/absensi", label: "Absen Hari Ini", icon: "📅" },
-                { to: "/pemagang/daftar", label: "Surat Balasan Magang", icon: "📄" },
                 { to: "/tugas", label: "Tugas Magang", icon: "📋" },
                 { to: "/laporan", label: "Laporan Magang", icon: "📁" },
             ];
