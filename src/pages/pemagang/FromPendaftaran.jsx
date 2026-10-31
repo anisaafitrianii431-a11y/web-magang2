@@ -137,9 +137,6 @@ export default function FormPendaftaran() {
       const waInfo = response.data.whatsapp_notification;
       if (waInfo) {
         setWaNotification(waInfo);
-        if (waInfo.wa_url) {
-          window.open(waInfo.wa_url, '_blank');
-        }
       }
     } catch (error) {
       alert(error.response?.data?.message || 'Gagal mengirim pendaftaran. Periksa kembali kelengkapan formulir Anda.');
@@ -413,49 +410,19 @@ export default function FormPendaftaran() {
                       Terima kasih telah mengajukan magang! Berkas persyaratan Anda (Surat Pengantar dan Pas Foto) sudah berhasil masuk ke sistem kami dan sedang menunggu persetujuan dari tim Administrator. Silakan pantau halaman ini secara berkala.
                     </p>
 
-                    {/* WhatsApp Notification Card */}
-                    <div style={{ marginTop: '16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#22c55e', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(34, 197, 94, 0.3)' }}>
-                          <MessageCircle size={20} />
+                    {/* Status Konfirmasi Berkas Pendaftaran */}
+                    <div style={{ marginTop: '16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#22c55e', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(34, 197, 94, 0.25)' }}>
+                        <CheckCircle2 size={22} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#15803d' }}>
+                          Pendaftaran Berhasil Masuk ke Antrean Verifikasi
                         </div>
-                        <div>
-                          <div style={{ fontSize: '13px', fontWeight: '700', color: '#15803d' }}>
-                            Notifikasi WhatsApp Resmi Terkirim ke No: {loggedInUser.no_hp || myRegistration.user?.no_hp || '-'}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#166534', marginTop: '2px' }}>
-                            Pesan konfirmasi pendaftaran magang dari PAM Techno telah terkirim ke WhatsApp Anda.
-                          </div>
+                        <div style={{ fontSize: '12.5px', color: '#166534', marginTop: '2px', lineHeight: '1.5' }}>
+                          Seluruh berkas persyaratan telah kami simpan dengan aman. Admin Penerimaan Magang PAM Techno akan memverifikasi kelengkapan berkas Anda. Kontak WhatsApp terdaftar Anda: <strong>{loggedInUser.no_hp || myRegistration.user?.no_hp || '-'}</strong>.
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const targetPhone = String(loggedInUser.no_hp || myRegistration.user?.no_hp || '').replace(/[^0-9]/g, '').replace(/^0/, '62');
-                          const waText = encodeURIComponent(
-                            `Halo, ${loggedInUser.nama || loggedInUser.name || 'Peserta'} 👋\n\nTerima kasih telah mendaftar program magang di PAM Techno.\n\nKami informasikan bahwa formulir pendaftaran magang Anda telah berhasil kami terima.\n\n📋 Status: Pendaftaran Diterima\n📅 Tahap selanjutnya: Verifikasi berkas dan data peserta oleh admin.\n\nMohon menunggu informasi selanjutnya melalui WhatsApp ini. Jika terdapat data yang perlu dilengkapi, admin akan menghubungi Anda.\n\nTerima kasih atas perhatian dan partisipasi Anda.\n\nHormat kami,\nAdmin Penerimaan Magang\nPAM Techno`
-                          );
-                          window.open(`https://wa.me/${targetPhone}?text=${waText}`, '_blank');
-                        }}
-                        style={{
-                          background: '#22c55e',
-                          color: '#ffffff',
-                          border: 'none',
-                          padding: '8px 16px',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          fontWeight: '700',
-                          fontSize: '12px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          boxShadow: '0 2px 6px rgba(34, 197, 94, 0.35)',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <MessageCircle size={15} />
-                        <span>Buka Salinan Pesan WhatsApp</span>
-                      </button>
                     </div>
 
                     <div style={{ marginTop: '18px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
