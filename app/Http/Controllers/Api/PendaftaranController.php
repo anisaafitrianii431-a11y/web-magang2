@@ -8,13 +8,16 @@ use App\Models\Pendaftaran;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use App\Services\WhatsAppService;
 
 class PendaftaranController extends Controller
 {
-    // Admin views all
+    // Admin views all (urutkan dari yang terbaru di paling atas)
     public function index()
     {
-        $pendaftarans = Pendaftaran::with(['user', 'periode', 'pembimbing'])->get();
+        $pendaftarans = Pendaftaran::with(['user', 'periode', 'pembimbing'])
+            ->latest('id')
+            ->get();
         return response()->json(['data' => $pendaftarans]);
     }
 
@@ -64,6 +67,7 @@ class PendaftaranController extends Controller
     {
         $request->validate([
             'periode_id' => 'required|exists:periode_magangs,id',
+            'nim' => 'nullable|string|max:50',
             'asal_instansi' => 'required|string|max:150',
             'no_hp' => 'required|string|max:20',
             'program_studi' => 'required|string|max:150',
@@ -82,12 +86,16 @@ class PendaftaranController extends Controller
 
         $photoPath = $request->file('pas_foto')->store('pas_foto', 'public');
 
-        $user->update([
+        $userUpdate = [
             'no_hp' => $request->input('no_hp'),
             'program_studi' => $request->input('program_studi'),
             'alamat' => $request->input('alamat'),
             'foto' => $photoPath,
-        ]);
+        ];
+        if (! empty($request->input('nim'))) {
+            $userUpdate['nim'] = trim($request->input('nim'));
+        }
+        $user->update($userUpdate);
 
         // Handle file upload
         $file = $request->file('file_surat_pengantar');
@@ -104,7 +112,17 @@ class PendaftaranController extends Controller
         ]);
         $pendaftaran->load(['user', 'periode', 'pembimbing']);
 
-        return response()->json(['data' => $pendaftaran, 'message' => 'Pendaftaran berhasil dikirim']);
+        $namaPeserta = $user->name ?? $user->nama ?? 'Peserta';
+        $waNotification = WhatsAppService::sendRegistrationNotification(
+            (string) $request->input('no_hp'),
+            $namaPeserta
+        );
+
+        return response()->json([
+            'data' => $pendaftaran,
+            'message' => 'Pendaftaran magang berhasil dikirim!',
+            'whatsapp_notification' => $waNotification,
+        ]);
     }
 
     // Admin updates status

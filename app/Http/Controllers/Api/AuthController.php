@@ -17,7 +17,7 @@ class AuthController extends Controller
             'nama' => 'required_without:name|string|max:255',
             'name' => 'required_without:nama|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            // 'nim' => 'nullable|string|max:50|unique:users,nim',
+            'nim' => 'nullable|string|max:50|unique:users,nim',
             'password' => 'required|string|min:8',
             'role' => ['sometimes', Rule::in(['Pemagang', 'pemagang', 'peserta'])],
             'no_hp' => 'nullable|string|max:255',
@@ -26,7 +26,7 @@ class AuthController extends Controller
         $user = User::create([
             'name' => $validated['nama'] ?? $validated['name'],
             'email' => $validated['email'],
-            // 'nim' => $validated['nim'],
+            'nim' => ! empty($validated['nim']) ? trim($validated['nim']) : null,
             'password' => Hash::make($validated['password']),
             'role' => 'peserta',
             'no_hp' => $validated['no_hp'] ?? null,

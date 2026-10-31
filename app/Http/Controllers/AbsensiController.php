@@ -102,6 +102,7 @@ class AbsensiController extends Controller
         $user = $request->user();
         $validated = $request->validate([
             'status' => ['nullable', 'in:Hadir,Tidak Hadir,Izin,Sakit,Alpa'],
+            'tipe_kehadiran' => ['nullable', 'string', 'in:WFO,Zoom,Daring,WFH'],
             'keterangan' => ['nullable', 'string', 'max:255'],
             'foto' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
@@ -124,8 +125,38 @@ class AbsensiController extends Controller
         $userLng = isset($validated['longitude']) ? (float) $validated['longitude'] : null;
         $geofenceDistance = null;
 
-        // Validasi radius lokasi kantor hanya untuk kehadiran Hadir
-        if ($finalStatus === 'Hadir') {
+        $tipeKehadiran = $validated['tipe_kehadiran'] ?? 'WFO';
+        $isZoomMode = in_array(strtolower((string) $tipeKehadiran), ['zoom', 'daring', 'wfh'], true);
+
+        // Ambil konfigurasi kebijakan absensi daring dari Admin
+        $settingsPath = storage_path('app/attendance_settings.json');
+        $attendanceSettings = [
+            'allow_zoom' => true,
+            'require_zoom_proof' => true,
+        ];
+        if (file_exists($settingsPath)) {
+            $decoded = json_decode(file_get_contents($settingsPath), true);
+            if (is_array($decoded)) {
+                $attendanceSettings = array_merge($attendanceSettings, $decoded);
+            }
+        }
+
+        // Jika memilih mode Zoom namun dinonaktifkan Admin
+        if ($isZoomMode && empty($attendanceSettings['allow_zoom'])) {
+            return response()->json([
+                'message' => 'Absensi Daring / Zoom saat ini dinonaktifkan oleh Administrator. Silakan lakukan absensi di lokasi kantor.',
+            ], 422);
+        }
+
+        // Jika memilih mode Zoom dan Admin mewajibkan bukti screenshot
+        if ($isZoomMode && ! empty($attendanceSettings['require_zoom_proof']) && ! $request->hasFile('foto')) {
+            return response()->json([
+                'message' => 'Wajib melampirkan screenshot layar rapat Zoom atau foto bukti kegiatan daring.',
+            ], 422);
+        }
+
+        // Validasi radius lokasi kantor hanya untuk kehadiran Hadir WFO (bukan Zoom)
+        if ($finalStatus === 'Hadir' && ! $isZoomMode) {
             $geofence = $this->validateGeofence($userLat, $userLng);
             if (! $geofence['valid']) {
                 return response()->json([
@@ -136,9 +167,34 @@ class AbsensiController extends Controller
                 ], 422);
             }
             $geofenceDistance = $geofence['distance'] ?? null;
+        } elseif ($finalStatus === 'Hadir' && $isZoomMode) {
+            // Untuk Zoom, hitung jarak sebagai log histori tanpa memblokir
+            if ($userLat !== null && $userLng !== null) {
+                $activeLocations = LokasiAbsensi::where('is_active', true)->get();
+                if ($activeLocations->isNotEmpty()) {
+                    $closest = null;
+                    foreach ($activeLocations as $loc) {
+                        $dist = $this->calculateDistance($userLat, $userLng, (float) $loc->latitude, (float) $loc->longitude);
+                        if ($closest === null || $dist < $closest) {
+                            $closest = $dist;
+                        }
+                    }
+                    $geofenceDistance = $closest ? round($closest) : null;
+                }
+            }
         }
 
         $photoPath = $request->file('foto')?->store('absensi', 'public');
+
+        $keteranganFinal = $validated['keterangan'] ?? null;
+        if ($isZoomMode) {
+            $prefix = '[ZOOM / DARING]';
+            if ($keteranganFinal && ! str_contains($keteranganFinal, $prefix)) {
+                $keteranganFinal = $prefix . ' ' . $keteranganFinal;
+            } elseif (! $keteranganFinal) {
+                $keteranganFinal = $prefix . ' Absensi kegiatan daring/Zoom';
+            }
+        }
 
         $attendance = Absensi::firstOrCreate(
             [
@@ -154,7 +210,7 @@ class AbsensiController extends Controller
                 'jam_masuk' => $isNotPresent ? null : now()->format('H:i:s'),
                 'status' => $finalStatus,
                 'approval_status' => $isLeaveRequest ? 'pending' : null,
-                'keterangan' => $validated['keterangan'] ?? null,
+                'keterangan' => $keteranganFinal,
                 'foto' => $photoPath,
                 'latitude' => $userLat,
                 'longitude' => $userLng,
@@ -241,8 +297,9 @@ class AbsensiController extends Controller
         $userLat = isset($validated['latitude']) ? (float) $validated['latitude'] : null;
         $userLng = isset($validated['longitude']) ? (float) $validated['longitude'] : null;
 
-        // Validasi lokasi pulang jika absensi masuk adalah Hadir
-        if ($attendance->status === 'Hadir') {
+        // Validasi lokasi pulang jika absensi masuk adalah Hadir WFO (bukan Daring / Zoom)
+        $isZoomAttendance = str_contains((string) $attendance->keterangan, '[ZOOM');
+        if ($attendance->status === 'Hadir' && ! $isZoomAttendance) {
             $geofence = $this->validateGeofence($userLat, $userLng);
             if (! $geofence['valid']) {
                 return response()->json([
