@@ -60,6 +60,16 @@ export default function KelolaLokasi() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [geoLoading, setGeoLoading] = useState(false);
 
+    // Pengaturan Kebijakan Absensi Daring & Zoom
+    const [attendancePolicy, setAttendancePolicy] = useState({
+        allow_zoom: true,
+        require_zoom_proof: true,
+        zoom_note: "Peserta yang sedang mengikuti rapat/kegiatan Zoom atau WFH dapat melakukan absensi dengan melampirkan screenshot ruang Zoom.",
+    });
+    const [policyLoading, setPolicyLoading] = useState(false);
+    const [policySaving, setPolicySaving] = useState(false);
+    const [policySuccess, setPolicySuccess] = useState("");
+
     const mapContainerRef = useRef(null);
     const mapInstanceRef = useRef(null);
     const markerRef = useRef(null);
@@ -82,8 +92,42 @@ export default function KelolaLokasi() {
         }
     };
 
+    const loadPolicy = async () => {
+        setPolicyLoading(true);
+        try {
+            const response = await api.get("/admin/pengaturan-absensi");
+            if (response.data?.data) {
+                setAttendancePolicy(response.data.data);
+            }
+        } catch {
+            // Gunakan nilai default jika gagal
+        } finally {
+            setPolicyLoading(false);
+        }
+    };
+
+    const handleSavePolicy = async (e) => {
+        if (e) e.preventDefault();
+        setPolicySaving(true);
+        setPolicySuccess("");
+        setError("");
+        try {
+            const response = await api.post("/admin/pengaturan-absensi", attendancePolicy);
+            setPolicySuccess(response.data?.message || "Kebijakan absensi daring (Zoom) berhasil disimpan!");
+            setTimeout(() => setPolicySuccess(""), 4000);
+        } catch (requestError) {
+            setError(
+                requestError.response?.data?.message
+                || "Gagal menyimpan kebijakan absensi daring."
+            );
+        } finally {
+            setPolicySaving(false);
+        }
+    };
+
     useEffect(() => {
         loadLocations();
+        loadPolicy();
     }, []);
 
     // Initialize Leaflet Map
@@ -439,6 +483,259 @@ export default function KelolaLokasi() {
                     <span>{success}</span>
                 </div>
             )}
+
+            {/* Panel Kebijakan Absensi Daring (Zoom / WFH) */}
+            <div
+                style={{
+                    background: "#ffffff",
+                    border: "1px solid #c7d2fe",
+                    borderRadius: "12px",
+                    padding: "20px 24px",
+                    marginBottom: "26px",
+                    boxShadow: "0 2px 10px rgba(99, 102, 241, 0.08)",
+                }}
+            >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px", marginBottom: "16px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div
+                            style={{
+                                width: "42px",
+                                height: "42px",
+                                borderRadius: "10px",
+                                background: "#eef2ff",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "22px",
+                                border: "1px solid #c7d2fe",
+                            }}
+                        >
+                            💻
+                        </div>
+                        <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "#1e1b4b" }}>
+                                    Kebijakan Absensi Daring & Zoom (WFH / Online)
+                                </h3>
+                                <span
+                                    style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "5px",
+                                        padding: "3px 10px",
+                                        borderRadius: "20px",
+                                        fontSize: "12px",
+                                        fontWeight: "600",
+                                        background: attendancePolicy.allow_zoom ? "#ecfdf5" : "#fef2f2",
+                                        color: attendancePolicy.allow_zoom ? "#065f46" : "#991b1b",
+                                        border: attendancePolicy.allow_zoom ? "1px solid #a7f3d0" : "1px solid #fecaca",
+                                    }}
+                                >
+                                    <span
+                                        style={{
+                                            width: "6px",
+                                            height: "6px",
+                                            borderRadius: "50%",
+                                            background: attendancePolicy.allow_zoom ? "#10b981" : "#ef4444",
+                                        }}
+                                    />
+                                    {attendancePolicy.allow_zoom ? "Mode Zoom Aktif" : "Mode Zoom Nonaktif"}
+                                </span>
+                            </div>
+                            <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#64748b" }}>
+                                Atur apakah peserta diperbolehkan absen tanpa batasan radius saat ada rapat Zoom mendadak atau WFH.
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={handleSavePolicy}
+                        disabled={policySaving || policyLoading}
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            background: policySaving ? "#94a3b8" : "#4f46e5",
+                            color: "#ffffff",
+                            padding: "9px 18px",
+                            borderRadius: "6px",
+                            border: "none",
+                            fontSize: "13px",
+                            fontWeight: "600",
+                            cursor: policySaving ? "not-allowed" : "pointer",
+                            boxShadow: "0 1px 3px rgba(79, 70, 229, 0.3)",
+                            transition: "background 0.2s",
+                        }}
+                    >
+                        <span>{policySaving ? "⏳" : "💾"}</span>
+                        <span>{policySaving ? "Menyimpan..." : "Simpan Kebijakan"}</span>
+                    </button>
+                </div>
+
+                {policySuccess && (
+                    <div
+                        style={{
+                            marginBottom: "16px",
+                            padding: "10px 14px",
+                            background: "#ecfdf5",
+                            border: "1px solid #a7f3d0",
+                            borderRadius: "6px",
+                            color: "#065f46",
+                            fontSize: "13px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                        }}
+                    >
+                        <span>✓</span>
+                        <span>{policySuccess}</span>
+                    </div>
+                )}
+
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                        gap: "14px",
+                        marginBottom: "16px",
+                    }}
+                >
+                    {/* Toggle 1: Izinkan Zoom */}
+                    <div
+                        style={{
+                            background: attendancePolicy.allow_zoom ? "#f5f3ff" : "#f8fafc",
+                            border: attendancePolicy.allow_zoom ? "1px solid #c7d2fe" : "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            padding: "14px 16px",
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "space-between",
+                        }}
+                    >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
+                            <div>
+                                <strong style={{ fontSize: "14px", color: "#1e293b", display: "block" }}>
+                                    1. Izinkan Absensi Daring / Zoom
+                                </strong>
+                                <span style={{ fontSize: "12.5px", color: "#64748b", marginTop: "4px", display: "block", lineHeight: "1.4" }}>
+                                    Jika aktif, peserta dapat memilih opsi <strong>"Hadir Daring (Zoom)"</strong>. Validasi radius kantor akan dilewati secara otomatis.
+                                </span>
+                            </div>
+                            <label style={{ position: "relative", display: "inline-block", width: "46px", height: "24px", flexShrink: 0, cursor: "pointer" }}>
+                                <input
+                                    type="checkbox"
+                                    checked={attendancePolicy.allow_zoom}
+                                    onChange={(e) => setAttendancePolicy({ ...attendancePolicy, allow_zoom: e.target.checked })}
+                                    style={{ opacity: 0, width: 0, height: 0 }}
+                                />
+                                <span
+                                    style={{
+                                        position: "absolute",
+                                        cursor: "pointer",
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        background: attendancePolicy.allow_zoom ? "#4f46e5" : "#cbd5e1",
+                                        borderRadius: "24px",
+                                        transition: "0.2s",
+                                    }}
+                                >
+                                    <span
+                                        style={{
+                                            position: "absolute",
+                                            content: '""',
+                                            height: "18px",
+                                            width: "18px",
+                                            left: attendancePolicy.allow_zoom ? "25px" : "3px",
+                                            bottom: "3px",
+                                            backgroundColor: "white",
+                                            borderRadius: "50%",
+                                            transition: "0.2s",
+                                            boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                                        }}
+                                    />
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Toggle 2: Wajib Bukti Screenshot Zoom */}
+                    <div
+                        style={{
+                            background: attendancePolicy.require_zoom_proof ? "#f5f3ff" : "#f8fafc",
+                            border: attendancePolicy.require_zoom_proof ? "1px solid #c7d2fe" : "1px solid #e2e8f0",
+                            borderRadius: "8px",
+                            padding: "14px 16px",
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "space-between",
+                        }}
+                    >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
+                            <div>
+                                <strong style={{ fontSize: "14px", color: "#1e293b", display: "block" }}>
+                                    2. Wajib Lampirkan Bukti Screenshot Zoom
+                                </strong>
+                                <span style={{ fontSize: "12.5px", color: "#64748b", marginTop: "4px", display: "block", lineHeight: "1.4" }}>
+                                    Peserta wajib melampirkan screenshot layar saat berada di room Zoom meeting (terlihat nama/muka peserta) sebagai verifikasi.
+                                </span>
+                            </div>
+                            <label style={{ position: "relative", display: "inline-block", width: "46px", height: "24px", flexShrink: 0, cursor: "pointer" }}>
+                                <input
+                                    type="checkbox"
+                                    checked={attendancePolicy.require_zoom_proof}
+                                    onChange={(e) => setAttendancePolicy({ ...attendancePolicy, require_zoom_proof: e.target.checked })}
+                                    style={{ opacity: 0, width: 0, height: 0 }}
+                                />
+                                <span
+                                    style={{
+                                        position: "absolute",
+                                        cursor: "pointer",
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        background: attendancePolicy.require_zoom_proof ? "#4f46e5" : "#cbd5e1",
+                                        borderRadius: "24px",
+                                        transition: "0.2s",
+                                    }}
+                                >
+                                    <span
+                                        style={{
+                                            position: "absolute",
+                                            content: '""',
+                                            height: "18px",
+                                            width: "18px",
+                                            left: attendancePolicy.require_zoom_proof ? "25px" : "3px",
+                                            bottom: "3px",
+                                            backgroundColor: "white",
+                                            borderRadius: "50%",
+                                            transition: "0.2s",
+                                            boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                                        }}
+                                    />
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Petunjuk / Catatan untuk Peserta */}
+                <div>
+                    <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "600", color: "#334155" }}>
+                        Panduan / Catatan Khusus untuk Peserta saat Absen Daring:
+                    </label>
+                    <input
+                        type="text"
+                        value={attendancePolicy.zoom_note || ""}
+                        onChange={(e) => setAttendancePolicy({ ...attendancePolicy, zoom_note: e.target.value })}
+                        placeholder="Contoh: Lampirkan screenshot Zoom meeting dan isi keterangan agenda rapat Anda."
+                        style={inputStyle}
+                    />
+                </div>
+            </div>
 
             {/* Form Section */}
             <div

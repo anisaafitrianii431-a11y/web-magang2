@@ -12,6 +12,7 @@ function Riwayat() {
     const [reviewingId, setReviewingId] = useState(null);
     const [downloadingLetter, setDownloadingLetter] = useState(false);
     const [clock, setClock] = useState(new Date());
+    const [previewImage, setPreviewImage] = useState(null);
     const [role] = useState(() => {
         try {
             return JSON.parse(localStorage.getItem("user") || "null")?.role?.toLowerCase() || "peserta";
@@ -123,7 +124,7 @@ function Riwayat() {
                         <div>
                             <p className="eyebrow">{role === "admin" ? "PORTAL ADMINISTRATOR" : role === "pembimbing" ? "PORTAL PEMBIMBING" : "ARSIP KEHADIRAN"}</p>
                             <h1>{role === "admin" ? "Kelola Data Absensi" : "Absensi Magang"}</h1>
-                            <p className="subtitle">{role === "admin" ? "Kelola, ubah, dan pantau seluruh rekapan data absensi peserta magang." : role === "pembimbing" ? "Rekap kehadiran peserta magang." : "Riwayat absensi ini hanya dapat dilihat oleh akun Anda."}</p>
+                            <p className="subtitle">{role === "admin" ? "Kelola, pantau, dan verifikasi seluruh rekapan data absensi WFO & Daring (Zoom)." : role === "pembimbing" ? "Rekap kehadiran peserta magang (WFO & Daring Zoom)." : "Riwayat absensi ini hanya dapat dilihat oleh akun Anda."}</p>
                         </div>
                         <div className="live-clock">
                             <strong>{clock.toLocaleTimeString("id-ID")}</strong>
@@ -147,6 +148,14 @@ function Riwayat() {
                                 <span>
                                     <strong>Kelola Absensi</strong>
                                     <small>Kelola data absensi seluruh peserta.</small>
+                                </span>
+                                <span className="management-arrow">→</span>
+                            </Link>
+                            <Link to="/admin/lokasi" className="management-link">
+                                <span className="management-icon">📍</span>
+                                <span>
+                                    <strong>Lokasi & Kebijakan Daring</strong>
+                                    <small>Atur radius kantor & izin absensi Zoom.</small>
                                 </span>
                                 <span className="management-arrow">→</span>
                             </Link>
@@ -229,8 +238,8 @@ function Riwayat() {
                                         <th>Nama</th>
                                         <th>Masuk</th>
                                         <th>Pulang</th>
-                                        <th>Status</th>
-                                        <th>Keterangan</th>
+                                        <th>Status Kehadiran</th>
+                                        <th>Keterangan & Bukti</th>
                                         {role === "pembimbing" && <th>Aksi</th>}
                                     </tr>
                                 </thead>
@@ -242,24 +251,97 @@ function Riwayat() {
                                     ) : data.length ? (
                                         data.map((item, index) => {
                                             const isPendingLeave = item.approval_status === "pending";
-                                            const displayStatus = isPendingLeave
-                                                ? "Menunggu izin"
-                                                : item.approval_status === "rejected"
-                                                    ? "Alpa"
-                                                    : item.status;
+                                            const isZoom = String(item.keterangan || "").includes("[ZOOM");
+                                            const cleanKeterangan = String(item.keterangan || "")
+                                                .replace("[ZOOM / DARING]", "")
+                                                .replace("[ZOOM]", "")
+                                                .trim();
+
                                             return (
                                                 <tr key={item.id}>
                                                     <td>{index + 1}</td>
                                                     <td>{formatDate(item.tanggal)}</td>
-                                                    <td>{item.participant_name}</td>
+                                                    <td>
+                                                        <strong style={{ color: "#0f172a", display: "block" }}>{item.participant_name}</strong>
+                                                        {item.institution && (
+                                                            <small style={{ color: "#64748b" }}>{item.institution}</small>
+                                                        )}
+                                                    </td>
                                                     <td>{item.jam_masuk || "-"}</td>
                                                     <td>{item.jam_pulang || "-"}</td>
                                                     <td>
-                                                        <span className={`badge ${isPendingLeave ? "badge-belum-hadir" : "badge-" + String(item.status).toLowerCase().replace(" ", "-")}`}>
-                                                            {displayStatus}
-                                                        </span>
+                                                        {isPendingLeave ? (
+                                                            <span className="badge badge-belum-hadir">Menunggu izin</span>
+                                                        ) : item.approval_status === "rejected" ? (
+                                                            <span className="badge badge-alpa">Alpa</span>
+                                                        ) : item.status === "Hadir" && isZoom ? (
+                                                            <span
+                                                                style={{
+                                                                    display: "inline-flex",
+                                                                    alignItems: "center",
+                                                                    gap: "5px",
+                                                                    background: "#e0e7ff",
+                                                                    color: "#4338ca",
+                                                                    border: "1px solid #c7d2fe",
+                                                                    padding: "3px 8px",
+                                                                    borderRadius: "12px",
+                                                                    fontSize: "12px",
+                                                                    fontWeight: "600",
+                                                                }}
+                                                            >
+                                                                <span>📹</span>
+                                                                <span>Daring (Zoom)</span>
+                                                            </span>
+                                                        ) : item.status === "Hadir" ? (
+                                                            <span className="badge badge-hadir" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                                                <span>🏢</span>
+                                                                <span>WFO (Kantor)</span>
+                                                            </span>
+                                                        ) : (
+                                                            <span className={`badge badge-${String(item.status).toLowerCase().replace(" ", "-")}`}>
+                                                                {item.status}
+                                                            </span>
+                                                        )}
                                                     </td>
-                                                    <td><small>{item.keterangan || "-"}</small></td>
+                                                    <td>
+                                                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                                            <small style={{ color: "#334155" }}>{cleanKeterangan || "-"}</small>
+                                                            {item.foto_url && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setPreviewImage({
+                                                                        url: item.foto_url,
+                                                                        name: item.participant_name,
+                                                                        tanggal: item.tanggal,
+                                                                        jam: item.jam_masuk,
+                                                                        isZoom: isZoom,
+                                                                    })}
+                                                                    style={{
+                                                                        display: "inline-flex",
+                                                                        alignItems: "center",
+                                                                        gap: "5px",
+                                                                        background: isZoom ? "#eff6ff" : "#f8fafc",
+                                                                        border: isZoom ? "1px solid #bfdbfe" : "1px solid #cbd5e1",
+                                                                        borderRadius: "4px",
+                                                                        padding: "3px 8px",
+                                                                        fontSize: "11px",
+                                                                        fontWeight: "600",
+                                                                        color: isZoom ? "#1d4ed8" : "#334155",
+                                                                        cursor: "pointer",
+                                                                        width: "fit-content",
+                                                                    }}
+                                                                >
+                                                                    <span>{isZoom ? "📹" : "📷"}</span>
+                                                                    <span>{isZoom ? "Lihat Bukti Zoom" : "Lihat Foto Absen"}</span>
+                                                                </button>
+                                                            )}
+                                                            {item.jarak_meter !== null && item.jarak_meter !== undefined && (
+                                                                <small style={{ color: "#64748b", fontSize: "10.5px" }}>
+                                                                    Jarak: ± {item.jarak_meter}m {isZoom ? "(Daring)" : ""}
+                                                                </small>
+                                                            )}
+                                                        </div>
+                                                    </td>
                                                     {role === "pembimbing" && (
                                                         <td>
                                                             {isPendingLeave ? (
@@ -280,6 +362,107 @@ function Riwayat() {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+                    )}
+
+                    {/* Modal Popup Bukti Foto / Screenshot Zoom */}
+                    {previewImage && (
+                        <div
+                            role="dialog"
+                            aria-modal="true"
+                            onClick={() => setPreviewImage(null)}
+                            style={{
+                                position: "fixed",
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                backgroundColor: "rgba(15, 23, 42, 0.75)",
+                                backdropFilter: "blur(2px)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                zIndex: 9999,
+                                padding: "20px",
+                            }}
+                        >
+                            <div
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                    background: "#ffffff",
+                                    borderRadius: "12px",
+                                    maxWidth: "580px",
+                                    width: "100%",
+                                    overflow: "hidden",
+                                    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.25)",
+                                    border: "1px solid #cbd5e1",
+                                }}
+                            >
+                                <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc" }}>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#0f172a" }}>
+                                            {previewImage.isZoom ? "📹 Bukti Tangkapan Layar Zoom Meeting" : "📷 Bukti Foto Kehadiran"}
+                                        </h3>
+                                        <p style={{ margin: "3px 0 0", fontSize: "12px", color: "#64748b" }}>
+                                            {previewImage.name} • {formatDate(previewImage.tanggal)} ({previewImage.jam || "-"})
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewImage(null)}
+                                        style={{
+                                            background: "#e2e8f0",
+                                            border: "none",
+                                            borderRadius: "6px",
+                                            padding: "6px 10px",
+                                            cursor: "pointer",
+                                            fontSize: "13px",
+                                            fontWeight: "700",
+                                            color: "#334155",
+                                        }}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                                <div style={{ padding: "18px", textAlign: "center", background: "#0f172a" }}>
+                                    <img
+                                        src={previewImage.url}
+                                        alt="Bukti Absensi"
+                                        style={{
+                                            maxWidth: "100%",
+                                            maxHeight: "440px",
+                                            borderRadius: "6px",
+                                            objectFit: "contain",
+                                            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                                        }}
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = "https://placehold.co/600x400?text=Gambar+Tidak+Ditemukan";
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ padding: "12px 20px", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc" }}>
+                                    <span style={{ fontSize: "12px", color: "#64748b" }}>
+                                        {previewImage.isZoom ? "Peserta memilih kehadiran daring / Zoom" : "Presensi luring di kantor"}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewImage(null)}
+                                        style={{
+                                            background: "#4f46e5",
+                                            color: "#ffffff",
+                                            border: "none",
+                                            padding: "8px 18px",
+                                            borderRadius: "6px",
+                                            fontWeight: "600",
+                                            fontSize: "13px",
+                                            cursor: "pointer",
+                                        }}
+                                    >
+                                        Tutup
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     )}
 

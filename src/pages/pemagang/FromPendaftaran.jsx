@@ -2,14 +2,44 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import { getStoredUser } from '../../utils/auth';
+import {
+  GraduationCap,
+  User,
+  Mail,
+  Phone,
+  BookOpen,
+  Building,
+  Calendar,
+  FileText,
+  UploadCloud,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  AlertCircle,
+  LogOut,
+  ArrowRight,
+  ShieldCheck,
+  Sparkles,
+  MapPin,
+  Camera,
+  Download,
+  Check,
+  Send,
+  MessageCircle
+} from 'lucide-react';
 
 export default function FormPendaftaran() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [myRegistration, setMyRegistration] = useState(null);
   const [replyLetterMessage, setReplyLetterMessage] = useState('');
   const [isDownloadingReplyLetter, setIsDownloadingReplyLetter] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState(() => getStoredUser() || {});
+  const [waNotification, setWaNotification] = useState(null);
+  const [showWaModal, setShowWaModal] = useState(false);
+  
   const [formData, setFormData] = useState({ 
+    nim: loggedInUser.nim || '',
     no_hp: loggedInUser.no_hp || '',
     program_studi: loggedInUser.program_studi || '',
     alamat: loggedInUser.alamat || '',
@@ -20,7 +50,7 @@ export default function FormPendaftaran() {
   });
 
   const [listPeriode, setListPeriode] = useState([]);
-  const displayName = loggedInUser.name || loggedInUser.nama || loggedInUser.email || 'Pengguna';
+  const displayName = loggedInUser.name || loggedInUser.nama || loggedInUser.email || 'Peserta';
   const photoPreviewUrl = useRef(null);
   const [photoPreview, setPhotoPreview] = useState(null);
 
@@ -44,13 +74,14 @@ export default function FormPendaftaran() {
           localStorage.setItem('user', JSON.stringify(user));
           setFormData((current) => ({
             ...current,
+            nim: user.nim || current.nim || '',
             no_hp: user.no_hp || current.no_hp,
             program_studi: user.program_studi || current.program_studi,
             alamat: user.alamat || current.alamat,
           }));
         }
-        setListPeriode(periodeRes.data.data);
-        if (pendaftaranRes.data.data) {
+        setListPeriode(periodeRes.data?.data || []);
+        if (pendaftaranRes.data?.data) {
           const reg = pendaftaranRes.data.data;
           setMyRegistration(reg);
           if (reg.user) {
@@ -71,6 +102,7 @@ export default function FormPendaftaran() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
     const payload = new FormData();
     payload.append('no_hp', formData.no_hp);
@@ -79,6 +111,9 @@ export default function FormPendaftaran() {
     payload.append('periode_id', formData.periode_id);
     payload.append('asal_instansi', formData.asal_instansi);
     payload.append('pas_foto', formData.pas_foto);
+    if (formData.nim) {
+      payload.append('nim', formData.nim);
+    }
     if (formData.file_surat_pengantar) {
       payload.append('file_surat_pengantar', formData.file_surat_pengantar);
     }
@@ -89,16 +124,25 @@ export default function FormPendaftaran() {
           'Content-Type': 'multipart/form-data',
         }
       });
-      const updatedUser = response.data.data.user;
+      const updatedUser = response.data.data?.user;
       if (updatedUser) {
         setLoggedInUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
       }
       setMyRegistration(response.data.data);
       setIsSubmitted(true);
-      alert(response.data.message);
+      const waInfo = response.data.whatsapp_notification;
+      if (waInfo) {
+        setWaNotification(waInfo);
+        if (waInfo.wa_url) {
+          // Otomatis langsung buka WhatsApp tanpa ada pop-up pratinjau yang menghalangi
+          window.open(waInfo.wa_url, '_blank');
+        }
+      }
     } catch (error) {
-      alert(error.response?.data?.message || 'Gagal mengirim pendaftaran');
+      alert(error.response?.data?.message || 'Gagal mengirim pendaftaran. Periksa kembali kelengkapan formulir Anda.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -139,7 +183,7 @@ export default function FormPendaftaran() {
     try {
       const response = await api.put('/pendaftaran/cancel');
       setMyRegistration(response.data.data);
-      alert(response.data.message);
+      alert(response.data.message || 'Pengajuan magang berhasil dibatalkan.');
     } catch (error) {
       alert(error.response?.data?.message || 'Gagal membatalkan pengajuan');
     }
@@ -160,304 +204,644 @@ export default function FormPendaftaran() {
     window.location.replace('/login');
   };
 
+  const inputStyle = {
+    width: '100%',
+    padding: '12px 14px',
+    borderRadius: '8px',
+    border: '1.5px solid #cbd5e1',
+    outline: 'none',
+    fontSize: '14px',
+    boxSizing: 'border-box',
+    color: '#0f172a',
+    background: '#ffffff',
+    transition: 'all 0.2s ease',
+  };
+
+  const labelStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    marginBottom: '8px',
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#1e293b',
+  };
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: "'Inter', 'Segoe UI', Arial, sans-serif", background: '#f8fafc', flexDirection: 'column' }}>
-      <nav style={{ background: '#1e293b', padding: '15px 30px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '32px', height: '32px', background: '#3b82f6', borderRadius: '6px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '16px' }}>🎓</div>
-          <h3 style={{ margin: 0, fontWeight: '600' }}>
-            {myRegistration?.status === 'Pemagang Aktif' ? 'Portal Peserta Magang' : 'Portal Calon Pemagang'}
-          </h3>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <span style={{ fontSize: '14px', color: '#cbd5e1' }}>Halo, {displayName}!</span>
-          <button onClick={handleLogout} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}>Logout</button>
-        </div>
-      </nav>
+    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)', flexDirection: 'column' }}>
+      
+      {/* Top Navbar Modern */}
+      <header style={{ background: '#0f172a', borderBottom: '1px solid #1e293b', padding: '14px 28px', color: '#ffffff', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)' }}>
+        <div style={{ maxWidth: '1040px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '40px', height: '40px', background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', borderRadius: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)' }}>
+              <GraduationCap size={22} color="#ffffff" />
+            </div>
+            <div>
+              <div style={{ fontSize: '16px', fontWeight: '700', letterSpacing: '-0.2px', color: '#f8fafc' }}>
+                {myRegistration?.status === 'Pemagang Aktif' ? 'Portal Peserta Magang' : 'Portal Calon Pemagang'}
+              </div>
+              <div style={{ fontSize: '11px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
+                Sistem Pendaftaran & Administrasi Magang
+              </div>
+            </div>
+          </div>
 
-      <div style={{ flex: 1, padding: '40px 20px', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
-        <div style={{ width: '100%', maxWidth: '700px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255, 255, 255, 0.06)', padding: '6px 14px', borderRadius: '30px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              <span style={{ fontSize: '13px', fontWeight: '500', color: '#f1f5f9' }}>
+                {displayName}
+              </span>
+            </div>
 
-          {/* Status Alert Dinamis */}
+            <button 
+              onClick={handleLogout} 
+              title="Keluar dari akun"
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px', 
+                background: 'rgba(239, 68, 68, 0.12)', 
+                color: '#f87171', 
+                border: '1px solid rgba(239, 68, 68, 0.25)', 
+                padding: '7px 14px', 
+                borderRadius: '8px', 
+                cursor: 'pointer', 
+                fontWeight: '600', 
+                fontSize: '13px',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)'; e.currentTarget.style.color = '#f87171'; }}
+            >
+              <LogOut size={14} />
+              <span>Keluar</span>
+            </button>
+          </div>
+
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main style={{ flex: 1, padding: '32px 20px 60px' }}>
+        <div style={{ maxWidth: '860px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+          {/* Hero Banner Modern */}
+          <div style={{
+            background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #1e3a8a 100%)',
+            borderRadius: '18px',
+            padding: '30px 34px',
+            color: '#ffffff',
+            boxShadow: '0 10px 30px -5px rgba(30, 27, 75, 0.35)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            {/* Background Accent Shapes */}
+            <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '200px', height: '200px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(99, 102, 241, 0) 70%)', pointerEvents: 'none' }}></div>
+            <div style={{ position: 'absolute', bottom: '-60px', left: '30%', width: '180px', height: '180px', borderRadius: '50%', background: 'radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0) 70%)', pointerEvents: 'none' }}></div>
+
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(8px)', padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '12px', border: '1px solid rgba(255, 255, 255, 0.15)' }}>
+                <Sparkles size={13} color="#fbbf24" />
+                <span>Program Magang Resmi</span>
+              </div>
+              <h1 style={{ margin: '0 0 8px', fontSize: '26px', fontWeight: '800', letterSpacing: '-0.5px', color: '#ffffff' }}>
+                Formulir Pengajuan Magang Baru
+              </h1>
+              <p style={{ margin: 0, fontSize: '14px', color: '#cbd5e1', lineHeight: '1.6', maxWidth: '620px' }}>
+                Lengkapi biodata diri, identitas akademik kampus, dan unggah berkas persyaratan resmi untuk diproses dan diverifikasi oleh Admin.
+              </p>
+
+              {/* Stepper Wizard Indicator */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '24px', paddingTop: '20px', borderTop: '1px solid rgba(255, 255, 255, 0.12)', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: isSubmitted ? '#10b981' : '#38bdf8', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                    {isSubmitted ? '✓' : '1'}
+                  </div>
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#f8fafc' }}>1. Isi Formulir</span>
+                </div>
+                <span style={{ color: 'rgba(255, 255, 255, 0.3)', fontSize: '12px' }}>—</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: isSubmitted ? 1 : 0.65 }}>
+                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: isSubmitted ? (myRegistration?.status === 'Pemagang Aktif' ? '#10b981' : '#f59e0b') : 'rgba(255, 255, 255, 0.18)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                    2
+                  </div>
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#f8fafc' }}>2. Verifikasi Admin</span>
+                </div>
+                <span style={{ color: 'rgba(255, 255, 255, 0.3)', fontSize: '12px' }}>—</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: myRegistration?.status === 'Pemagang Aktif' ? 1 : 0.65 }}>
+                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: myRegistration?.status === 'Pemagang Aktif' ? '#10b981' : 'rgba(255, 255, 255, 0.18)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                    3
+                  </div>
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: '#f8fafc' }}>3. Mulai Magang</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Status Alert Dinamis Saat Sudah Mengajukan */}
           {isSubmitted && myRegistration && (
-            <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
               {myRegistration.status === 'Pemagang Aktif' && (
-                <div style={{ background: '#f0fdf4', border: '2px solid #4ade80', padding: '25px', borderRadius: '12px', display: 'flex', gap: '20px', alignItems: 'flex-start', boxShadow: '0 4px 6px -1px rgba(74, 222, 128, 0.2)' }}>
-                  <div style={{ fontSize: '32px' }}>🎉</div>
+                <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', padding: '28px', borderRadius: '16px', display: 'flex', gap: '20px', alignItems: 'flex-start', boxShadow: '0 6px 16px rgba(34, 197, 94, 0.1)' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CheckCircle2 size={28} color="#16a34a" />
+                  </div>
                   <div style={{ flex: 1 }}>
-                    <h4 style={{ margin: '0 0 8px 0', color: '#166534', fontSize: '18px' }}>Selamat! Pendaftaran Magang Anda Diterima</h4>
-                    <p style={{ margin: 0, color: '#15803d', fontSize: '14px', lineHeight: '1.6' }}>
-                      Anda telah resmi terdaftar sebagai pemagang aktif untuk periode <strong>{myRegistration.periode ? `${new Date(myRegistration.periode.tanggal_mulai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).toLowerCase()} - ${new Date(myRegistration.periode.tanggal_selesai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).toLowerCase()}` : '-'}</strong>.
-                      <br/>Pembimbing Lapangan Anda adalah: <strong>{myRegistration.pembimbing?.nama}</strong>
+                    <div style={{ display: 'inline-block', background: '#dcfce7', color: '#166534', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>
+                      STATUS: DITERIMA
+                    </div>
+                    <h3 style={{ margin: '0 0 8px 0', color: '#14532d', fontSize: '20px', fontWeight: '800' }}>
+                      Selamat! Pengajuan Magang Anda Telah Disetujui
+                    </h3>
+                    <p style={{ margin: 0, color: '#166534', fontSize: '14px', lineHeight: '1.6' }}>
+                      Anda telah resmi terdaftar sebagai pemagang aktif untuk periode <strong>{myRegistration.periode ? `${new Date(myRegistration.periode.tanggal_mulai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} s.d. ${new Date(myRegistration.periode.tanggal_selesai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}` : '-'}</strong>.
+                      <br/>Pembimbing Lapangan yang ditugaskan: <strong>{myRegistration.pembimbing?.nama || myRegistration.pembimbing?.name || 'Belum Ditentukan'}</strong>
                     </p>
+
                     {myRegistration.file_surat_balasan && (
-                      <div style={{ marginTop: '15px', padding: '15px', background: 'white', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                      <div style={{ marginTop: '20px', padding: '16px 20px', background: '#ffffff', borderRadius: '12px', border: '1px solid #bbf7d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
                         <div>
-                            <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#166534' }}>SURAT BALASAN RESMI</div>
-                            <div style={{ fontSize: '14px', color: '#374151' }}>📄 {myRegistration.file_surat_balasan}</div>
+                          <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <FileText size={15} />
+                            SURAT BALASAN RESMI KANTOR
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#4b5563', marginTop: '2px' }}>
+                            {myRegistration.file_surat_balasan.split('/').pop()}
+                          </div>
                         </div>
                         <button
                           type="button"
                           onClick={handleDownloadReplyLetter}
                           disabled={isDownloadingReplyLetter}
-                          style={{ marginTop: '12px', background: '#16a34a', color: 'white', padding: '8px 15px', border: 'none', borderRadius: '6px', cursor: isDownloadingReplyLetter ? 'wait' : 'pointer', fontWeight: 'bold', fontSize: '13px' }}
+                          style={{ background: '#16a34a', color: '#ffffff', padding: '10px 18px', border: 'none', borderRadius: '8px', cursor: isDownloadingReplyLetter ? 'wait' : 'pointer', fontWeight: '700', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 6px rgba(22, 163, 74, 0.3)' }}
                         >
-                          {isDownloadingReplyLetter ? 'Mengunduh...' : myRegistration.surat_balasan_diterima_at ? 'Unduh Ulang Surat' : 'Unduh Surat Balasan'}
+                          <Download size={16} />
+                          {isDownloadingReplyLetter ? 'Mengunduh...' : myRegistration.surat_balasan_diterima_at ? 'Unduh Ulang Surat' : 'Unduh Surat Balasan Resmi'}
                         </button>
-                        {replyLetterMessage && <p role="status" style={{ margin: '10px 0 0', color: '#166534', fontSize: '13px' }}>{replyLetterMessage}</p>}
-                        {myRegistration.surat_balasan_diterima_at && (
-                          <Link to="/absensi" style={{ display: 'inline-block', marginTop: '12px', marginLeft: '10px', color: '#4338ca', fontWeight: '600', fontSize: '13px' }}>
-                            Lanjut ke absensi →
-                          </Link>
-                        )}
                       </div>
                     )}
-                    {!myRegistration.file_surat_balasan && (
-                      <p style={{ marginTop: '15px', color: '#92400e', fontSize: '14px' }}>
-                        Surat balasan belum tersedia. Hubungi admin agar surat diunggah sebelum Anda melakukan absensi.
-                      </p>
+                    {replyLetterMessage && <p role="status" style={{ margin: '12px 0 0', color: '#166534', fontSize: '13px', fontWeight: '500' }}>{replyLetterMessage}</p>}
+                    
+                    {myRegistration.surat_balasan_diterima_at && (
+                      <div style={{ marginTop: '16px' }}>
+                        <Link to="/absensi" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#4338ca', color: '#ffffff', padding: '10px 20px', borderRadius: '8px', textDecoration: 'none', fontWeight: '700', fontSize: '14px', boxShadow: '0 4px 10px rgba(67, 56, 202, 0.3)' }}>
+                          <span>Buka Menu Absensi Sekarang</span>
+                          <ArrowRight size={16} />
+                        </Link>
+                      </div>
                     )}
-                  </div>
-                </div>
-              )}
-
-              {myRegistration.status === 'Ditolak' && (
-                <div style={{ background: '#fef2f2', border: '2px solid #f87171', padding: '25px', borderRadius: '12px', display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-                  <div style={{ fontSize: '32px' }}>❌</div>
-                  <div>
-                    <h4 style={{ margin: '0 0 8px 0', color: '#991b1b', fontSize: '18px' }}>Mohon Maaf, Pendaftaran Ditolak</h4>
-                    <p style={{ margin: 0, color: '#b91c1c', fontSize: '14px', lineHeight: '1.6' }}>
-                      Berdasarkan verifikasi kami, kuota magang untuk periode ini mungkin sudah penuh atau berkas Anda belum memenuhi syarat.
-                    </p>
                   </div>
                 </div>
               )}
 
               {myRegistration.status === 'Calon Pemagang' && (
-                <div style={{ background: '#eff6ff', border: '2px solid #93c5fd', padding: '25px', borderRadius: '12px', display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-                  <div style={{ fontSize: '32px' }}>⏳</div>
-                  <div>
-                    <h4 style={{ margin: '0 0 8px 0', color: '#1e40af', fontSize: '18px' }}>Berkas Sedang Diproses</h4>
-                    <p style={{ margin: 0, color: '#1d4ed8', fontSize: '14px', lineHeight: '1.6' }}>
-                      Berkas pendaftaran magang Anda berhasil dikirim dan saat ini sedang menunggu proses verifikasi oleh Admin kami. Silakan cek halaman ini secara berkala.
-                    </p>
-                    <button onClick={handleCancel} style={{ marginTop: '15px', background: '#ef4444', color: 'white', padding: '10px 15px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500', fontSize: '13px' }}>
-                      Batalkan Pengajuan
-                    </button>
+                <div style={{ background: '#eff6ff', border: '1.5px solid #bfdbfe', padding: '28px', borderRadius: '16px', display: 'flex', gap: '20px', alignItems: 'flex-start', boxShadow: '0 6px 16px rgba(59, 130, 246, 0.08)' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Clock size={28} color="#2563eb" />
                   </div>
-                </div>
-              )}
-
-              {myRegistration.status === 'Dibatalkan' && (
-                <div style={{ background: '#f8fafc', border: '2px solid #cbd5e1', padding: '25px', borderRadius: '12px', display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-                  <div style={{ fontSize: '32px' }}>📁</div>
-                  <div>
-                    <h4 style={{ margin: '0 0 8px 0', color: '#475569', fontSize: '18px' }}>Pengajuan Dibatalkan</h4>
-                    <p style={{ margin: 0, color: '#64748b', fontSize: '14px', lineHeight: '1.6' }}>
-                      Anda telah membatalkan pengajuan magang ini. Data pendaftaran tetap tersimpan sebagai riwayat.
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'inline-block', background: '#dbeafe', color: '#1d4ed8', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>
+                      STATUS: MENUNGGU VERIFIKASI
+                    </div>
+                    <h3 style={{ margin: '0 0 8px 0', color: '#1e3a8a', fontSize: '19px', fontWeight: '800' }}>
+                      Berkas Pengajuan Anda Sedang Ditinjau Admin
+                    </h3>
+                    <p style={{ margin: 0, color: '#1e40af', fontSize: '14px', lineHeight: '1.6' }}>
+                      Terima kasih telah mengajukan magang! Berkas persyaratan Anda (Surat Pengantar dan Pas Foto) sudah berhasil masuk ke sistem kami dan sedang menunggu persetujuan dari tim Administrator. Silakan pantau halaman ini secara berkala.
                     </p>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
 
-          {myRegistration?.status === 'Pemagang Aktif' && (
-            <section style={{ background: 'white', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(15, 23, 42, 0.04)' }}>
-              <h3 style={{ margin: '0 0 16px', color: '#0f172a', fontSize: '18px' }}>Fitur Peserta Magang</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                {[
-                  ...(myRegistration.surat_balasan_diterima_at ? [{ to: '/absensi', title: 'Absensi Magang', description: 'Lihat dan catat kehadiran.' }] : []),
-                  { to: '/tugas', title: 'Tugas Magang', description: 'Lihat tugas dan kumpulkan hasil.' },
-                  { to: '/laporan', title: 'Laporan Magang', description: 'Kelola dan kirim laporan.' },
-                ].map((feature) => (
-                  <Link
-                    key={feature.to}
-                    to={feature.to}
-                    style={{ display: 'block', padding: '16px', border: '1px solid #cbd5e1', borderRadius: '10px', color: '#1e293b', textDecoration: 'none', background: '#f8fafc' }}
-                  >
-                    <strong style={{ display: 'block', marginBottom: '6px', color: '#4338ca' }}>{feature.title}</strong>
-                    <span style={{ fontSize: '13px', color: '#64748b' }}>{feature.description}</span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Main Form Card (Hanya muncul jika belum daftar) */}
-          {!isSubmitted && (
-            <div style={{ background: 'white', padding: '30px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)' }}>
-              <h2 style={{ margin: '0 0 5px 0', color: '#0f172a', fontSize: '22px' }}>Pengajuan Magang Baru</h2>
-              <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '30px' }}>Lengkapi informasi diri dan pastikan data sesuai dengan surat pengantar.</p>
-
-              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <section style={{ padding: '18px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                  <h3 style={{ margin: '0 0 14px', fontSize: '16px', color: '#0f172a' }}>Informasi Pribadi</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-                    {[
-                      ['Nama Lengkap', loggedInUser.nama || loggedInUser.name || '-'],
-                      ['NIM', loggedInUser.nim || '-'],
-                      ['Email', loggedInUser.email || '-'],
-                    ].map(([label, value]) => (
-                      <div key={label}>
-                        <span style={{ display: 'block', marginBottom: '5px', fontSize: '12px', color: '#64748b' }}>{label}</span>
-                        <div style={{ fontSize: '14px', color: '#334155', fontWeight: '500' }}>{value}</div>
+                    {/* WhatsApp Notification Card */}
+                    <div style={{ marginTop: '16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#22c55e', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(34, 197, 94, 0.3)' }}>
+                          <MessageCircle size={20} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: '700', color: '#15803d' }}>
+                            Notifikasi WhatsApp Resmi Terkirim ke No: {loggedInUser.no_hp || myRegistration.user?.no_hp || '-'}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#166534', marginTop: '2px' }}>
+                            Pesan konfirmasi pendaftaran magang dari PAM Techno telah terkirim ke WhatsApp Anda.
+                          </div>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </section>
-
-                <div>
-                  <label htmlFor="application-phone" style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#334155' }}>No. HP / WhatsApp <span style={{color: '#ef4444'}}>*</span></label>
-                  <input
-                    id="application-phone"
-                    type="tel"
-                    value={formData.no_hp}
-                    onChange={(e) => setFormData({...formData, no_hp: e.target.value})}
-                    placeholder="Contoh: 081234567890"
-                    autoComplete="tel"
-                    maxLength={20}
-                    style={{ width: '100%', padding: '12px 15px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', color: '#334155', background: 'white' }}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="application-study-program" style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#334155' }}>Program Studi / Jurusan <span style={{color: '#ef4444'}}>*</span></label>
-                  <input
-                    id="application-study-program"
-                    type="text"
-                    value={formData.program_studi}
-                    onChange={(e) => setFormData({...formData, program_studi: e.target.value})}
-                    placeholder="Contoh: Teknik Informatika"
-                    maxLength={150}
-                    style={{ width: '100%', padding: '12px 15px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', color: '#334155', background: 'white' }}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="application-address" style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#334155' }}>Alamat Domisili <span style={{color: '#ef4444'}}>*</span></label>
-                  <textarea
-                    id="application-address"
-                    value={formData.alamat}
-                    onChange={(e) => setFormData({...formData, alamat: e.target.value})}
-                    placeholder="Masukkan alamat domisili lengkap"
-                    maxLength={1000}
-                    rows={3}
-                    autoComplete="street-address"
-                    style={{ width: '100%', padding: '12px 15px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', color: '#334155', background: 'white', resize: 'vertical' }}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#334155' }}>Asal Instansi / Universitas <span style={{color: '#ef4444'}}>*</span></label>
-                  <input 
-                    type="text" 
-                    value={formData.asal_instansi} 
-                    onChange={(e) => setFormData({...formData, asal_instansi: e.target.value})}
-                    placeholder="Contoh: Universitas Indonesia"
-                    style={{ width: '100%', padding: '12px 15px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', transition: 'border-color 0.2s', color: '#334155', background: 'white' }}
-                    onFocus={(e) => e.target.style.borderColor = '#4f46e5'}
-                    onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
-                    required 
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#334155' }}>Pilih Gelombang / Periode <span style={{color: '#ef4444'}}>*</span></label>
-                  <select 
-                    value={formData.periode_id} 
-                    onChange={(e) => setFormData({...formData, periode_id: e.target.value})}
-                    style={{ width: '100%', padding: '12px 15px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', background: 'white', color: '#334155' }}
-                  >
-                    <option value="" disabled>-- Pilih Periode --</option>
-                    {listPeriode.map(p => {
-                      const formatDate = (d) => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).toLowerCase();
-                      return (
-                        <option key={p.id} value={p.id}>
-                          {formatDate(p.tanggal_mulai)} - {formatDate(p.tanggal_selesai)}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#334155' }}>Upload Surat Pengantar (.pdf) <span style={{color: '#ef4444'}}>*</span></label>
-                  <div style={{ position: 'relative', width: '100%', padding: '30px', border: '2px dashed #cbd5e1', borderRadius: '8px', textAlign: 'center', background: '#f8fafc', boxSizing: 'border-box', transition: 'all 0.2s' }}>
-                    <input 
-                      type="file" 
-                      accept=".pdf"
-                      onChange={(e) => setFormData({...formData, file_surat_pengantar: e.target.files[0]})}
-                      style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
-                      required
-                    />
-                    <div style={{ fontSize: '30px', marginBottom: '10px' }}>📄</div>
-                    <p style={{ margin: 0, fontSize: '14px', color: '#475569', fontWeight: '500' }}>
-                      {formData.file_surat_pengantar ? formData.file_surat_pengantar.name : 'Klik atau seret file PDF ke sini'}
-                    </p>
-                    <p style={{ margin: '5px 0 0', fontSize: '12px', color: '#94a3b8' }}>Maksimal ukuran file: 2MB</p>
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="application-photo" style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
-                    Pas Foto 3 × 4 <span style={{color: '#ef4444'}}>*</span>
-                  </label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                    {photoPreview ? (
-                      <img
-                        src={photoPreview}
-                        alt="Pratinjau pas foto 3 x 4"
-                        style={{ width: '90px', height: '120px', objectFit: 'cover', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#f1f5f9' }}
-                      />
-                    ) : (
-                      <div style={{ width: '90px', height: '120px', display: 'grid', placeItems: 'center', textAlign: 'center', padding: '8px', boxSizing: 'border-box', color: '#64748b', border: '1px dashed #94a3b8', borderRadius: '6px', background: '#f8fafc', fontSize: '12px' }}>
-                        Pratinjau<br />3 × 4
-                      </div>
-                    )}
-                    <div style={{ flex: '1 1 240px' }}>
-                      <input
-                        id="application-photo"
-                        type="file"
-                        accept="image/jpeg,image/png,.jpg,.jpeg,.png"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] || null;
-                          if (file && file.size > 2 * 1024 * 1024) {
-                            alert('Ukuran pas foto maksimal 2 MB.');
-                            e.target.value = '';
-                            return;
-                          }
-                          if (photoPreviewUrl.current) URL.revokeObjectURL(photoPreviewUrl.current);
-                          photoPreviewUrl.current = file ? URL.createObjectURL(file) : null;
-                          setPhotoPreview(photoPreviewUrl.current);
-                          setFormData({ ...formData, pas_foto: file });
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const targetPhone = String(loggedInUser.no_hp || myRegistration.user?.no_hp || '').replace(/[^0-9]/g, '').replace(/^0/, '62');
+                          const waText = encodeURIComponent(
+                            `Halo, ${loggedInUser.nama || loggedInUser.name || 'Peserta'} 👋\n\nTerima kasih telah mendaftar program magang di PAM Techno.\n\nKami informasikan bahwa formulir pendaftaran magang Anda telah berhasil kami terima.\n\n📋 Status: Pendaftaran Diterima\n📅 Tahap selanjutnya: Verifikasi berkas dan data peserta oleh admin.\n\nMohon menunggu informasi selanjutnya melalui WhatsApp ini. Jika terdapat data yang perlu dilengkapi, admin akan menghubungi Anda.\n\nTerima kasih atas perhatian dan partisipasi Anda.\n\nHormat kami,\nAdmin Penerimaan Magang\nPAM Techno`
+                          );
+                          window.open(`https://wa.me/${targetPhone}?text=${waText}`, '_blank');
                         }}
-                        required
-                        style={{ display: 'block', width: '100%', fontSize: '14px', color: '#334155' }}
-                      />
-                      <p style={{ margin: '8px 0 0', fontSize: '12px', lineHeight: 1.5, color: '#64748b' }}>
-                        Pilih foto JPG, JPEG, atau PNG. Pratinjau menggunakan rasio 3:4 dan ukuran file maksimal 2 MB.
-                      </p>
+                        style={{
+                          background: '#22c55e',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontWeight: '700',
+                          fontSize: '12px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 2px 6px rgba(34, 197, 94, 0.35)',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <MessageCircle size={15} />
+                        <span>Buka Salinan Pesan WhatsApp</span>
+                      </button>
+                    </div>
+
+                    <div style={{ marginTop: '18px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button 
+                        onClick={handleCancel} 
+                        style={{ background: '#ffffff', color: '#dc2626', border: '1px solid #fca5a5', padding: '9px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s ease' }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#ffffff'}
+                      >
+                        <XCircle size={15} />
+                        Batalkan Pengajuan
+                      </button>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}>Pengajuan dikirim pada: {new Date(myRegistration.created_at || myRegistration.tanggal_daftar || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                     </div>
                   </div>
                 </div>
+              )}
 
-                <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '10px 0' }} />
+              {myRegistration.status === 'Ditolak' && (
+                <div style={{ background: '#fef2f2', border: '1.5px solid #fecaca', padding: '28px', borderRadius: '16px', display: 'flex', gap: '20px', alignItems: 'flex-start', boxShadow: '0 6px 16px rgba(239, 68, 68, 0.08)' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <XCircle size={28} color="#dc2626" />
+                  </div>
+                  <div>
+                    <div style={{ display: 'inline-block', background: '#fee2e2', color: '#991b1b', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold', marginBottom: '6px' }}>
+                      STATUS: PENDAFTARAN DITOLAK
+                    </div>
+                    <h3 style={{ margin: '0 0 8px 0', color: '#991b1b', fontSize: '19px', fontWeight: '800' }}>
+                      Mohon Maaf, Pengajuan Magang Belum Dapat Diterima
+                    </h3>
+                    <p style={{ margin: 0, color: '#b91c1c', fontSize: '14px', lineHeight: '1.6' }}>
+                      Berdasarkan hasil verifikasi panitia, kuota magang untuk periode pilihan Anda mungkin sudah penuh atau berkas belum memenuhi kualifikasi instansi kami. Anda dapat menghubungi pihak Admin untuk informasi lebih lanjut.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Form Pengajuan Utama (Hanya Tampil Jika Belum Mengajukan) */}
+          {!isSubmitted && (
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+              
+              {/* Card 1: Informasi Identitas Akun */}
+              <div style={{ background: '#ffffff', borderRadius: '16px', padding: '26px 28px', border: '1px solid #e2e8f0', boxShadow: '0 4px 16px -2px rgba(15, 23, 42, 0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+                  <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#e0e7ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <User size={18} />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Identitas Mahasiswa</h2>
+                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>Data identitas utama yang terdaftar pada akun Anda.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                  
+                  {/* Nama Lengkap */}
+                  <div style={{ background: '#f8fafc', padding: '14px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      <User size={12} color="#6366f1" />
+                      <span>Nama Lengkap</span>
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>
+                      {loggedInUser.nama || loggedInUser.name || '-'}
+                    </div>
+                  </div>
+
+                  {/* NIM */}
+                  <div style={{ background: '#f8fafc', padding: '14px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      <FileText size={12} color="#6366f1" />
+                      <span>Nomor Induk Mahasiswa (NIM)</span>
+                    </div>
+                    {loggedInUser.nim ? (
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a' }}>
+                        {loggedInUser.nim}
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={formData.nim || ''}
+                        onChange={(e) => setFormData({ ...formData, nim: e.target.value })}
+                        placeholder="Ketik NIM Anda di sini"
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1.5px solid #cbd5e1',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          color: '#0f172a',
+                          background: '#ffffff',
+                          boxSizing: 'border-box',
+                          outline: 'none',
+                          marginTop: '2px'
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Email */}
+                  <div style={{ background: '#f8fafc', padding: '14px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
+                      <Mail size={12} color="#6366f1" />
+                      <span>Email Terdaftar</span>
+                    </div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>
+                      {loggedInUser.email || '-'}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Card 2: Informasi Akademik & Periode */}
+              <div style={{ background: '#ffffff', borderRadius: '16px', padding: '26px 28px', border: '1px solid #e2e8f0', boxShadow: '0 4px 16px -2px rgba(15, 23, 42, 0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+                  <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#dbeafe', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Building size={18} />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Data Akademik & Pilihan Periode</h2>
+                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>Asal instansi kampus dan gelombang pelaksanaan magang.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
+                  
+                  {/* Asal Instansi */}
+                  <div>
+                    <label style={labelStyle}>
+                      <Building size={14} color="#4f46e5" />
+                      <span>Asal Instansi / Universitas <span style={{ color: '#ef4444' }}>*</span></span>
+                    </label>
+                    <input 
+                      type="text" 
+                      value={formData.asal_instansi} 
+                      onChange={(e) => setFormData({ ...formData, asal_instansi: e.target.value })}
+                      placeholder="Contoh: Universitas Indonesia"
+                      style={inputStyle}
+                      required 
+                    />
+                  </div>
+
+                  {/* Program Studi */}
+                  <div>
+                    <label style={labelStyle}>
+                      <BookOpen size={14} color="#4f46e5" />
+                      <span>Program Studi / Jurusan <span style={{ color: '#ef4444' }}>*</span></span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.program_studi}
+                      onChange={(e) => setFormData({ ...formData, program_studi: e.target.value })}
+                      placeholder="Contoh: Teknik Informatika / Sistem Informasi"
+                      style={inputStyle}
+                      required
+                    />
+                  </div>
+
+                  {/* Periode Magang */}
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>
+                      <Calendar size={14} color="#4f46e5" />
+                      <span>Pilih Gelombang / Periode Magang <span style={{ color: '#ef4444' }}>*</span></span>
+                    </label>
+                    <select 
+                      value={formData.periode_id} 
+                      onChange={(e) => setFormData({ ...formData, periode_id: e.target.value })}
+                      style={{ ...inputStyle, cursor: 'pointer', background: '#f8fafc' }}
+                      required
+                    >
+                      <option value="" disabled>-- Pilih Periode Magang Tersedia --</option>
+                      {listPeriode.map(p => {
+                        const formatDate = (d) => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                        return (
+                          <option key={p.id} value={p.id}>
+                            {p.nama ? `${p.nama} : ` : ''}{formatDate(p.tanggal_mulai)} s.d. {formatDate(p.tanggal_selesai)}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Card 3: Kontak & Domisili */}
+              <div style={{ background: '#ffffff', borderRadius: '16px', padding: '26px 28px', border: '1px solid #e2e8f0', boxShadow: '0 4px 16px -2px rgba(15, 23, 42, 0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+                  <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Phone size={18} />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Kontak & Domisili</h2>
+                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>Nomor telepon aktif dan alamat tempat tinggal selama magang.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
+                  
+                  {/* No HP */}
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>
+                      <Phone size={14} color="#16a34a" />
+                      <span>Nomor HP / WhatsApp Aktif <span style={{ color: '#ef4444' }}>*</span></span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.no_hp}
+                      onChange={(e) => setFormData({ ...formData, no_hp: e.target.value })}
+                      placeholder="Contoh: 081234567890"
+                      maxLength={20}
+                      style={inputStyle}
+                      required
+                    />
+                    <span style={{ display: 'block', fontSize: '11px', color: '#64748b', marginTop: '5px' }}>
+                      *Pastikan nomor terhubung dengan WhatsApp untuk konfirmasi pengumuman penerimaan.
+                    </span>
+                  </div>
+
+                  {/* Alamat Domisili */}
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>
+                      <MapPin size={14} color="#ef4444" />
+                      <span>Alamat Domisili Lengkap <span style={{ color: '#ef4444' }}>*</span></span>
+                    </label>
+                    <textarea
+                      value={formData.alamat}
+                      onChange={(e) => setFormData({ ...formData, alamat: e.target.value })}
+                      placeholder="Masukkan alamat tempat tinggal / kost / domisili lengkap Anda saat ini..."
+                      maxLength={1000}
+                      rows={3}
+                      style={{ ...inputStyle, resize: 'vertical' }}
+                      required
+                    />
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Card 4: Berkas Persyaratan (PDF & Pas Foto) */}
+              <div style={{ background: '#ffffff', borderRadius: '16px', padding: '26px 28px', border: '1px solid #e2e8f0', boxShadow: '0 4px 16px -2px rgba(15, 23, 42, 0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+                  <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: '#fef3c7', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <UploadCloud size={18} />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0f172a' }}>Berkas Persyaratan Magang</h2>
+                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>Unggah surat pengantar resmi dari kampus dan pas foto formal Anda.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                  
+                  {/* Upload Surat Pengantar */}
+                  <div>
+                    <label style={labelStyle}>
+                      <FileText size={14} color="#4f46e5" />
+                      <span>Surat Pengantar Kampus (.pdf) <span style={{ color: '#ef4444' }}>*</span></span>
+                    </label>
+                    <div style={{
+                      position: 'relative',
+                      width: '100%',
+                      padding: '24px 16px',
+                      border: formData.file_surat_pengantar ? '2px solid #22c55e' : '2px dashed #cbd5e1',
+                      borderRadius: '12px',
+                      textAlign: 'center',
+                      background: formData.file_surat_pengantar ? '#f0fdf4' : '#f8fafc',
+                      boxSizing: 'border-box',
+                      transition: 'all 0.2s',
+                      cursor: 'pointer'
+                    }}>
+                      <input 
+                        type="file" 
+                        accept=".pdf"
+                        onChange={(e) => setFormData({ ...formData, file_surat_pengantar: e.target.files[0] })}
+                        style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                        required
+                      />
+                      <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: formData.file_surat_pengantar ? '#dcfce7' : '#e0e7ff', color: formData.file_surat_pengantar ? '#16a34a' : '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+                        {formData.file_surat_pengantar ? <Check size={22} /> : <UploadCloud size={22} />}
+                      </div>
+                      <div style={{ fontSize: '14px', color: '#0f172a', fontWeight: '700', marginBottom: '3px' }}>
+                        {formData.file_surat_pengantar ? formData.file_surat_pengantar.name : 'Pilih Berkas PDF'}
+                      </div>
+                      <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
+                        {formData.file_surat_pengantar ? '✓ File PDF berhasil dipilih' : 'Klik atau seret file PDF surat pengantar (Maks. 2MB)'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Upload Pas Foto 3x4 */}
+                  <div>
+                    <label style={labelStyle}>
+                      <Camera size={14} color="#4f46e5" />
+                      <span>Pas Foto Formal 3 × 4 <span style={{ color: '#ef4444' }}>*</span></span>
+                    </label>
+                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                      {photoPreview ? (
+                        <img
+                          src={photoPreview}
+                          alt="Pratinjau pas foto"
+                          style={{ width: '84px', height: '112px', objectFit: 'cover', borderRadius: '8px', border: '2px solid #3b82f6', boxShadow: '0 4px 8px rgba(0,0,0,0.1)', flexShrink: 0 }}
+                        />
+                      ) : (
+                        <div style={{ width: '84px', height: '112px', borderRadius: '8px', border: '2px dashed #94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '11px', textAlign: 'center', flexShrink: 0, background: '#ffffff' }}>
+                          <Camera size={24} style={{ marginBottom: '4px', opacity: 0.6 }} />
+                          <span>Ukuran<br />3 × 4</span>
+                        </div>
+                      )}
+                      
+                      <div style={{ flex: 1 }}>
+                        <input
+                          id="application-photo"
+                          type="file"
+                          accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0] || null;
+                            if (file && file.size > 2 * 1024 * 1024) {
+                              alert('Ukuran pas foto maksimal 2 MB.');
+                              e.target.value = '';
+                              return;
+                            }
+                            if (photoPreviewUrl.current) URL.revokeObjectURL(photoPreviewUrl.current);
+                            photoPreviewUrl.current = file ? URL.createObjectURL(file) : null;
+                            setPhotoPreview(photoPreviewUrl.current);
+                            setFormData({ ...formData, pas_foto: file });
+                          }}
+                          required
+                          style={{ display: 'block', width: '100%', fontSize: '13px', color: '#475569' }}
+                        />
+                        <span style={{ display: 'block', fontSize: '11px', color: '#64748b', marginTop: '6px', lineHeight: '1.4' }}>
+                          Format file: JPG, JPEG, atau PNG.<br />Gunakan foto berpakaian rapi / almamater formal.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Submit Action Box */}
+              <div style={{ background: '#ffffff', borderRadius: '16px', padding: '24px 28px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', boxShadow: '0 4px 16px -2px rgba(15, 23, 42, 0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <ShieldCheck size={22} color="#16a34a" />
+                  <span style={{ fontSize: '13px', color: '#475569', fontWeight: '500' }}>
+                    Pastikan seluruh data dan berkas yang Anda unggah sudah benar sebelum dikirimkan ke Admin.
+                  </span>
+                </div>
 
                 <button 
                   type="submit" 
-                  style={{ background: '#4f46e5', color: 'white', padding: '14px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '15px', boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.4)' }}
+                  disabled={isSubmitting}
+                  style={{
+                    background: isSubmitting ? '#94a3b8' : 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)',
+                    color: '#ffffff',
+                    padding: '14px 28px',
+                    border: 'none',
+                    borderRadius: '10px',
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    fontWeight: '700',
+                    fontSize: '15px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    boxShadow: '0 4px 14px rgba(79, 70, 229, 0.4)',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => { if (!isSubmitting) e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; }}
                 >
-                  Kirim Pengajuan Magang
+                  <Send size={16} />
+                  <span>{isSubmitting ? 'Mengirim Data...' : 'Kirim Pengajuan Magang'}</span>
                 </button>
-              </form>
-            </div>
+              </div>
+
+            </form>
           )}
+
         </div>
-      </div>
+      </main>
+
     </div>
   );
 }
