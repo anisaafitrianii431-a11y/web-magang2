@@ -56,8 +56,10 @@ class PendaftaranController extends Controller
             }
         }
 
-        $pendaftaran->surat_balasan_diterima_at = now();
-        $pendaftaran->save();
+        if (empty($pendaftaran->surat_balasan_diterima_at)) {
+            $pendaftaran->surat_balasan_diterima_at = now();
+            $pendaftaran->save();
+        }
 
         return $disk->download($relativePath, basename($relativePath));
     }
