@@ -395,7 +395,6 @@ class AbsensiController extends Controller
                     ], 422);
                 }
             }
-            }
 
             $attendance->update([
                 'jam_pulang' => now()->format('H:i:s'),
