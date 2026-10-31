@@ -13,15 +13,39 @@ class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
     {
+        $existingUser = User::where('email', $request->input('email'))->first();
         $validated = $request->validate([
             'nama' => 'required_without:name|string|max:255',
             'name' => 'required_without:nama|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email',
-            'nim' => 'nullable|string|max:50|unique:users,nim',
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($existingUser?->id)],
+            'nim' => ['nullable', 'string', 'max:50', Rule::unique('users', 'nim')->ignore($existingUser?->id)],
             'password' => 'required|string|min:8',
             'role' => ['sometimes', Rule::in(['Pemagang', 'pemagang', 'peserta'])],
             'no_hp' => 'nullable|string|max:255',
         ]);
+
+        if ($existingUser) {
+            if ($existingUser->nim !== null
+                || ! in_array(strtolower((string) $existingUser->role), ['peserta', 'pemagang', 'calon pemagang'], true)
+                || ! Hash::check($validated['password'], $existingUser->password)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Email sudah terdaftar. Silakan masuk menggunakan akun tersebut.',
+                ], 422);
+            }
+
+            $existingUser->nim = $validated['nim'] ?? null;
+            $existingUser->no_hp = $validated['no_hp'] ?? $existingUser->no_hp;
+            $existingUser->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'NIM berhasil ditambahkan ke akun Anda. Silakan masuk.',
+                'data' => [
+                    'user' => $this->presentUser($existingUser),
+                ],
+            ]);
+        }
 
         $user = User::create([
             'name' => $validated['nama'] ?? $validated['name'],

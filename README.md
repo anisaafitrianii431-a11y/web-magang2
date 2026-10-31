@@ -21,6 +21,17 @@ Laravel is a web application framework with expressive, elegant syntax. We belie
 
 Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
+## Penandaan Alpa otomatis
+
+Peserta magang aktif yang belum memiliki catatan absensi masuk akan otomatis dicatat sebagai **Alpa** setiap hari pukul 08.00 WIB. Jalankan scheduler Laravel agar tugas ini berjalan:
+
+- Windows/Laragon: dari folder `web-magang`, jalankan `php artisan schedule:work` dan biarkan proses tetap berjalan.
+- Server dengan cron: tambahkan `* * * * * cd /path/to/web-magang && php artisan schedule:run >> /dev/null 2>&1` ke crontab.
+
+Tugas ini tidak mengubah catatan absensi yang sudah ada, seperti Hadir atau Izin.
+
+Pembimbing dapat mengatur waktu mulai absensi pulang untuk peserta bimbingannya melalui menu **Jadwal Absensi**. Jika belum diatur, waktu pulang menggunakan default pukul 17.00 WIB.
+
 ## Learning Laravel
 
 Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
