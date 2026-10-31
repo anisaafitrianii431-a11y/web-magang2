@@ -16,6 +16,7 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
     const roleLabel = isAdmin ? "Admin" : isPembimbing ? "Pembimbing" : "Peserta";
     const menu = isAdmin
         ? [
+            { to: "/admin/landing-page", label: "Landing Page", icon: "🌐" },
             { to: "/admin/pendaftaran", label: "Pendaftaran Magang", icon: "📝" },
             { to: "/admin/periode", label: "Kelola Periode", icon: "🗓️" },
             { to: "/admin/pembimbing", label: "Kelola Pembimbing", icon: "👨‍🏫" },
