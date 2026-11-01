@@ -12,19 +12,24 @@ function Navbar() {
 
     const role = String(currentUser?.role || "peserta").toLowerCase();
     const isParticipant = role !== "admin" && role !== "pembimbing";
+    const isParticipantDashboard = isParticipant && location.pathname === "/dashboard";
     const reportPageTitles = {
         "/laporan": "Laporan Magang",
         "/laporan/penilaian": "Tabel Penilaian",
         "/laporan/rekapitulasi": "Rekapitulasi Magang",
     };
     const reportTitle = reportPageTitles[location.pathname];
-    const title = reportTitle || (role === "admin"
+    const title = reportTitle || (isParticipantDashboard
+        ? "Dashboard Peserta"
+        : role === "admin"
         ? "Admin Portal"
         : role === "pembimbing"
             ? "Portal Pembimbing"
             : "Ruang kehadiran");
     const description = reportTitle
         ? `Kelola ${reportTitle.toLowerCase()} peserta magang`
+        : isParticipantDashboard
+            ? "Ringkasan progres magang, penugasan, dan kehadiran Anda"
         : role === "admin"
             ? "Kelola data absensi peserta magang"
             : role === "pembimbing"

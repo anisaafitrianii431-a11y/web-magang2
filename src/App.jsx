@@ -60,7 +60,7 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
 
-                <Route path="/dashboard" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Dashboard /></ProtectedRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><Dashboard /></ProtectedRoute>} />
                 <Route path="/tugas" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><Tugas /></ProtectedRoute>} />
                 <Route path="/absensi" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><Absensi /></ProtectedRoute>} />
                 <Route path="/peserta" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Peserta /></ProtectedRoute>} />

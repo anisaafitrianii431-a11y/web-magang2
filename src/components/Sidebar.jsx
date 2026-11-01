@@ -40,6 +40,7 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                 { to: "/laporan/rekapitulasi", label: "Rekapitulasi", icon: "📊" },
             ]
             : [
+                { to: "/dashboard", label: "Dashboard", icon: "🏠" },
                 { to: "/absensi", label: "Absen Hari Ini", icon: "📅" },
                 { to: "/tugas", label: "Tugas Magang", icon: "📋" },
                 { to: "/riwayat", label: "Riwayat Absensi", icon: "🗓️" },
