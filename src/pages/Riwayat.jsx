@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import api from "../services/api";
+import { getNationalHoliday } from "../utils/holidays";
 
 function Riwayat() {
     const [data, setData] = useState([]);
@@ -208,11 +209,14 @@ function Riwayat() {
         const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
         const monthYearLabel = new Date(year, monthIndex, 1).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 
+        // Hitung jumlah hari kerja (Senin - Jumat dan bukan hari libur nasional) dalam bulan yang dipilih
         let hariKerjaCount = 0;
         for (let d = 1; d <= daysInMonth; d++) {
             const dateObj = new Date(year, monthIndex, d);
             const dayOfWeek = dateObj.getDay();
-            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            const dateKey = `${yearStr}-${monthStr}-${String(d).padStart(2, "0")}`;
+            const holiday = getNationalHoliday(dateKey);
+            if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holiday) {
                 hariKerjaCount++;
             }
         }
@@ -328,9 +332,14 @@ function Riwayat() {
                     const dateKey = `${yearStr}-${monthStr}-${String(day).padStart(2, "0")}`;
                     const record = recordsByDate.get(dateKey);
                     const weekend = date.getDay() === 0 || date.getDay() === 6;
+                    const nationalHoliday = getNationalHoliday(dateKey);
                     const rawStatus = String(record?.status || "").trim().toLowerCase();
                     let status = "-";
-                    let notes = weekend ? "Libur Akhir Pekan" : "-";
+                    let notes = nationalHoliday
+                        ? `Libur Nasional (${nationalHoliday})`
+                        : weekend
+                            ? "Libur Akhir Pekan"
+                            : "-";
 
                     if (record) {
                         if (record.approval_status === "rejected" || rawStatus === "alpa" || rawStatus === "tidak hadir") {
@@ -347,10 +356,11 @@ function Riwayat() {
 
                         const details = [
                             record.keterangan,
+                            nationalHoliday ? `Libur Nasional: ${nationalHoliday}` : "",
                             record.jam_masuk ? `Masuk: ${record.jam_masuk}` : "",
                             record.jam_pulang ? `Pulang: ${record.jam_pulang}` : "",
                         ].filter(Boolean);
-                        notes = details.length ? details.join(" | ") : "-";
+                        notes = details.length ? details.join(" | ") : (nationalHoliday ? `Libur Nasional (${nationalHoliday})` : "-");
                     }
 
                     return {
@@ -359,6 +369,8 @@ function Riwayat() {
                         dateLabel: `${String(day).padStart(2, "0")}/${monthStr}/${year}`,
                         status,
                         notes,
+                        isHoliday: Boolean(nationalHoliday),
+                        isWeekend: weekend,
                     };
                 });
 
@@ -480,14 +492,27 @@ function Riwayat() {
                     }
                     let x = left;
                     const values = [String(index + 1), row.dateLabel, row.dayLabel, row.status, row.notes];
+                    const isRedDay = row.isHoliday || row.isWeekend;
                     values.forEach((value, columnIndex) => {
-                        const rowShade = index % 2 ? 248 : 255;
-                        doc.setFillColor(rowShade, rowShade, rowShade);
+                        if (row.isHoliday) {
+                            doc.setFillColor(254, 242, 242);
+                        } else if (row.isWeekend) {
+                            doc.setFillColor(248, 250, 252);
+                        } else {
+                            const rowShade = index % 2 ? 250 : 255;
+                            doc.setFillColor(rowShade, rowShade, rowShade);
+                        }
                         doc.setDrawColor(...border);
                         doc.rect(x, tableY, columnWidths[columnIndex], rowHeight, "FD");
-                        doc.setFont("helvetica", "normal");
+                        doc.setFont("helvetica", isRedDay ? "bold" : "normal");
                         doc.setFontSize(columnIndex === 4 ? 6 : 6.2);
-                        doc.setTextColor(0);
+                        if (row.isHoliday) {
+                            doc.setTextColor(220, 38, 38);
+                        } else if (row.isWeekend) {
+                            doc.setTextColor(185, 28, 28);
+                        } else {
+                            doc.setTextColor(0);
+                        }
                         doc.text(value, x + (columnIndex === 4 ? 2 : columnWidths[columnIndex] / 2), tableY + rowHeight / 2 + 1, {
                             align: columnIndex === 4 ? "left" : "center",
                             maxWidth: columnWidths[columnIndex] - 3,
@@ -893,11 +918,14 @@ function Riwayat() {
                                             displayedData.map((item, index) => {
                                                 const isPendingLeave = item.approval_status === "pending";
                                                 const isZoom = String(item.keterangan || "").includes("[ZOOM");
-                                                const cleanKeterangan = String(item.keterangan || "")
+                                                const holidayName = getNationalHoliday(item.tanggal);
+                                                const baseKeterangan = String(item.keterangan || "")
                                                     .replace("[ZOOM / DARING]", "")
                                                     .replace("[ZOOM]", "")
                                                     .trim();
-
+                                                const cleanKeterangan = baseKeterangan
+                                                    ? (holidayName ? `${baseKeterangan} (Libur: ${holidayName})` : baseKeterangan)
+                                                    : (holidayName ? `Libur Nasional (${holidayName})` : "");
                                                 return (
                                                     <tr key={item.id}>
                                                         <td>{index + 1}</td>

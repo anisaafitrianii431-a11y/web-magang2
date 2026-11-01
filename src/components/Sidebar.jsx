@@ -21,6 +21,7 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
     const isParticipant = !isAdmin && !isPembimbing;
     const menu = isAdmin
         ? [
+            { to: "/dashboard", label: "Dashboard", icon: "🏠" },
             { to: "/admin/pendaftaran", label: "Pendaftaran Magang", icon: "👥" },
             { to: "/admin/periode", label: "Kelola Periode", icon: "🗓️" },
             { to: "/admin/pembimbing", label: "Kelola Pembimbing", icon: "👨‍🏫" },
@@ -31,6 +32,7 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
         ]
         : isPembimbing
             ? [
+                { to: "/pembimbing", label: "Dashboard", icon: "🏠" },
                 { to: "/riwayat", label: "Absensi Magang", icon: "📅" },
                 { to: "/pembimbing/jadwal-absensi", label: "Jadwal Absensi", icon: "🕒" },
                 { to: "/tugas", label: "Tugas Magang", icon: "📋" },

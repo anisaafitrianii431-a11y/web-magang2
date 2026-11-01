@@ -617,7 +617,6 @@ function Absensi() {
                                         {policy.allow_zoom && <option value="Zoom">Hadir Daring (Zoom)</option>}
                                         <option value="Izin">Izin (perlu persetujuan pembimbing)</option>
                                         <option value="Sakit">Sakit</option>
-                                        <option value="Alpa">Alpa</option>
                                     </select>
                                     {attendanceStatus === "Izin" && !data && (
                                         <small className="attendance-hint">

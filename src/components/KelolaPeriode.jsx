@@ -4,7 +4,7 @@ import api from '../services/api';
 
 export default function KelolaPeriode() {
   const [listPeriode, setListPeriode] = useState([]);
-  const [formPeriode, setFormPeriode] = useState({ tanggal_mulai: '', tanggal_selesai: '' });
+  const [formPeriode, setFormPeriode] = useState({ nama_periode: '', tanggal_mulai: '', tanggal_selesai: '' });
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedYear, setSelectedYear] = useState('all');
@@ -49,7 +49,7 @@ export default function KelolaPeriode() {
 
     try {
       await api.post('/periode', formPeriode);
-      setFormPeriode({ tanggal_mulai: '', tanggal_selesai: '' });
+      setFormPeriode({ nama_periode: '', tanggal_mulai: '', tanggal_selesai: '' });
       fetchPeriode(); // Refresh data
     } catch (error) {
       alert(error.response?.data?.message || 'Gagal menambah periode');
@@ -59,6 +59,7 @@ export default function KelolaPeriode() {
   const handleEditPeriode = (periode) => {
     setEditingId(periode.id);
     setFormPeriode({
+      nama_periode: periode.nama_periode || '',
       tanggal_mulai: periode.tanggal_mulai.slice(0, 10),
       tanggal_selesai: periode.tanggal_selesai.slice(0, 10),
     });
@@ -70,7 +71,7 @@ export default function KelolaPeriode() {
     try {
       await api.put(`/periode/${editingId}`, formPeriode);
       setEditingId(null);
-      setFormPeriode({ tanggal_mulai: '', tanggal_selesai: '' });
+      setFormPeriode({ nama_periode: '', tanggal_mulai: '', tanggal_selesai: '' });
       fetchPeriode();
     } catch (error) {
       alert(error.response?.data?.message || 'Gagal mengubah periode');
@@ -98,7 +99,17 @@ export default function KelolaPeriode() {
 
       <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '30px', border: '1px solid #e2e8f0' }}>
         <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#0f172a' }}>{editingId ? 'Edit Periode' : 'Tambah Periode Baru'}</h3>
-        <form onSubmit={editingId ? handleUpdatePeriode : handleTambahPeriode} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '15px', alignItems: 'end' }}>
+        <form onSubmit={editingId ? handleUpdatePeriode : handleTambahPeriode} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr auto auto', gap: '15px', alignItems: 'end' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '500', color: '#475569' }}>Nama Periode</label>
+            <input 
+              type="text" 
+              placeholder="Contoh: Periode 2026"
+              value={formPeriode.nama_periode} 
+              onChange={(e) => setFormPeriode({...formPeriode, nama_periode: e.target.value})}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', background: 'white', color: '#334155' }}
+            />
+          </div>
           <div>
             <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '500', color: '#475569' }}>Tanggal Mulai</label>
             <input 
@@ -123,7 +134,7 @@ export default function KelolaPeriode() {
             {editingId ? 'Simpan Perubahan' : 'Simpan'}
           </button>
           {editingId && (
-            <button type="button" onClick={() => { setEditingId(null); setFormPeriode({ tanggal_mulai: '', tanggal_selesai: '' }); }} style={{ background: 'white', color: '#475569', padding: '10px 16px', height: '42px', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
+            <button type="button" onClick={() => { setEditingId(null); setFormPeriode({ nama_periode: '', tanggal_mulai: '', tanggal_selesai: '' }); }} style={{ background: 'white', color: '#475569', padding: '10px 16px', height: '42px', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>
               Batal
             </button>
           )}
@@ -176,6 +187,7 @@ export default function KelolaPeriode() {
           <thead>
             <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
               <th style={{ padding: '15px 20px', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>ID</th>
+              <th style={{ padding: '15px 20px', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Nama Periode</th>
               <th style={{ padding: '15px 20px', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Tanggal Mulai</th>
               <th style={{ padding: '15px 20px', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Tanggal Selesai</th>
               <th style={{ padding: '15px 20px', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', textAlign: 'right' }}>Aksi</th>
@@ -185,6 +197,7 @@ export default function KelolaPeriode() {
             {filteredPeriode.length ? filteredPeriode.map((p, index) => (
               <tr key={p.id} style={{ borderBottom: index === filteredPeriode.length - 1 ? 'none' : '1px solid #e2e8f0', transition: 'background 0.2s', ':hover': { background: '#f8fafc' } }}>
                 <td style={{ padding: '15px 20px', fontSize: '14px', color: '#334155' }}>{p.id}</td>
+                <td style={{ padding: '15px 20px', fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>{p.nama_periode || `Periode #${p.id}`}</td>
                 <td style={{ padding: '15px 20px', fontSize: '14px', color: '#334155' }}>{new Date(p.tanggal_mulai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
                 <td style={{ padding: '15px 20px', fontSize: '14px', color: '#334155' }}>{new Date(p.tanggal_selesai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
                 <td style={{ padding: '15px 20px', textAlign: 'right' }}>
@@ -204,7 +217,7 @@ export default function KelolaPeriode() {
               </tr>
             )) : (
               <tr>
-                <td colSpan="4" style={{ padding: '24px 20px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+                <td colSpan="5" style={{ padding: '24px 20px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
                   Periode yang dicari tidak ditemukan.
                 </td>
               </tr>

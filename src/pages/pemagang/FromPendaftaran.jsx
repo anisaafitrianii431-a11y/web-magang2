@@ -80,7 +80,14 @@ export default function FormPendaftaran() {
             alamat: user.alamat || current.alamat,
           }));
         }
-        setListPeriode(periodeRes.data?.data || []);
+        const periodes = periodeRes.data?.data || [];
+        setListPeriode(periodes);
+        if (periodes.length > 0) {
+          setFormData((current) => ({
+            ...current,
+            periode_id: current.periode_id || String(periodes[0].id),
+          }));
+        }
         if (pendaftaranRes.data?.data) {
           const reg = pendaftaranRes.data.data;
           setMyRegistration(reg);
@@ -88,7 +95,6 @@ export default function FormPendaftaran() {
             setLoggedInUser(reg.user);
           }
           setIsSubmitted(true);
-          // Peserta yang sudah diterima tetap dapat mengakses halaman ini untuk mengunduh ulang surat balasan kapan saja
         }
       } catch (error) {
         console.error('Error fetching data', error);
@@ -598,14 +604,20 @@ export default function FormPendaftaran() {
                     >
                       <option value="" disabled>-- Pilih Periode Magang Tersedia --</option>
                       {listPeriode.map(p => {
-                        const formatDate = (d) => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                        const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+                        const label = p.nama_periode || p.nama || (p.tanggal_mulai && p.tanggal_selesai ? `${formatDate(p.tanggal_mulai)} s.d. ${formatDate(p.tanggal_selesai)}` : `Periode #${p.id}`);
                         return (
                           <option key={p.id} value={p.id}>
-                            {p.nama ? `${p.nama} : ` : ''}{formatDate(p.tanggal_mulai)} s.d. {formatDate(p.tanggal_selesai)}
+                            {label}
                           </option>
                         );
                       })}
                     </select>
+                    {listPeriode.length === 0 && (
+                      <span style={{ display: 'block', fontSize: '11px', color: '#ef4444', marginTop: '5px' }}>
+                        *Belum ada data periode magang aktif di sistem. Silakan hubungi admin.
+                      </span>
+                    )}
                   </div>
 
                 </div>

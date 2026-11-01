@@ -93,10 +93,12 @@ function Dashboard() {
         ]
         : role === "pembimbing"
             ? [
-                { to: "/riwayat", icon: "📅", title: "Absensi Magang", description: "Pantau kehadiran peserta." },
-                { to: "/periode", icon: "🗓️", title: "Periode Magang", description: "Lihat periode peserta magang." },
+                { to: "/riwayat", icon: "📅", title: "Absensi Magang", description: "Pantau kehadiran peserta dan validasi izin." },
+                { to: "/pembimbing/jadwal-absensi", icon: "🕒", title: "Jadwal Absensi", description: "Atur jam masuk dan jam pulang." },
                 { to: "/tugas", icon: "📋", title: "Tugas Magang", description: "Periksa dan nilai submisi tugas." },
-                { to: "/laporan", icon: "📁", title: "Laporan Magang", description: "Tinjau laporan peserta." },
+                { to: "/laporan", icon: "📁", title: "Laporan Magang", description: "Tinjau laporan peserta magang." },
+                { to: "/master-penilaian", icon: "⚙️", title: "Master Penilaian", description: "Kelola kriteria dan komponen penilaian." },
+                { to: "/laporan/penilaian", icon: "⭐", title: "Tabel Penilaian", description: "Input dan kelola nilai akhir peserta." },
             ]
             : [
                 { to: "/absensi", icon: "📅", title: "Absensi Hari Ini", description: "Catat kehadiran magang." },

@@ -186,12 +186,20 @@ export default function DaftarPemagang() {
 
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>Upload Surat Balasan (.pdf) <span style={{ color: '#ef4444' }}>*</span></label>
-                <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#64748b' }}>Berikan surat balasan persetujuan/penolakan resmi kepada pemagang.</p>
+                <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#64748b' }}>Berikan surat balasan persetujuan/penolakan resmi kepada pemagang (maksimal 10 MB).</p>
                 <div style={{ position: 'relative', width: '100%', padding: '15px', border: '1px dashed #cbd5e1', borderRadius: '6px', textAlign: 'center', background: 'white', cursor: 'pointer' }}>
                   <input
                     type="file"
                     accept=".pdf"
-                    onChange={(e) => setFormData({ ...formData, file_surat_balasan: e.target.files[0] })}
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file && file.size > 10 * 1024 * 1024) {
+                        alert('Ukuran berkas PDF terlalu besar. Maksimal ukuran adalah 10 MB.');
+                        e.target.value = '';
+                        return;
+                      }
+                      setFormData({ ...formData, file_surat_balasan: file || null });
+                    }}
                     style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
                   />
                   <div style={{ fontSize: '13px', color: '#475569', fontWeight: '500' }}>
