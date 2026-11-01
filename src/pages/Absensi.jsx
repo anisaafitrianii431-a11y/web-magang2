@@ -614,6 +614,7 @@ function Absensi() {
                                         disabled={loading || !!data?.id}
                                     >
                                         <option value="Hadir">Hadir (Wajib di Area Kantor)</option>
+                                        {policy.allow_zoom && <option value="Zoom">Hadir Daring (Zoom)</option>}
                                         <option value="Izin">Izin (perlu persetujuan pembimbing)</option>
                                         <option value="Sakit">Sakit</option>
                                         <option value="Alpa">Alpa</option>

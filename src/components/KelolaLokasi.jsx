@@ -67,7 +67,7 @@ export default function KelolaLokasi() {
         require_zoom_proof: true,
         zoom_note: "Peserta yang sedang mengikuti rapat/kegiatan Zoom atau WFH dapat melakukan absensi dengan melampirkan screenshot ruang Zoom.",
     });
-    const [policyLoading, setPolicyLoading] = useState(false);
+    const [policyLoading, setPolicyLoading] = useState(true);
     const [policySaving, setPolicySaving] = useState(false);
     const [policySuccess, setPolicySuccess] = useState("");
 
@@ -93,20 +93,6 @@ export default function KelolaLokasi() {
         }
     };
 
-    const loadPolicy = async () => {
-        setPolicyLoading(true);
-        try {
-            const response = await api.get("/admin/pengaturan-absensi");
-            if (response.data?.data) {
-                setAttendancePolicy(response.data.data);
-            }
-        } catch {
-            // Gunakan nilai default jika gagal
-        } finally {
-            setPolicyLoading(false);
-        }
-    };
-
     const handleSavePolicy = async (e) => {
         if (e) e.preventDefault();
         setPolicySaving(true);
@@ -127,8 +113,49 @@ export default function KelolaLokasi() {
     };
 
     useEffect(() => {
-        loadLocations();
-        loadPolicy();
+        let isActive = true;
+
+        const fetchLocations = async () => {
+            try {
+                const response = await api.get("/admin/lokasi");
+                if (isActive) {
+                    setLocations(response.data.data || []);
+                }
+            } catch (requestError) {
+                if (isActive) {
+                    setError(
+                        requestError.response?.data?.message
+                        || "Gagal memuat data lokasi absensi."
+                    );
+                }
+            } finally {
+                if (isActive) {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        const fetchPolicy = async () => {
+            try {
+                const response = await api.get("/admin/pengaturan-absensi");
+                if (isActive && response.data?.data) {
+                    setAttendancePolicy(response.data.data);
+                }
+            } catch {
+                // Gunakan nilai default jika gagal
+            } finally {
+                if (isActive) {
+                    setPolicyLoading(false);
+                }
+            }
+        };
+
+        void fetchLocations();
+        void fetchPolicy();
+
+        return () => {
+            isActive = false;
+        };
     }, []);
 
     // Initialize Leaflet Map
@@ -136,9 +163,9 @@ export default function KelolaLokasi() {
         if (!mapContainerRef.current) return;
 
         if (!mapInstanceRef.current) {
-            const initialLat = Number(form.latitude) || -6.200000;
-            const initialLng = Number(form.longitude) || 106.816666;
-            const initialRadius = Number(form.radius_meter) || 100;
+            const initialLat = Number(initialForm.latitude) || -6.200000;
+            const initialLng = Number(initialForm.longitude) || 106.816666;
+            const initialRadius = Number(initialForm.radius_meter) || 100;
 
             const map = L.map(mapContainerRef.current, {
                 center: [initialLat, initialLng],
