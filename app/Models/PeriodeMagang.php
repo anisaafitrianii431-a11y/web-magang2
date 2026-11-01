@@ -19,9 +19,4 @@ class PeriodeMagang extends Model
     {
         return $this->hasMany(Pendaftaran::class, 'periode_id');
     }
-
-    public function magangs()
-    {
-        return $this->hasMany(Magang::class, 'periode_id');
-    }
 }

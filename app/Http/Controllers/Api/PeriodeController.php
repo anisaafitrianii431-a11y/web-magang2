@@ -10,7 +10,7 @@ class PeriodeController extends Controller
 {
     public function index()
     {
-        $periodes = PeriodeMagang::with(['pendaftarans.user', 'pendaftarans.pembimbing', 'magangs'])->get();
+        $periodes = PeriodeMagang::with(['pendaftarans.user', 'pendaftarans.pembimbing'])->get();
         return response()->json(['data' => $periodes]);
     }
 
@@ -21,8 +21,10 @@ class PeriodeController extends Controller
             'tanggal_selesai' => 'required|date',
         ]);
 
+        $nama = $request->nama_periode ?: ('Periode ' . date('Y', strtotime($request->tanggal_mulai)));
+
         $periode = PeriodeMagang::create([
-            'nama_periode' => $request->tanggal_mulai . ' s/d ' . $request->tanggal_selesai,
+            'nama_periode' => $nama,
             'tanggal_mulai' => $request->tanggal_mulai,
             'tanggal_selesai' => $request->tanggal_selesai,
         ]);
@@ -38,7 +40,12 @@ class PeriodeController extends Controller
         ]);
 
         $periode = PeriodeMagang::findOrFail($id);
-        $periode->nama_periode = $request->tanggal_mulai . ' s/d ' . $request->tanggal_selesai;
+        $nama = $request->nama_periode;
+        if (!$nama) {
+            $isRawDates = $periode->nama_periode === ($periode->tanggal_mulai . ' s/d ' . $periode->tanggal_selesai);
+            $nama = (!$periode->nama_periode || $isRawDates) ? ('Periode ' . date('Y', strtotime($request->tanggal_mulai))) : $periode->nama_periode;
+        }
+        $periode->nama_periode = $nama;
         $periode->tanggal_mulai = $request->tanggal_mulai;
         $periode->tanggal_selesai = $request->tanggal_selesai;
         $periode->save();

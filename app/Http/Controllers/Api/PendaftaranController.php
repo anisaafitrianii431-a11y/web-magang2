@@ -68,8 +68,8 @@ class PendaftaranController extends Controller
             'no_hp' => 'required|string|max:20',
             'program_studi' => 'required|string|max:150',
             'alamat' => 'required|string|max:1000',
-            'pas_foto' => 'required|image|mimes:jpg,jpeg,png|max:2048',
-            'file_surat_pengantar' => 'required|file|mimes:pdf|max:2048',
+            'pas_foto' => 'required|image|mimes:jpg,jpeg,png|max:10240',
+            'file_surat_pengantar' => 'required|file|mimes:pdf|max:10240',
         ]);
 
         $user = Auth::user();
@@ -117,7 +117,7 @@ class PendaftaranController extends Controller
                 Rule::exists('users', 'id')->where(fn ($query) => $query->where('role', 'pembimbing')),
             ],
             'tanggal_selesai' => 'nullable|date',
-            'file_surat_balasan' => 'nullable|file|mimes:pdf|max:2048',
+            'file_surat_balasan' => 'nullable|file|mimes:pdf|max:10240',
         ]);
 
         $pendaftaran = Pendaftaran::findOrFail($id);
