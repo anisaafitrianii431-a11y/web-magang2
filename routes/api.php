@@ -65,9 +65,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/admin/lokasi/{id}', [LokasiAbsensiController::class, 'update']);
         Route::delete('/admin/lokasi/{id}', [LokasiAbsensiController::class, 'destroy']);
         Route::patch('/admin/lokasi/{id}/toggle', [LokasiAbsensiController::class, 'toggleActive']);
+        Route::get('/admin/pengaturan-absensi', [LokasiAbsensiController::class, 'getSettings']);
+        Route::post('/admin/pengaturan-absensi', [LokasiAbsensiController::class, 'updateSettings']);
     });
 
     Route::get('/lokasi-absensi', [LokasiAbsensiController::class, 'index']);
+    Route::get('/pengaturan-absensi', [LokasiAbsensiController::class, 'getSettings']);
 
     Route::get('/periode', [PeriodeController::class, 'index']);
     Route::middleware('role:admin')->group(function () {
