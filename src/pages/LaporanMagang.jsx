@@ -42,7 +42,9 @@ export default function LaporanMagang() {
   const handleUploadSubmit = async (formData) => {
     setUploadModal(prev => ({ ...prev, isSubmitting: true, submitError: null }));
     try {
-      await api.post('/laporan', formData);
+      await api.post('/laporan', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       setUploadModal({ isOpen: false, isSubmitting: false, submitError: null });
       fetchLaporan();
       return true;

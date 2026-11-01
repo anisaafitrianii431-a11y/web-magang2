@@ -38,7 +38,6 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                 { to: "/laporan", label: "Laporan Magang", icon: "📁" },
                 { to: "/master-penilaian", label: "Master Penilaian", icon: "⚙️" },
                 { to: "/laporan/penilaian", label: "Tabel Penilaian", icon: "⭐" },
-                { to: "/laporan/rekapitulasi", label: "Rekapitulasi", icon: "📊" },
             ]
             : [
                 { to: "/beranda", label: "Landing Page", icon: "🌐" },

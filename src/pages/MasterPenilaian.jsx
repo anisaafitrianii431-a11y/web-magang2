@@ -32,7 +32,27 @@ export default function MasterPenilaian() {
     }
   }, []);
 
-  useEffect(() => { void loadQuestions(); }, [loadQuestions]);
+  useEffect(() => {
+    let cancelled = false;
+
+    api.get('/v1/master-penilaian')
+      .then((response) => {
+        if (!cancelled) {
+          setQuestions(Array.isArray(response.data?.data) ? response.data.data : []);
+          setError('');
+        }
+      })
+      .catch((requestError) => {
+        if (!cancelled) setError(apiMessage(requestError, 'Pertanyaan master gagal dimuat.'));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const activeWeight = questions.filter((item) => item.aktif)
     .reduce((sum, item) => sum + Number(item.bobot || 0), 0);
