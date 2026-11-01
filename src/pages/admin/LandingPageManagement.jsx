@@ -89,6 +89,7 @@ function LandingPageManagement() {
     const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState({});
     const [fotoFile, setFotoFile] = useState(null);
+    const [removeFoto, setRemoveFoto] = useState(false);
     const [fotoPreview, setFotoPreview] = useState("");
     const fotoInputRef = useRef(null);
 
@@ -122,6 +123,7 @@ function LandingPageManagement() {
         setEditingId(item?.id ?? null);
         setFormType(type);
         setFotoFile(null);
+        setRemoveFoto(false);
         setFotoPreview("");
         if (type === "profil") setForm({ ...emptyProfile, ...(item || {}) });
         if (type === "alumni") setForm({ ...emptyAlumni, ...(item || {}) });
@@ -142,6 +144,7 @@ function LandingPageManagement() {
         setEditingId(null);
         setForm({});
         setFotoFile(null);
+        setRemoveFoto(false);
         setFotoPreview("");
     };
 
@@ -161,21 +164,30 @@ function LandingPageManagement() {
                 const path = editingId
                     ? `/admin/landing-page/aktivitas/${editingId}`
                     : "/admin/landing-page/aktivitas";
+                const aktivitasData = {
+                    judul: form.judul,
+                    deskripsi: form.deskripsi,
+                    tanggal: form.tanggal,
+                    kategori: form.kategori,
+                    lokasi: form.lokasi,
+                    status: form.status,
+                };
 
                 if (fotoFile) {
-                    // Kirim sebagai multipart/form-data jika ada foto baru
                     const formData = new FormData();
-                    Object.entries(form).forEach(([key, val]) => {
+                    Object.entries(aktivitasData).forEach(([key, val]) => {
                         if (val !== null && val !== undefined) formData.append(key, val);
                     });
                     formData.append("foto", fotoFile);
-                    // Jika edit, tambahkan _method untuk Laravel
                     if (editingId) formData.append("_method", "PUT");
                     await api.post(path, formData, {
                         headers: { "Content-Type": "multipart/form-data" },
                     });
                 } else {
-                    await api[editingId ? "put" : "post"](path, form);
+                    await api[editingId ? "put" : "post"](path, {
+                        ...aktivitasData,
+                        ...(editingId && removeFoto ? { foto: null } : {}),
+                    });
                 }
             }
             closeForm();
@@ -493,6 +505,7 @@ function LandingPageManagement() {
                                                 const file = e.target.files[0];
                                                 if (!file) return;
                                                 setFotoFile(file);
+                                                setRemoveFoto(false);
                                                 setFotoPreview(URL.createObjectURL(file));
                                             }}
                                         />
@@ -517,6 +530,7 @@ function LandingPageManagement() {
                                                         aria-label="Hapus foto"
                                                         onClick={() => {
                                                             setFotoFile(null);
+                                                            setRemoveFoto(Boolean(editingId && form.foto));
                                                             setFotoPreview("");
                                                             if (fotoInputRef.current) fotoInputRef.current.value = "";
                                                         }}
