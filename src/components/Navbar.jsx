@@ -15,7 +15,6 @@ function Navbar() {
     const reportPageTitles = {
         "/laporan": "Laporan Magang",
         "/laporan/penilaian": "Tabel Penilaian",
-        "/laporan/rekapitulasi": "Rekapitulasi Magang",
     };
     const reportTitle = reportPageTitles[location.pathname];
     const title = reportTitle || (role === "admin"

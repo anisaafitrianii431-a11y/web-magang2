@@ -2,7 +2,7 @@ import { useState } from 'react';
 import api from '../services/api';
 import StatusBadge from './StatusBadge';
 
-export default function DetailModal({ isOpen, onClose, laporan, canModerate = false, onSubmitStatus, isSavingStatus = false, statusError = '' }) {
+export default function DetailModal({ isOpen, onClose, laporan, canModerate = false, showStatus = true, onSubmitStatus, isSavingStatus = false, statusError = '' }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
@@ -50,7 +50,7 @@ export default function DetailModal({ isOpen, onClose, laporan, canModerate = fa
           {/* Header Info */}
           <div style={{ marginBottom: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-              <StatusBadge status={laporan.status_laporan} />
+              {showStatus && <StatusBadge status={laporan.status_laporan} />}
               <span className="badge badge-kategori">{laporan.kategori_laporan}</span>
             </div>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1e293b' }}>{laporan.judul_laporan}</h2>
@@ -74,13 +74,13 @@ export default function DetailModal({ isOpen, onClose, laporan, canModerate = fa
           ) : (
             <div className="form-group">
               <label className="form-label">Berkas PDF Laporan</label>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', backgroundColor: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe' }}>
-                <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e40af' }}>{laporan.file_laporan_pdf}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '0.85rem 1rem', backgroundColor: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe' }}>
+                <span style={{ flex: '1 1 0', minWidth: 0, fontWeight: 700, fontSize: '0.88rem', color: '#1e40af', overflowWrap: 'anywhere' }}>{laporan.file_laporan_pdf}</span>
                 <button
                   type="button"
                   onClick={handleDownload}
                   disabled={isDownloading}
-                  style={{ backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '0.45rem 0.9rem', borderRadius: '6px', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}
+                  style={{ flexShrink: 0, backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '0.45rem 0.9rem', borderRadius: '6px', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}
                 >
                   {isDownloading ? 'Mengunduh...' : 'Unduh PDF'}
                 </button>
@@ -89,7 +89,7 @@ export default function DetailModal({ isOpen, onClose, laporan, canModerate = fa
             </div>
           )}
 
-          {canModerate && (
+          {showStatus && canModerate && (
             <div className="form-group">
               <label className="form-label" htmlFor="laporan-status">Status Laporan</label>
               <select
@@ -159,7 +159,7 @@ export default function DetailModal({ isOpen, onClose, laporan, canModerate = fa
 
         <div className="modal-footer">
           <button className="btn-secondary" onClick={onClose}>Tutup</button>
-          {canModerate && (
+          {showStatus && canModerate && (
             <button
               type="button"
               className="btn-primary"

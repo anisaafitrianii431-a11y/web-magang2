@@ -10,15 +10,11 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Absensi from "./pages/Absensi";
 import Dashboard from "./pages/Dashboard";
-import LaporanApp from "./pages/LaporanApp";
-import KelolaAkunPeserta from "./pages/KelolaAkunPeserta";
-import LaporanMagang from "./pages/LaporanMagang";
 import LaporanModule from "./pages/LaporanModule";
 import MasterPenilaian from "./pages/MasterPenilaian";
 import Periode from "./pages/Periode";
 import Peserta from "./pages/Peserta";
 import FormPendaftaran from "./pages/pemagang/FromPendaftaran";
-import Rekapitulasi from "./pages/Rekapitulasi";
 import Riwayat from "./pages/Riwayat";
 import SuratBalasan from "./pages/SuratBalasan";
 import Tugas from "./pages/Tugas";
@@ -75,12 +71,12 @@ function App() {
                 <Route path="/pemagang/daftar" element={<ProtectedRoute allowedRole="pemagang"><FormPendaftaran /></ProtectedRoute>} />
                 <Route path="/surat-balasan" element={<ProtectedRoute allowedRole="pemagang"><SuratBalasan /></ProtectedRoute>} />
 
-                <Route path="/laporan" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><LaporanModule /></ProtectedRoute>} />
+                <Route path="/laporan" element={<ProtectedRoute><LaporanModule /></ProtectedRoute>} />
                 <Route path="/laporan/penilaian" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><LaporanModule /></ProtectedRoute>} />
                 <Route path="/master-penilaian" element={<ProtectedRoute allowedRole="pembimbing"><MasterPenilaian /></ProtectedRoute>} />
                 <Route path="/laporan/rekapitulasi" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><LaporanModule /></ProtectedRoute>} />
-                <Route path="/laporan-magang" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><LaporanMagang /></ProtectedRoute>} />
-                <Route path="/rekapitulasi" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Rekapitulasi /></ProtectedRoute>} />
+                <Route path="/laporan-magang" element={<ProtectedRoute><Navigate to="/laporan" replace /></ProtectedRoute>} />
+                <Route path="/rekapitulasi" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Navigate to="/laporan/rekapitulasi" replace /></ProtectedRoute>} />
                 <Route path="/penilaian" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Navigate to="/laporan/penilaian" replace /></ProtectedRoute>} />
                 <Route path="/laporan-app" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Navigate to="/laporan/penilaian" replace /></ProtectedRoute>} />
 

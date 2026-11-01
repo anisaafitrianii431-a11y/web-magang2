@@ -3,35 +3,29 @@ import { useState } from 'react';
 export default function UploadLaporanModal({ isOpen, onClose, onSubmit, isSubmitting, submitError }) {
   const [judul, setJudul] = useState('');
   const [kategori, setKategori] = useState('Individu');
-  const [linkGoogleDoc, setLinkGoogleDoc] = useState('');
+  const [fileLaporan, setFileLaporan] = useState(null);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    let parsedLink;
-    try {
-      parsedLink = new URL(linkGoogleDoc);
-    } catch {
-      alert('Masukkan tautan Google Docs yang valid.');
+    if (!judul.trim() || !fileLaporan) {
+      alert('Mohon isi judul dan pilih berkas PDF laporan.');
       return;
     }
 
-    if (!judul || parsedLink.hostname !== 'docs.google.com') {
-      alert('Mohon isi judul dan gunakan tautan dari docs.google.com.');
-      return;
-    }
+    const formData = new FormData();
+    formData.append('judul_laporan', judul.trim());
+    formData.append('kategori_laporan', kategori);
+    formData.append('file_laporan', fileLaporan);
 
-    const saved = await onSubmit({
-      judul_laporan: judul,
-      kategori_laporan: kategori,
-      link_google_doc: linkGoogleDoc.trim()
-    });
+    const saved = await onSubmit(formData);
 
     if (!saved) return;
 
     setJudul('');
-    setLinkGoogleDoc('');
+    setKategori('Individu');
+    setFileLaporan(null);
     onClose();
   };
 
@@ -70,18 +64,17 @@ export default function UploadLaporanModal({ isOpen, onClose, onSubmit, isSubmit
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="link-google-doc">Link Google Docs *</label>
+              <label className="form-label" htmlFor="file-laporan">Berkas Laporan PDF *</label>
               <input
-                id="link-google-doc"
-                type="url"
+                id="file-laporan"
+                type="file"
                 className="form-control"
-                placeholder="https://docs.google.com/document/d/..."
-                value={linkGoogleDoc}
-                onChange={(e) => setLinkGoogleDoc(e.target.value)}
+                accept="application/pdf,.pdf"
+                onChange={(e) => setFileLaporan(e.target.files?.[0] || null)}
                 required
               />
               <small style={{ display: 'block', marginTop: '0.5rem', color: '#64748b' }}>
-                Pastikan akses dokumen Google Docs sudah dibagikan kepada pembimbing.
+                Pilih berkas PDF, maksimal 25 MB.
               </small>
             </div>
           </div>
