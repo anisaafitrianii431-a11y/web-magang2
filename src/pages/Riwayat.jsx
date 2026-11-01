@@ -15,6 +15,7 @@ function Riwayat() {
     const [selectedParticipant, setSelectedParticipant] = useState("all");
     const [downloadingLetter, setDownloadingLetter] = useState(false);
     const [clock, setClock] = useState(new Date());
+    const [previewImage, setPreviewImage] = useState(null);
     const [role] = useState(() => {
         try {
             return JSON.parse(localStorage.getItem("user") || "null")?.role?.toLowerCase() || "peserta";
@@ -161,7 +162,6 @@ function Riwayat() {
                 if (item.participant_code && !String(item.participant_code).startsWith("USER-")) {
                     existing.code = item.participant_code;
                 }
-                // Gunakan penulisan nama yang lebih lengkap
                 if (rawName.length > existing.name.length) {
                     existing.name = rawName;
                 }
@@ -190,6 +190,7 @@ function Riwayat() {
         }
         return result;
     }, [data, activeMonth, selectedParticipant, participantsList]);
+
     const displayedData = (role === "pembimbing" || role === "admin") ? filteredData : data;
 
     const formatDate = (dateStr) => {
@@ -207,7 +208,6 @@ function Riwayat() {
         const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
         const monthYearLabel = new Date(year, monthIndex, 1).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 
-        // Hitung jumlah hari kerja (Senin - Jumat) dalam bulan yang dipilih
         let hariKerjaCount = 0;
         for (let d = 1; d <= daysInMonth; d++) {
             const dateObj = new Date(year, monthIndex, d);
@@ -231,7 +231,6 @@ function Riwayat() {
                 ? participantsList.filter((p) => p.code === selectedParticipant)
                 : [{ code: selectedParticipant, name: "Peserta Magang", institution: "Sekolah Tinggi Teknologi Payakumbuh" }])
             : participantsList;
-        const selectedPerson = selectedParticipant !== "all" ? targetList[0] : null;
 
         const institutionName = targetList.find((p) => p.institution && p.institution !== "........................................................")?.institution
             || currentUser?.instansi
@@ -298,215 +297,212 @@ function Riwayat() {
 
         if (selectedParticipant !== "all" && targetList.length) {
             targetList.forEach((selectedPerson, personIndex) => {
-            if (personIndex > 0) doc.addPage();
-            const reportInstitutionName = selectedPerson.institution
-                && selectedPerson.institution !== "........................................................"
-                ? selectedPerson.institution
-                : currentUser?.instansi || currentUser?.institution || institutionName;
-            const participantRecords = data.filter((item) => {
-                if (String(item.tanggal || "").slice(0, 7) !== activeMonth) return false;
-                const userId = item.user_id || item.user?.id;
-                const code = item.participant_code || (userId ? `USER-${userId}` : item.participant_name);
-                const rawName = (item.participant_name || item.user?.name || "").trim().toLowerCase().replace(/\s+/g, " ");
-                const simplified = rawName.replace(/h/g, "").replace(/n+/g, "n");
+                if (personIndex > 0) doc.addPage();
+                const reportInstitutionName = selectedPerson.institution
+                    && selectedPerson.institution !== "........................................................"
+                    ? selectedPerson.institution
+                    : currentUser?.instansi || currentUser?.institution || institutionName;
+                const participantRecords = data.filter((item) => {
+                    if (String(item.tanggal || "").slice(0, 7) !== activeMonth) return false;
+                    const userId = item.user_id || item.user?.id;
+                    const code = item.participant_code || (userId ? `USER-${userId}` : item.participant_name);
+                    const rawName = (item.participant_name || item.user?.name || "").trim().toLowerCase().replace(/\s+/g, " ");
+                    const simplified = rawName.replace(/h/g, "").replace(/n+/g, "n");
 
-                if (selectedPerson.userId && userId && selectedPerson.userId === userId) return true;
-                if (selectedPerson.codes?.includes(code)) return true;
-                if (selectedPerson.names?.includes(rawName) || selectedPerson.names?.includes(simplified)) return true;
-                const personName = selectedPerson.name.toLowerCase();
-                const simplifiedPersonName = personName.replace(/\s+/g, " ").replace(/h/g, "").replace(/n+/g, "n");
-                return simplifiedPersonName === simplified || personName === rawName;
-            });
-            const recordsByDate = new Map();
-            participantRecords.forEach((item) => {
-                const dateKey = String(item.tanggal || "").slice(0, 10);
-                if (dateKey && !recordsByDate.has(dateKey)) recordsByDate.set(dateKey, item);
-            });
+                    if (selectedPerson.userId && userId && selectedPerson.userId === userId) return true;
+                    if (selectedPerson.codes?.includes(code)) return true;
+                    if (selectedPerson.names?.includes(rawName) || selectedPerson.names?.includes(simplified)) return true;
+                    const personName = selectedPerson.name.toLowerCase();
+                    const simplifiedPersonName = personName.replace(/\s+/g, " ").replace(/h/g, "").replace(/n+/g, "n");
+                    return simplifiedPersonName === simplified || personName === rawName;
+                });
+                const recordsByDate = new Map();
+                participantRecords.forEach((item) => {
+                    const dateKey = String(item.tanggal || "").slice(0, 10);
+                    if (dateKey && !recordsByDate.has(dateKey)) recordsByDate.set(dateKey, item);
+                });
 
-            const dailyRows = Array.from({ length: daysInMonth }, (_, index) => {
-                const day = index + 1;
-                const date = new Date(year, monthIndex, day);
-                const dateKey = `${yearStr}-${monthStr}-${String(day).padStart(2, "0")}`;
-                const record = recordsByDate.get(dateKey);
-                const weekend = date.getDay() === 0 || date.getDay() === 6;
-                const rawStatus = String(record?.status || "").trim().toLowerCase();
-                let status = "-";
-                let notes = weekend ? "Libur Akhir Pekan" : "-";
+                const dailyRows = Array.from({ length: daysInMonth }, (_, index) => {
+                    const day = index + 1;
+                    const date = new Date(year, monthIndex, day);
+                    const dateKey = `${yearStr}-${monthStr}-${String(day).padStart(2, "0")}`;
+                    const record = recordsByDate.get(dateKey);
+                    const weekend = date.getDay() === 0 || date.getDay() === 6;
+                    const rawStatus = String(record?.status || "").trim().toLowerCase();
+                    let status = "-";
+                    let notes = weekend ? "Libur Akhir Pekan" : "-";
 
-                if (record) {
-                    if (record.approval_status === "rejected" || rawStatus === "alpa" || rawStatus === "tidak hadir") {
-                        status = "Tanpa Keterangan";
-                    } else if (record.approval_status === "pending" || rawStatus === "izin") {
-                        status = "Izin";
-                    } else if (rawStatus === "hadir") {
-                        status = "Hadir";
-                    } else if (rawStatus === "sakit") {
-                        status = "Sakit";
-                    } else if (record.status) {
-                        status = String(record.status);
+                    if (record) {
+                        if (record.approval_status === "rejected" || rawStatus === "alpa" || rawStatus === "tidak hadir") {
+                            status = "Tanpa Keterangan";
+                        } else if (record.approval_status === "pending" || rawStatus === "izin") {
+                            status = "Izin";
+                        } else if (rawStatus === "hadir") {
+                            status = "Hadir";
+                        } else if (rawStatus === "sakit") {
+                            status = "Sakit";
+                        } else if (record.status) {
+                            status = String(record.status);
+                        }
+
+                        const details = [
+                            record.keterangan,
+                            record.jam_masuk ? `Masuk: ${record.jam_masuk}` : "",
+                            record.jam_pulang ? `Pulang: ${record.jam_pulang}` : "",
+                        ].filter(Boolean);
+                        notes = details.length ? details.join(" | ") : "-";
                     }
 
-                    const details = [
-                        record.keterangan,
-                        record.jam_masuk ? `Masuk: ${record.jam_masuk}` : "",
-                        record.jam_pulang ? `Pulang: ${record.jam_pulang}` : "",
-                    ].filter(Boolean);
-                    notes = details.length ? details.join(" | ") : "-";
-                }
+                    return {
+                        date,
+                        dayLabel: date.toLocaleDateString("id-ID", { weekday: "long" }),
+                        dateLabel: `${String(day).padStart(2, "0")}/${monthStr}/${year}`,
+                        status,
+                        notes,
+                    };
+                });
 
-                return {
-                    date,
-                    dayLabel: date.toLocaleDateString("id-ID", { weekday: "long" }),
-                    dateLabel: `${String(day).padStart(2, "0")}/${monthStr}/${year}`,
-                    status,
-                    notes,
-                };
-            });
+                const dailyTotals = dailyRows.reduce((totals, row) => {
+                    if (row.status === "Hadir") totals.hadir++;
+                    if (row.status === "Izin") totals.izin++;
+                    if (row.status === "Sakit") totals.sakit++;
+                    if (row.status === "Tanpa Keterangan") totals.alpha++;
+                    return totals;
+                }, { hadir: 0, izin: 0, sakit: 0, alpha: 0 });
+                const individualPercentage = hariKerjaCount > 0
+                    ? Math.min(100, Math.round((dailyTotals.hadir / hariKerjaCount) * 100))
+                    : 0;
 
-            const dailyTotals = dailyRows.reduce((totals, row) => {
-                if (row.status === "Hadir") totals.hadir++;
-                if (row.status === "Izin") totals.izin++;
-                if (row.status === "Sakit") totals.sakit++;
-                if (row.status === "Tanpa Keterangan") totals.alpha++;
-                return totals;
-            }, { hadir: 0, izin: 0, sakit: 0, alpha: 0 });
-            const individualPercentage = hariKerjaCount > 0
-                ? Math.min(100, Math.round((dailyTotals.hadir / hariKerjaCount) * 100))
-                : 0;
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const left = 14;
+                const width = pageWidth - left * 2;
+                const border = [0, 0, 0];
+                const columnWidths = [10, 31, 27, 52, width - 120];
+                const columnTitles = ["No.", "Tanggal", "Hari", "Status (Hadir/Izin/Sakit/Alpha)", "Keterangan"];
 
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const left = 14;
-            const width = pageWidth - left * 2;
-            const border = [0, 0, 0];
-            const columnWidths = [10, 31, 27, 52, width - 120];
-            const columnTitles = ["No.", "Tanggal", "Hari", "Status (Hadir/Izin/Sakit/Alpha)", "Keterangan"];
-
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(13);
-            doc.setTextColor(0);
-            doc.text("LAPORAN ABSENSI MAGANG", pageWidth / 2, 20, { align: "center" });
-            const metaY = 26;
-            const metaHeight = 17;
-            doc.setDrawColor(...border);
-            doc.setFillColor(255, 255, 255);
-            doc.rect(left, metaY, width, metaHeight, "FD");
-            doc.line(left, metaY + 8, left + width, metaY + 8);
-            doc.line(left + width / 2, metaY, left + width / 2, metaY + metaHeight);
-            doc.setFontSize(6.5);
-            const drawMeta = (label, value, x, y, maxWidth, valueOffset = 40) => {
                 doc.setFont("helvetica", "bold");
-                doc.setFontSize(6.5);
+                doc.setFontSize(13);
                 doc.setTextColor(0);
-                doc.text(label, x, y);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(0);
-                const valueText = `: ${value || "-"}`;
-                const availableWidth = maxWidth - valueOffset - 3;
-                const valueFontSize = Math.min(6.5, (availableWidth / doc.getTextWidth(valueText)) * 6.5);
-                doc.setFontSize(valueFontSize);
-                doc.text(valueText, x + valueOffset, y);
-            };
-            drawMeta("Kampus", reportInstitutionName, left + 3, metaY + 5.5, width / 2 - 3, 25);
-            drawMeta("Bulan / Tahun", monthYearLabel, left + width / 2 + 3, metaY + 5.5, width / 2 - 3, 31);
-            drawMeta("Nama Peserta Magang", selectedPerson.name, left + 3, metaY + 13.5, width / 2 - 3, 40);
-            drawMeta("Pembimbing Lapangan", supervisorName, left + width / 2 + 3, metaY + 13.5, width / 2 - 3, 40);
-
-            const summaryTitleY = 60;
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(9);
-            doc.setTextColor(0);
-            doc.text("Ringkasan Kehadiran Bulan Ini", left, summaryTitleY);
-
-            const summaryY = 63;
-            const summaryWidth = width / 6;
-            const summaryHeaders = ["Hari Kerja", "Hadir", "Izin", "Sakit", "Tanpa Keterangan", "Persentase Hadir"];
-            const summaryValues = [
-                String(hariKerjaCount),
-                String(dailyTotals.hadir),
-                String(dailyTotals.izin),
-                String(dailyTotals.sakit),
-                String(dailyTotals.alpha),
-                `${individualPercentage} %`,
-            ];
-            summaryHeaders.forEach((label, index) => {
-                const x = left + index * summaryWidth;
-                doc.setFillColor(242, 242, 242);
+                doc.text("LAPORAN ABSENSI MAGANG", pageWidth / 2, 20, { align: "center" });
+                const metaY = 26;
+                const metaHeight = 17;
                 doc.setDrawColor(...border);
-                doc.rect(x, summaryY, summaryWidth, 6, "FD");
-                doc.setFont("helvetica", "bold");
-                doc.setFontSize(6);
-                doc.setTextColor(0);
-                doc.text(label, x + summaryWidth / 2, summaryY + 4, { align: "center", maxWidth: summaryWidth - 1 });
-
-                doc.setFillColor(248, 248, 248);
-                doc.rect(x, summaryY + 6, summaryWidth, 7, "FD");
-                doc.setFontSize(7);
-                doc.setTextColor(0);
-                doc.text(summaryValues[index], x + summaryWidth / 2, summaryY + 10.5, { align: "center" });
-            });
-
-            const sectionY = 81;
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(8.5);
-            doc.setTextColor(0);
-            doc.text("Detail Absensi Harian", left, sectionY);
-
-            let tableY = 84;
-            const headerHeight = 7;
-            const rowHeight = 8.7;
-            const pageBottom = doc.internal.pageSize.getHeight() - 14;
-            const drawTableHeader = () => {
-                let x = left;
-                columnTitles.forEach((title, index) => {
-                    doc.setFillColor(235, 235, 235);
-                    doc.setDrawColor(...border);
-                    doc.rect(x, tableY, columnWidths[index], headerHeight, "FD");
+                doc.setFillColor(255, 255, 255);
+                doc.rect(left, metaY, width, metaHeight, "FD");
+                doc.line(left, metaY + 8, left + width, metaY + 8);
+                doc.line(left + width / 2, metaY, left + width / 2, metaY + metaHeight);
+                doc.setFontSize(6.5);
+                const drawMeta = (label, value, x, y, maxWidth, valueOffset = 40) => {
                     doc.setFont("helvetica", "bold");
-                    doc.setFontSize(index === 3 ? 5.5 : 6.5);
+                    doc.setFontSize(6.5);
                     doc.setTextColor(0);
-                    doc.text(title, x + (index === 4 ? 2 : columnWidths[index] / 2), tableY + 4.5, {
-                        align: index === 4 ? "left" : "center",
-                        maxWidth: columnWidths[index] - 2,
-                    });
-                    x += columnWidths[index];
-                });
-                tableY += headerHeight;
-            };
-            drawTableHeader();
-            dailyRows.forEach((row, index) => {
-                if (tableY + rowHeight > pageBottom) {
-                    doc.addPage();
-                    tableY = 14;
-                    drawTableHeader();
-                }
-                let x = left;
-                const values = [String(index + 1), row.dateLabel, row.dayLabel, row.status, row.notes];
-                values.forEach((value, columnIndex) => {
-                    const rowShade = index % 2 ? 248 : 255;
-                    doc.setFillColor(rowShade, rowShade, rowShade);
-                    doc.setDrawColor(...border);
-                    doc.rect(x, tableY, columnWidths[columnIndex], rowHeight, "FD");
+                    doc.text(label, x, y);
                     doc.setFont("helvetica", "normal");
-                    doc.setFontSize(columnIndex === 4 ? 6 : 6.2);
                     doc.setTextColor(0);
-                    doc.text(value, x + (columnIndex === 4 ? 2 : columnWidths[columnIndex] / 2), tableY + rowHeight / 2 + 1, {
-                        align: columnIndex === 4 ? "left" : "center",
-                        maxWidth: columnWidths[columnIndex] - 3,
-                    });
-                    x += columnWidths[columnIndex];
+                    const valueText = `: ${value || "-"}`;
+                    const availableWidth = maxWidth - valueOffset - 3;
+                    const valueFontSize = Math.min(6.5, (availableWidth / doc.getTextWidth(valueText)) * 6.5);
+                    doc.setFontSize(valueFontSize);
+                    doc.text(valueText, x + valueOffset, y);
+                };
+                drawMeta("Kampus", reportInstitutionName, left + 3, metaY + 5.5, width / 2 - 3, 25);
+                drawMeta("Bulan / Tahun", monthYearLabel, left + width / 2 + 3, metaY + 5.5, width / 2 - 3, 31);
+                drawMeta("Nama Peserta Magang", selectedPerson.name, left + 3, metaY + 13.5, width / 2 - 3, 40);
+                drawMeta("Pembimbing Lapangan", supervisorName, left + width / 2 + 3, metaY + 13.5, width / 2 - 3, 40);
+
+                const summaryTitleY = 60;
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(9);
+                doc.setTextColor(0);
+                doc.text("Ringkasan Kehadiran Bulan Ini", left, summaryTitleY);
+
+                const summaryY = 63;
+                const summaryWidth = width / 6;
+                const summaryHeaders = ["Hari Kerja", "Hadir", "Izin", "Sakit", "Tanpa Keterangan", "Persentase Hadir"];
+                const summaryValues = [
+                    String(hariKerjaCount),
+                    String(dailyTotals.hadir),
+                    String(dailyTotals.izin),
+                    String(dailyTotals.sakit),
+                    String(dailyTotals.alpha),
+                    `${individualPercentage} %`,
+                ];
+                summaryHeaders.forEach((label, index) => {
+                    const x = left + index * summaryWidth;
+                    doc.setFillColor(242, 242, 242);
+                    doc.setDrawColor(...border);
+                    doc.rect(x, summaryY, summaryWidth, 6, "FD");
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(6);
+                    doc.setTextColor(0);
+                    doc.text(label, x + summaryWidth / 2, summaryY + 4, { align: "center", maxWidth: summaryWidth - 1 });
+
+                    doc.setFillColor(248, 248, 248);
+                    doc.rect(x, summaryY + 6, summaryWidth, 7, "FD");
+                    doc.setFontSize(7);
+                    doc.setTextColor(0);
+                    doc.text(summaryValues[index], x + summaryWidth / 2, summaryY + 10.5, { align: "center" });
                 });
-                tableY += rowHeight;
+
+                const sectionY = 81;
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(8.5);
+                doc.setTextColor(0);
+                doc.text("Detail Absensi Harian", left, sectionY);
+
+                let tableY = 84;
+                const headerHeight = 7;
+                const rowHeight = 8.7;
+                const pageBottom = doc.internal.pageSize.getHeight() - 14;
+                const drawTableHeader = () => {
+                    let x = left;
+                    columnTitles.forEach((title, index) => {
+                        doc.setFillColor(235, 235, 235);
+                        doc.setDrawColor(...border);
+                        doc.rect(x, tableY, columnWidths[index], headerHeight, "FD");
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(index === 3 ? 5.5 : 6.5);
+                        doc.setTextColor(0);
+                        doc.text(title, x + (index === 4 ? 2 : columnWidths[index] / 2), tableY + 4.5, {
+                            align: index === 4 ? "left" : "center",
+                            maxWidth: columnWidths[index] - 2,
+                        });
+                        x += columnWidths[index];
+                    });
+                    tableY += headerHeight;
+                };
+                drawTableHeader();
+                dailyRows.forEach((row, index) => {
+                    if (tableY + rowHeight > pageBottom) {
+                        doc.addPage();
+                        tableY = 14;
+                        drawTableHeader();
+                    }
+                    let x = left;
+                    const values = [String(index + 1), row.dateLabel, row.dayLabel, row.status, row.notes];
+                    values.forEach((value, columnIndex) => {
+                        const rowShade = index % 2 ? 248 : 255;
+                        doc.setFillColor(rowShade, rowShade, rowShade);
+                        doc.setDrawColor(...border);
+                        doc.rect(x, tableY, columnWidths[columnIndex], rowHeight, "FD");
+                        doc.setFont("helvetica", "normal");
+                        doc.setFontSize(columnIndex === 4 ? 6 : 6.2);
+                        doc.setTextColor(0);
+                        doc.text(value, x + (columnIndex === 4 ? 2 : columnWidths[columnIndex] / 2), tableY + rowHeight / 2 + 1, {
+                            align: columnIndex === 4 ? "left" : "center",
+                            maxWidth: columnWidths[columnIndex] - 3,
+                        });
+                        x += columnWidths[columnIndex];
+                    });
+                    tableY += rowHeight;
+                });
             });
 
-            });
-            const filename = selectedParticipant === "all"
-                ? `rekap-absensi-semua-peserta-${activeMonth}.pdf`
-                : `rekap-absensi-${targetList[0].code || targetList[0].name.toLowerCase().replace(/\s+/g, "-")}-${activeMonth}.pdf`;
+            const filename = `rekap-absensi-${targetList[0].code || targetList[0].name.toLowerCase().replace(/\s+/g, "-")}-${activeMonth}.pdf`;
             doc.save(filename);
             return;
         }
 
-        // Tampilkan hanya baris peserta yang ada
         const totalDisplayRows = participantStats.length;
         const tableRowHeight = 12.75;
         const attendanceSectionY = 62;
@@ -530,7 +526,6 @@ function Riwayat() {
                 doc.addPage();
             }
 
-            // --- 1. JUDUL & SUBJUDUL DOKUMEN ---
             doc.setFont("helvetica", "bold");
             doc.setFontSize(17);
             doc.setTextColor(0);
@@ -540,15 +535,12 @@ function Riwayat() {
             doc.setFontSize(9.5);
             doc.setTextColor(0);
             doc.text(
-                selectedPerson
-                    ? `Rekap kehadiran bulanan untuk ${selectedPerson.name}.`
-                    : "Laporan seluruh peserta dalam satu tabel untuk satu bulan pelaporan.",
+                "Laporan seluruh peserta dalam satu tabel untuk satu bulan pelaporan.",
                 105,
                 25,
                 { align: "center", maxWidth: 170 }
             );
 
-            // --- 2. KOTAK INFORMASI / METADATA ---
             doc.setDrawColor(0);
             doc.setLineWidth(0.3);
             doc.setFillColor(245, 245, 245);
@@ -556,8 +548,6 @@ function Riwayat() {
 
             doc.setDrawColor(0);
             doc.line(tableX, 41, tableX + tableWidth, 41);
-            // Kolom kanan hanya dipakai di baris pertama; baris Pembimbing
-            // membentang penuh setelah informasi jumlah hari kerja dihapus.
             doc.line(114, 30, 114, 41);
 
             const drawMetadata = (label, value, labelX, colonX, valueX, y, maxValueWidth) => {
@@ -574,17 +564,14 @@ function Riwayat() {
                 doc.text(text, valueX, y, { maxWidth: maxValueWidth });
             };
 
-            // Samakan posisi label, titik dua, dan nilai agar metadata mudah dipindai.
             drawMetadata("Kampus", institutionName, 17, 44, 49, 36, 62);
             drawMetadata("Pembimbing", supervisorName, 17, 44, 49, 48, tableWidth - 38);
             drawMetadata("Bulan / Tahun", monthYearLabel, 117, 149, 154, 36, 40);
 
-            // --- 3. LAPORAN ABSENSI PER PESERTA MAGANG ---
             const sec2Y = attendanceSectionY;
             doc.setFillColor(235, 235, 235);
             doc.roundedRect(tableX, sec2Y, tableWidth, 9, 1.5, 1.5, "F");
 
-            // Ikon Users
             doc.setFillColor(0);
             doc.circle(18.8, sec2Y + 2.7, 1, "F");
             doc.circle(21.2, sec2Y + 3.2, 0.8, "F");
@@ -594,14 +581,8 @@ function Riwayat() {
             doc.setFont("helvetica", "bold");
             doc.setFontSize(10);
             doc.setTextColor(0);
-            doc.text(
-                selectedPerson ? `Detail Absensi - ${selectedPerson.name}` : "Laporan Absensi per Peserta Magang",
-                24.5,
-                sec2Y + 6,
-                { maxWidth: tableWidth - 30 }
-            );
+            doc.text("Laporan Absensi per Peserta Magang", 24.5, sec2Y + 6, { maxWidth: tableWidth - 30 });
 
-            // Header Tabel Peserta
             const tableHeaderY = sec2Y + 9;
             const headerHeight = 8;
 
@@ -624,7 +605,6 @@ function Riwayat() {
                 curX += w;
             });
 
-            // Baris Data Peserta (Tepat sejumlah peserta aktual, e.g. 5 baris)
             const rowHeight = tableRowHeight;
             const startIdx = (pageNum - 1) * ROWS_PER_PAGE;
             const endIdx = Math.min(startIdx + ROWS_PER_PAGE, totalDisplayRows);
@@ -639,7 +619,6 @@ function Riwayat() {
                 doc.setLineWidth(0.2);
                 doc.rect(tableX, rowY, tableWidth, rowHeight, "FD");
 
-                // Garis vertikal pemisah kolom
                 let vX = tableX;
                 for (let c = 0; c < colWidths.length - 1; c++) {
                     vX += colWidths[c];
@@ -654,45 +633,35 @@ function Riwayat() {
                 doc.setTextColor(0);
 
                 let cX = tableX;
-                // No.
                 doc.text(String(rowNumber), cX + colWidths[0] / 2, rowY + rowHeight / 2 + 1.5, { align: "center" });
                 cX += colWidths[0];
 
-                // Nama Peserta
                 doc.text(pData.name, cX + 3, rowY + rowHeight / 2 + 1.5, { maxWidth: colWidths[1] - 6 });
                 cX += colWidths[1];
 
-                // Hadir
                 doc.text(String(pData.hadir), cX + colWidths[2] / 2, rowY + rowHeight / 2 + 1.5, { align: "center" });
                 cX += colWidths[2];
 
-                // Izin
                 doc.text(String(pData.izin), cX + colWidths[3] / 2, rowY + rowHeight / 2 + 1.5, { align: "center" });
                 cX += colWidths[3];
 
-                // Sakit
                 doc.text(String(pData.sakit), cX + colWidths[4] / 2, rowY + rowHeight / 2 + 1.5, { align: "center" });
                 cX += colWidths[4];
 
-                // Alpha
                 doc.text(String(pData.alpha), cX + colWidths[5] / 2, rowY + rowHeight / 2 + 1.5, { align: "center" });
                 cX += colWidths[5];
 
-                // Hari Kerja
                 doc.text(String(hariKerjaCount), cX + colWidths[6] / 2, rowY + rowHeight / 2 + 1.5, { align: "center" });
                 cX += colWidths[6];
 
-                // Persentase Hadir
                 doc.text(`${pData.persentase} %`, cX + colWidths[7] / 2, rowY + rowHeight / 2 + 1.5, { align: "center" });
                 cX += colWidths[7];
 
-                // Catatan
                 doc.text(pData.catatan || "-", cX + colWidths[8] / 2, rowY + rowHeight / 2 + 1.5, { align: "center" });
             }
 
             const tableEndY = tableHeaderY + headerHeight + (endIdx - startIdx) * rowHeight;
 
-            // --- 6. CATATAN KAKI DI BAWAH TABEL ---
             doc.setFont("helvetica", "italic");
             doc.setFontSize(8);
             doc.setTextColor(0);
@@ -702,7 +671,6 @@ function Riwayat() {
                 tableEndY + 5.5
             );
 
-            // --- 7. AREA TANDA TANGAN ---
             if (pageNum === totalPages) {
                 const sigY = tableEndY + 19;
                 doc.setFont("helvetica", "normal");
@@ -712,7 +680,6 @@ function Riwayat() {
                 doc.text("Mengetahui,", 158, sigY, { align: "center" });
                 doc.text("Pembimbing Lapangan", 158, sigY + 6, { align: "center" });
 
-                // Garis tanda tangan
                 doc.setDrawColor(0);
                 doc.setLineWidth(0.4);
                 doc.line(132, sigY + 27, 184, sigY + 27);
@@ -740,7 +707,7 @@ function Riwayat() {
                         <div>
                             <p className="eyebrow">{role === "admin" ? "PORTAL ADMINISTRATOR" : role === "pembimbing" ? "PORTAL PEMBIMBING" : "ARSIP KEHADIRAN"}</p>
                             <h1>{role === "admin" ? "Kelola Data Absensi" : "Absensi Magang"}</h1>
-                            <p className="subtitle">{role === "admin" ? "Kelola, ubah, dan pantau seluruh data absensi peserta magang." : role === "pembimbing" ? "Lihat kehadiran peserta magang." : "Riwayat absensi ini hanya dapat dilihat oleh akun Anda."}</p>
+                            <p className="subtitle">{role === "admin" ? "Kelola, pantau, dan verifikasi seluruh rekapan data absensi WFO & Daring (Zoom)." : role === "pembimbing" ? "Rekap kehadiran peserta magang (WFO & Daring Zoom)." : "Riwayat absensi ini hanya dapat dilihat oleh akun Anda."}</p>
                         </div>
                         <div className="live-clock">
                             <strong>{clock.toLocaleTimeString("id-ID")}</strong>
@@ -764,6 +731,14 @@ function Riwayat() {
                                 <span>
                                     <strong>Kelola Absensi</strong>
                                     <small>Kelola data absensi seluruh peserta.</small>
+                                </span>
+                                <span className="management-arrow">→</span>
+                            </Link>
+                            <Link to="/admin/lokasi" className="management-link">
+                                <span className="management-icon">📍</span>
+                                <span>
+                                    <strong>Lokasi & Kebijakan Daring</strong>
+                                    <small>Atur radius kantor & izin absensi Zoom.</small>
                                 </span>
                                 <span className="management-arrow">→</span>
                             </Link>
@@ -904,8 +879,8 @@ function Riwayat() {
                                             <th>Nama</th>
                                             <th>Masuk</th>
                                             <th>Pulang</th>
-                                            <th>Status</th>
-                                            <th>Keterangan</th>
+                                            <th>Status Kehadiran</th>
+                                            <th>Keterangan & Bukti</th>
                                             {role === "pembimbing" && <th>Aksi</th>}
                                         </tr>
                                     </thead>
@@ -917,24 +892,97 @@ function Riwayat() {
                                         ) : displayedData.length ? (
                                             displayedData.map((item, index) => {
                                                 const isPendingLeave = item.approval_status === "pending";
-                                                const displayStatus = isPendingLeave
-                                                    ? "Menunggu izin"
-                                                    : item.approval_status === "rejected"
-                                                        ? "Alpa"
-                                                        : item.status;
+                                                const isZoom = String(item.keterangan || "").includes("[ZOOM");
+                                                const cleanKeterangan = String(item.keterangan || "")
+                                                    .replace("[ZOOM / DARING]", "")
+                                                    .replace("[ZOOM]", "")
+                                                    .trim();
+
                                                 return (
                                                     <tr key={item.id}>
                                                         <td>{index + 1}</td>
                                                         <td>{formatDate(item.tanggal)}</td>
-                                                        <td>{item.participant_name}</td>
+                                                        <td>
+                                                            <strong style={{ color: "#0f172a", display: "block" }}>{item.participant_name}</strong>
+                                                            {item.institution && (
+                                                                <small style={{ color: "#64748b" }}>{item.institution}</small>
+                                                            )}
+                                                        </td>
                                                         <td>{item.jam_masuk || "-"}</td>
                                                         <td>{item.jam_pulang || "-"}</td>
                                                         <td>
-                                                            <span className={`badge ${isPendingLeave ? "badge-belum-hadir" : "badge-" + String(item.status).toLowerCase().replace(" ", "-")}`}>
-                                                                {displayStatus}
-                                                            </span>
+                                                            {isPendingLeave ? (
+                                                                <span className="badge badge-belum-hadir">Menunggu izin</span>
+                                                            ) : item.approval_status === "rejected" ? (
+                                                                <span className="badge badge-alpa">Alpa</span>
+                                                            ) : item.status === "Hadir" && isZoom ? (
+                                                                <span
+                                                                    style={{
+                                                                        display: "inline-flex",
+                                                                        alignItems: "center",
+                                                                        gap: "5px",
+                                                                        background: "#e0e7ff",
+                                                                        color: "#4338ca",
+                                                                        border: "1px solid #c7d2fe",
+                                                                        padding: "3px 8px",
+                                                                        borderRadius: "12px",
+                                                                        fontSize: "12px",
+                                                                        fontWeight: "600",
+                                                                    }}
+                                                                >
+                                                                    <span>📹</span>
+                                                                    <span>Daring (Zoom)</span>
+                                                                </span>
+                                                            ) : item.status === "Hadir" ? (
+                                                                <span className="badge badge-hadir" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                                                    <span>🏢</span>
+                                                                    <span>WFO (Kantor)</span>
+                                                                </span>
+                                                            ) : (
+                                                                <span className={`badge badge-${String(item.status).toLowerCase().replace(" ", "-")}`}>
+                                                                    {item.status}
+                                                                </span>
+                                                            )}
                                                         </td>
-                                                        <td><small>{item.keterangan || "-"}</small></td>
+                                                        <td>
+                                                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                                                                <small style={{ color: "#334155" }}>{cleanKeterangan || "-"}</small>
+                                                                {item.foto_url && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setPreviewImage({
+                                                                            url: item.foto_url,
+                                                                            name: item.participant_name,
+                                                                            tanggal: item.tanggal,
+                                                                            jam: item.jam_masuk,
+                                                                            isZoom: isZoom,
+                                                                        })}
+                                                                        style={{
+                                                                            display: "inline-flex",
+                                                                            alignItems: "center",
+                                                                            gap: "5px",
+                                                                            background: isZoom ? "#eff6ff" : "#f8fafc",
+                                                                            border: isZoom ? "1px solid #bfdbfe" : "1px solid #cbd5e1",
+                                                                            borderRadius: "4px",
+                                                                            padding: "3px 8px",
+                                                                            fontSize: "11px",
+                                                                            fontWeight: "600",
+                                                                            color: isZoom ? "#1d4ed8" : "#334155",
+                                                                            cursor: "pointer",
+                                                                            width: "fit-content",
+                                                                        }}
+                                                                    >
+                                                                        <span>{isZoom ? "📹" : "📷"}</span>
+                                                                        <span>{isZoom ? "Lihat Bukti Zoom" : "Lihat Foto Absen"}</span>
+                                                                    </button>
+                                                                )}
+                                                                {item.jarak_meter !== null && item.jarak_meter !== undefined && (
+                                                                    <small style={{ color: "#64748b", fontSize: "10.5px" }}>
+                                                                        Jarak: ± {item.jarak_meter}m {isZoom ? "(Daring)" : ""}
+                                                                    </small>
+                                                                )}
+                                                            </div>
+                                                        </td>
                                                         {role === "pembimbing" && (
                                                             <td>
                                                                 {isPendingLeave ? (
@@ -957,6 +1005,107 @@ function Riwayat() {
                                 </table>
                             </div>
                         </>
+                    )}
+
+                    {/* Modal Popup Bukti Foto / Screenshot Zoom */}
+                    {previewImage && (
+                        <div
+                            role="dialog"
+                            aria-modal="true"
+                            onClick={() => setPreviewImage(null)}
+                            style={{
+                                position: "fixed",
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                backgroundColor: "rgba(15, 23, 42, 0.75)",
+                                backdropFilter: "blur(2px)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                zIndex: 9999,
+                                padding: "20px",
+                            }}
+                        >
+                            <div
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                    background: "#ffffff",
+                                    borderRadius: "12px",
+                                    maxWidth: "580px",
+                                    width: "100%",
+                                    overflow: "hidden",
+                                    boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.25)",
+                                    border: "1px solid #cbd5e1",
+                                }}
+                            >
+                                <div style={{ padding: "16px 20px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc" }}>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#0f172a" }}>
+                                            {previewImage.isZoom ? "📹 Bukti Tangkapan Layar Zoom Meeting" : "📷 Bukti Foto Kehadiran"}
+                                        </h3>
+                                        <p style={{ margin: "3px 0 0", fontSize: "12px", color: "#64748b" }}>
+                                            {previewImage.name} • {formatDate(previewImage.tanggal)} ({previewImage.jam || "-"})
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewImage(null)}
+                                        style={{
+                                            background: "#e2e8f0",
+                                            border: "none",
+                                            borderRadius: "6px",
+                                            padding: "6px 10px",
+                                            cursor: "pointer",
+                                            fontSize: "13px",
+                                            fontWeight: "700",
+                                            color: "#334155",
+                                        }}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                                <div style={{ padding: "18px", textAlign: "center", background: "#0f172a" }}>
+                                    <img
+                                        src={previewImage.url}
+                                        alt="Bukti Absensi"
+                                        style={{
+                                            maxWidth: "100%",
+                                            maxHeight: "440px",
+                                            borderRadius: "6px",
+                                            objectFit: "contain",
+                                            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                                        }}
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = "https://placehold.co/600x400?text=Gambar+Tidak+Ditemukan";
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ padding: "12px 20px", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc" }}>
+                                    <span style={{ fontSize: "12px", color: "#64748b" }}>
+                                        {previewImage.isZoom ? "Peserta memilih kehadiran daring / Zoom" : "Presensi luring di kantor"}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewImage(null)}
+                                        style={{
+                                            background: "#4f46e5",
+                                            color: "#ffffff",
+                                            border: "none",
+                                            padding: "8px 18px",
+                                            borderRadius: "6px",
+                                            fontWeight: "600",
+                                            fontSize: "13px",
+                                            cursor: "pointer",
+                                        }}
+                                    >
+                                        Tutup
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     )}
 
                 </main>

@@ -34,6 +34,15 @@ function Absensi() {
     const [attendanceStatus, setAttendanceStatus] = useState("Hadir");
     const [keterangan, setKeterangan] = useState("");
 
+    // Kebijakan absensi daring / Zoom
+    const [policy, setPolicy] = useState({
+        allow_zoom: true,
+        require_zoom_proof: true,
+        zoom_note: "",
+    });
+    const [zoomFile, setZoomFile] = useState(null);
+    const [zoomPreview, setZoomPreview] = useState(null);
+
     // Geofencing state
     const [offices, setOffices] = useState([]);
     const [userCoords, setUserCoords] = useState(null);
@@ -48,6 +57,17 @@ function Absensi() {
 
     const mapContainerRef = useRef(null);
     const mapInstanceRef = useRef(null);
+
+    const handleFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setZoomFile(file);
+            setZoomPreview(URL.createObjectURL(file));
+        } else {
+            setZoomFile(null);
+            setZoomPreview(null);
+        }
+    };
 
     const handleDownloadReplyLetter = async () => {
         setDownloadingLetter(true);
@@ -125,6 +145,18 @@ function Absensi() {
         }
     };
 
+    // Load attendance policy
+    const loadAttendancePolicy = async () => {
+        try {
+            const res = await api.get("/pengaturan-absensi");
+            if (res.data?.data) {
+                setPolicy(res.data.data);
+            }
+        } catch (err) {
+            console.error("Gagal memuat kebijakan absensi:", err);
+        }
+    };
+
     useEffect(() => {
         let cancelled = false;
 
@@ -191,6 +223,7 @@ function Absensi() {
 
         void loadProfile();
         void loadOfficeLocations();
+        void loadAttendancePolicy();
         detectLocation();
 
         const timer = setInterval(() => setClock(new Date()), 1000);
@@ -256,7 +289,8 @@ function Absensi() {
         }
 
         let minDistance = Infinity;
-        let closest = offices[0];
+        let closest = offices[0] || null;
+        let matchedOffice = null;
 
         for (const office of offices) {
             const dist = calculateHaversineDistance(
@@ -265,19 +299,27 @@ function Absensi() {
                 Number(office.latitude),
                 Number(office.longitude)
             );
-            if (dist < minDistance) {
+            const radius = Number(office.radius_meter) || 100;
+
+            if (dist <= radius) {
+                if (!matchedOffice || dist < minDistance) {
+                    matchedOffice = office;
+                    minDistance = dist;
+                    closest = office;
+                }
+            } else if (!matchedOffice && dist < minDistance) {
                 minDistance = dist;
                 closest = office;
             }
         }
 
-        const allowedRadius = Number(closest?.radius_meter) || 100;
-        const isWithin = minDistance <= allowedRadius;
+        const isWithin = matchedOffice !== null;
+        const targetOffice = matchedOffice || closest;
 
         setLocationStatus({
             hasOffices: true,
             isWithinRadius: isWithin,
-            closestOffice: closest,
+            closestOffice: targetOffice,
             distance: Math.round(minDistance),
         });
     }, [userCoords, offices]);
@@ -288,19 +330,21 @@ function Absensi() {
             return;
         }
 
+        const userLat = userCoords.latitude;
+        const userLng = userCoords.longitude;
+        const officeLat = Number(locationStatus.closestOffice.latitude);
+        const officeLng = Number(locationStatus.closestOffice.longitude);
+        const radius = Number(locationStatus.closestOffice.radius_meter) || 100;
+
         if (mapInstanceRef.current) {
             mapInstanceRef.current.remove();
             mapInstanceRef.current = null;
         }
 
-        const userLat = userCoords.latitude;
-        const userLng = userCoords.longitude;
-        const officeLat = Number(locationStatus.closestOffice.latitude);
-        const officeLng = Number(locationStatus.closestOffice.longitude);
-        const officeRadius = Number(locationStatus.closestOffice.radius_meter) || 100;
-
         const map = L.map(mapContainerRef.current, {
-            zoomControl: true,
+            center: [userLat, userLng],
+            zoom: 16,
+            zoomControl: false,
             attributionControl: false,
         });
 
@@ -308,41 +352,52 @@ function Absensi() {
             maxZoom: 19,
         }).addTo(map);
 
-        // Office pin & circle
         const officeIcon = L.divIcon({
             className: "office-marker",
             html: `
                 <div style="
-                    width: 30px;
-                    height: 30px;
+                    width: 28px;
+                    height: 28px;
                     background: #4f46e5;
-                    border-radius: 50% 50% 50% 0;
-                    transform: rotate(-45deg);
+                    color: #fff;
+                    border-radius: 50%;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4);
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
                     border: 2px solid #ffffff;
                 ">
-                    <span style="transform: rotate(45deg); font-size: 13px;">🏢</span>
+                    <span style="font-size: 13px;">🏢</span>
                 </div>
             `,
-            iconSize: [30, 30],
-            iconAnchor: [15, 30],
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
         });
 
-        L.marker([officeLat, officeLng], { icon: officeIcon })
-            .bindPopup(`<b>${locationStatus.closestOffice.nama_lokasi}</b><br>Batas Radius: ${officeRadius}m`)
-            .addTo(map);
+        const boundsPoints = [[userLat, userLng]];
 
-        L.circle([officeLat, officeLng], {
-            radius: officeRadius,
-            color: "#4f46e5",
-            fillColor: "#6366f1",
-            fillOpacity: 0.16,
-            weight: 2,
-            dashArray: "4, 6",
-        }).addTo(map);
+        // Render every active office circle and pin
+        offices.forEach((office) => {
+            const oLat = Number(office.latitude);
+            const oLng = Number(office.longitude);
+            const oRad = Number(office.radius_meter) || 100;
+            const isClosest = locationStatus.closestOffice?.id === office.id;
+
+            L.circle([oLat, oLng], {
+                radius: oRad,
+                color: isClosest ? "#4f46e5" : "#94a3b8",
+                fillColor: isClosest ? "#818cf8" : "#cbd5e1",
+                fillOpacity: isClosest ? 0.22 : 0.12,
+                weight: isClosest ? 2 : 1.5,
+                dashArray: "3, 5",
+            }).addTo(map);
+
+            L.marker([oLat, oLng], { icon: officeIcon })
+                .bindPopup(`<b>${office.nama_lokasi}</b><br>Radius: ${oRad}m${isClosest ? "<br><i>(Lokasi Anda / Terdekat)</i>" : ""}`)
+                .addTo(map);
+
+            boundsPoints.push([oLat, oLng]);
+        });
 
         // User pin
         const userIcon = L.divIcon({
@@ -352,6 +407,7 @@ function Absensi() {
                     width: 26px;
                     height: 26px;
                     background: #0284c7;
+                    color: #fff;
                     border-radius: 50%;
                     display: flex;
                     align-items: center;
@@ -370,11 +426,8 @@ function Absensi() {
             .bindPopup("<b>Posisi Anda Saat Ini</b>")
             .addTo(map);
 
-        // Fit bounds
-        const bounds = L.latLngBounds([
-            [userLat, userLng],
-            [officeLat, officeLng],
-        ]);
+        // Fit bounds for user and all active offices
+        const bounds = L.latLngBounds(boundsPoints);
         map.fitBounds(bounds, { padding: [35, 35], maxZoom: 17 });
 
         mapInstanceRef.current = map;
@@ -399,31 +452,39 @@ function Absensi() {
             return;
         }
 
-        if (type === "in" && attendanceStatus !== "Hadir" && !keterangan.trim()) {
+        const isZoom = attendanceStatus === "Zoom";
+
+        if (type === "in" && isZoom) {
+            if (policy.require_zoom_proof && !zoomFile) {
+                setError("Wajib melampirkan screenshot layar Zoom meeting sebagai bukti kehadiran daring.");
+                return;
+            }
+        } else if (type === "in" && attendanceStatus !== "Hadir" && !keterangan.trim()) {
             setError(`Mohon isi keterangan/alasan untuk status ${attendanceStatus}.`);
             return;
         }
 
-        // Verifikasi lokasi kantor jika status adalah "Hadir"
+        // Verifikasi lokasi kantor jika status adalah "Hadir" WFO
         if (attendanceStatus === "Hadir" && locationStatus.hasOffices) {
             if (locationLoading) {
                 setError("Sedang memverifikasi lokasi GPS Anda. Mohon tunggu sebentar...");
                 return;
             }
             if (locationError || !userCoords) {
-                setError("Akses lokasi GPS diperlukan untuk absensi Hadir. Mohon izinkan akses lokasi di browser Anda.");
+                setError("Akses lokasi GPS diperlukan untuk absensi Hadir di kantor. Mohon izinkan akses lokasi di browser Anda.");
                 return;
             }
             if (!locationStatus.isWithinRadius) {
                 setError(
-                    `Anda tidak dapat melakukan absensi Hadir karena berada di luar batas radius kantor (${locationStatus.distance} meter dari ${locationStatus.closestOffice?.nama_lokasi}, maksimal ${locationStatus.closestOffice?.radius_meter} meter).`
+                    `Anda tidak dapat melakukan absensi Hadir di kantor karena berada di luar batas radius (${locationStatus.distance} meter dari ${locationStatus.closestOffice?.nama_lokasi}, maksimal ${locationStatus.closestOffice?.radius_meter} meter). Jika Anda sedang mengikuti rapat online, pilih opsi 'Hadir Daring (Zoom)'.`
                 );
                 return;
             }
         }
 
-        // Verifikasi saat checkout untuk absensi Hadir
-        if (type === "out" && data?.status === "Hadir" && locationStatus.hasOffices) {
+        // Verifikasi saat checkout untuk absensi Hadir WFO (jika bukan Zoom)
+        const isZoomAttendance = String(data?.keterangan || "").includes("[ZOOM");
+        if (type === "out" && data?.status === "Hadir" && !isZoomAttendance && locationStatus.hasOffices) {
             if (locationError || !userCoords) {
                 setError("Akses lokasi GPS diperlukan untuk absensi pulang. Mohon aktifkan GPS.");
                 return;
@@ -441,20 +502,33 @@ function Absensi() {
         setError("");
         try {
             const endpoint = type === "in" ? "/absensi/masuk" : "/absensi/pulang";
-            const payload =
-                type === "in"
-                    ? {
-                          status: attendanceStatus,
-                          keterangan,
-                          latitude: userCoords?.latitude || null,
-                          longitude: userCoords?.longitude || null,
-                      }
-                    : {
-                          latitude: userCoords?.latitude || null,
-                          longitude: userCoords?.longitude || null,
-                      };
+            let payload;
+            let headers = {};
 
-            const response = await api.post(endpoint, payload);
+            if (type === "in") {
+                const formData = new FormData();
+                if (isZoom) {
+                    formData.append("status", "Hadir");
+                    formData.append("tipe_kehadiran", "Zoom");
+                } else {
+                    formData.append("status", attendanceStatus);
+                    formData.append("tipe_kehadiran", "WFO");
+                }
+                formData.append("keterangan", keterangan);
+                if (userCoords?.latitude) formData.append("latitude", userCoords.latitude);
+                if (userCoords?.longitude) formData.append("longitude", userCoords.longitude);
+                if (zoomFile) formData.append("foto", zoomFile);
+
+                payload = formData;
+                headers = { "Content-Type": "multipart/form-data" };
+            } else {
+                payload = {
+                    latitude: userCoords?.latitude || null,
+                    longitude: userCoords?.longitude || null,
+                };
+            }
+
+            const response = await api.post(endpoint, payload, { headers });
             setMessage(response.data.message);
             setData(response.data.data);
         } catch (requestError) {
@@ -470,6 +544,8 @@ function Absensi() {
     const dateLabel = clock.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
     const beforeCheckInTime = clock.getHours() < 8;
     const beforeCheckoutTime = clock.toTimeString().slice(0, 5) < checkoutTime;
+    const isZoomAttendance = String(data?.keterangan || "").includes("[ZOOM");
+    const isZoom = attendanceStatus === "Zoom";
     const displayedStatus =
         data?.approval_status === "pending"
             ? "Menunggu persetujuan"
@@ -477,47 +553,52 @@ function Absensi() {
             ? "Izin disetujui"
             : data?.approval_status === "rejected"
             ? "Alpa"
+            : data?.status === "Hadir" && isZoomAttendance
+            ? "Hadir Daring (Zoom)"
             : data?.status || "Belum hadir";
 
     // Can check in?
     const isCheckInDisabled =
         loading ||
         !!data ||
-        (attendanceStatus === "Hadir" && locationStatus.hasOffices && (!locationStatus.isWithinRadius || locationLoading || !!locationError));
+        (attendanceStatus === "Hadir" && locationStatus.hasOffices && (!locationStatus.isWithinRadius || locationLoading || !!locationError)) ||
+        (isZoom && policy.require_zoom_proof && !zoomFile);
 
     return (
         <div className="layout">
             <Sidebar />
             <div className="content">
                 <Navbar />
-                <main className="main attendance-page">
-                    <section className="page-heading attendance-page-heading">
+                <main className="main">
+                    <div className="page-heading">
                         <div>
-                            <p className="eyebrow">PORTAL KEHADIRAN</p>
-                            <h1>Absensi magang</h1>
-                            <p className="subtitle">Catat kehadiran harianmu sesuai lokasi kantor yang ditentukan.</p>
+                            <p className="eyebrow">PORTAL PESERTA</p>
+                            <h1>Absensi Harian</h1>
+                            <p className="subtitle">Catat jam masuk dan jam pulang sesuai jadwal operasional kantor atau kegiatan Zoom.</p>
                         </div>
                         <div className="live-clock">
                             <strong>{clock.toLocaleTimeString("id-ID")}</strong>
                             <span>{dateLabel}</span>
                         </div>
-                    </section>
+                    </div>
 
-                    <section className="attendance-card attendance-page-card">
-                        <div className="attendance-header">
+                    <section className="attendance-box">
+                        <div className="attendance-profile-box">
                             <div>
                                 <p className="eyebrow">AKUN PESERTA</p>
                                 <h2>{profileLoading ? "Memuat profil..." : participant?.participant_name || "Akun belum terhubung"}</h2>
-                                {participant && <p className="subtitle">NPM/NIM: {participant.participant_code}</p>}
+                                {participant?.participant_code && <p className="subtitle">NPM: {participant.participant_code}</p>}
                             </div>
                         </div>
 
-                        {profileLoading && <p className="message">Memuat profil peserta...</p>}
-
-                        {participant && (
+                        {!profileLoading && !participant ? (
+                            <div className="alert-card error" style={{ marginTop: "16px" }}>
+                                <p><strong>Akun Anda belum terhubung dengan data magang.</strong></p>
+                                <p>Silakan keluar dan masuk kembali memakai NPM yang valid atau selesaikan pendaftaran magang terlebih dahulu.</p>
+                            </div>
+                        ) : (
                             <>
-                                <hr className="attendance-divider" />
-                                <div className="attendance-header attendance-current-status">
+                                <div className="attendance-status-box">
                                     <div>
                                         <p className="eyebrow">STATUS HARI INI</p>
                                         <h2 className={data?.status === "Hadir" || data?.approval_status === "approved" ? "hadir" : data?.status === "Alpa" || data?.approval_status === "rejected" ? "alpa-status" : "muted-status"}>{displayedStatus}</h2>
@@ -532,19 +613,89 @@ function Absensi() {
                                         onChange={(event) => setAttendanceStatus(event.target.value)} 
                                         disabled={loading || !!data?.id}
                                     >
-                                        <option value="Hadir">Hadir</option>
-                                        <option value="Izin">Izin</option>
+                                        <option value="Hadir">Hadir (Wajib di Area Kantor)</option>
+                                        {policy.allow_zoom && <option value="Zoom">Hadir Daring (Zoom)</option>}
+                                        <option value="Izin">Izin (perlu persetujuan pembimbing)</option>
                                         <option value="Sakit">Sakit</option>
-                                        {attendanceStatus === "Alpa" && <option value="Alpa" disabled>Alpa</option>}
+                                        <option value="Alpa">Alpa</option>
                                     </select>
-                                    {attendanceStatus === "Izin" && !data?.id && (
+                                    {attendanceStatus === "Izin" && !data && (
                                         <small className="attendance-hint">
                                             Status izin baru tercatat setelah disetujui pembimbing. Permohonan izin dapat diajukan tanpa batasan lokasi kantor.
                                         </small>
                                     )}
                                 </label>
 
-                                {attendanceStatus !== "Hadir" && (
+                                {/* Form Khusus Mode Zoom: Upload Bukti & Agenda */}
+                                {attendanceStatus === "Zoom" && !data && (
+                                    <div
+                                        style={{
+                                            marginTop: "16px",
+                                            padding: "16px 18px",
+                                            background: "#f5f3ff",
+                                            border: "1px dashed #818cf8",
+                                            borderRadius: "10px",
+                                        }}
+                                    >
+                                        <label style={{ display: "block", fontWeight: "700", fontSize: "13.5px", color: "#312e81", marginBottom: "4px" }}>
+                                            📸 Unggah Bukti Screenshot Layar Zoom Meeting {policy.require_zoom_proof && <span style={{ color: "#ef4444" }}>*</span>}
+                                        </label>
+                                        <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#6366f1" }}>
+                                            Lampirkan tangkapan layar saat Anda berada di room rapat Zoom (terlihat nama/wajah dan jam).
+                                        </p>
+
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleFileChange}
+                                            disabled={loading || !!data}
+                                            style={{
+                                                display: "block",
+                                                width: "100%",
+                                                fontSize: "13px",
+                                                color: "#334155",
+                                                cursor: "pointer",
+                                            }}
+                                            required={policy.require_zoom_proof}
+                                        />
+
+                                        {zoomPreview && (
+                                            <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "12px" }}>
+                                                <img
+                                                    src={zoomPreview}
+                                                    alt="Preview Bukti Zoom"
+                                                    style={{ width: "90px", height: "60px", objectFit: "cover", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+                                                />
+                                                <span style={{ fontSize: "12px", color: "#065f46", fontWeight: "600" }}>
+                                                    ✓ Berkas terpilih: {zoomFile?.name}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        <div style={{ marginTop: "14px" }}>
+                                            <label style={{ display: "block", fontWeight: "600", fontSize: "13px", color: "#334155", marginBottom: "4px" }}>
+                                                Agenda / Topik Pertemuan Zoom:
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={keterangan}
+                                                onChange={(e) => setKeterangan(e.target.value)}
+                                                placeholder="Contoh: Rapat koordinasi mingguan bersama pembimbing"
+                                                disabled={loading || !!data}
+                                                style={{
+                                                    width: "100%",
+                                                    padding: "8px 12px",
+                                                    borderRadius: "6px",
+                                                    border: "1px solid #cbd5e1",
+                                                    fontSize: "13px",
+                                                    boxSizing: "border-box",
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {attendanceStatus !== "Hadir" && attendanceStatus !== "Zoom" && (
                                     <label className="attendance-status-select">
                                         Keterangan / Alasan
                                         <textarea 
@@ -622,42 +773,65 @@ function Absensi() {
 
                                     {!locationLoading && !locationError && locationStatus.hasOffices && (
                                         <div>
-                                            <div
-                                                style={{
-                                                    padding: "12px 14px",
-                                                    borderRadius: "8px",
-                                                    background: locationStatus.isWithinRadius ? "#ecfdf5" : "#fef2f2",
-                                                    border: `1px solid ${locationStatus.isWithinRadius ? "#a7f3d0" : "#fecaca"}`,
-                                                    color: locationStatus.isWithinRadius ? "#065f46" : "#991b1b",
-                                                    fontSize: "13px",
-                                                    lineHeight: "1.5",
-                                                    marginBottom: "12px",
-                                                }}
-                                            >
-                                                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "700", marginBottom: "4px" }}>
-                                                    <span>{locationStatus.isWithinRadius ? "✓" : "⛔"}</span>
-                                                    <span>
-                                                        {locationStatus.isWithinRadius
-                                                            ? "Lokasi Sah: Anda Berada di Area Kantor"
-                                                            : "Lokasi Tidak Sah: Anda di Luar Radius Kantor"}
-                                                    </span>
+                                            {attendanceStatus === "Zoom" ? (
+                                                <div
+                                                    style={{
+                                                        padding: "12px 14px",
+                                                        borderRadius: "8px",
+                                                        background: "#e0e7ff",
+                                                        border: "1px solid #c7d2fe",
+                                                        color: "#3730a3",
+                                                        fontSize: "13px",
+                                                        lineHeight: "1.5",
+                                                        marginBottom: "12px",
+                                                    }}
+                                                >
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "700", marginBottom: "4px" }}>
+                                                        <span>📹</span>
+                                                        <span>Mode Daring (Zoom / WFH): Bebas Batas Radius Kantor</span>
+                                                    </div>
+                                                    <div>
+                                                        Anda diperbolehkan absen dari jarak jauh (posisi Anda saat ini: <strong>±{locationStatus.distance ?? "-"} meter</strong> dari kantor). Koordinat GPS tetap dicatat untuk transparansi data kehadiran.
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    {locationStatus.isWithinRadius ? (
+                                            ) : (
+                                                <div
+                                                    style={{
+                                                        padding: "12px 14px",
+                                                        borderRadius: "8px",
+                                                        background: locationStatus.isWithinRadius ? "#ecfdf5" : "#fef2f2",
+                                                        border: `1px solid ${locationStatus.isWithinRadius ? "#a7f3d0" : "#fecaca"}`,
+                                                        color: locationStatus.isWithinRadius ? "#065f46" : "#991b1b",
+                                                        fontSize: "13px",
+                                                        lineHeight: "1.5",
+                                                        marginBottom: "12px",
+                                                    }}
+                                                >
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "700", marginBottom: "4px" }}>
+                                                        <span>{locationStatus.isWithinRadius ? "✓" : "⛔"}</span>
                                                         <span>
-                                                            Jarak Anda saat ini <strong>±{locationStatus.distance} meter</strong> dari{" "}
-                                                            <strong>{locationStatus.closestOffice?.nama_lokasi}</strong> (Batas toleransi:{" "}
-                                                            {locationStatus.closestOffice?.radius_meter} meter). Anda dapat melakukan absensi.
+                                                            {locationStatus.isWithinRadius
+                                                                ? "Lokasi Sah: Anda Berada di Area Kantor"
+                                                                : "Lokasi Tidak Sah: Anda di Luar Radius Kantor"}
                                                         </span>
-                                                    ) : (
-                                                        <span>
-                                                            Jarak Anda saat ini <strong>±{locationStatus.distance} meter</strong> dari kantor{" "}
-                                                            <strong>{locationStatus.closestOffice?.nama_lokasi}</strong>. Batas maksimal radius adalah{" "}
-                                                            <strong>{locationStatus.closestOffice?.radius_meter} meter</strong>. Silakan mendekat ke area kantor untuk absen Hadir.
-                                                        </span>
-                                                    )}
+                                                    </div>
+                                                    <div>
+                                                        {locationStatus.isWithinRadius ? (
+                                                            <span>
+                                                                Jarak Anda saat ini <strong>±{locationStatus.distance} meter</strong> dari{" "}
+                                                                <strong>{locationStatus.closestOffice?.nama_lokasi}</strong> (Batas toleransi:{" "}
+                                                                {locationStatus.closestOffice?.radius_meter} meter). Anda dapat melakukan absensi.
+                                                            </span>
+                                                        ) : (
+                                                            <span>
+                                                                Jarak Anda saat ini <strong>±{locationStatus.distance} meter</strong> dari kantor{" "}
+                                                                <strong>{locationStatus.closestOffice?.nama_lokasi}</strong>. Batas maksimal radius adalah{" "}
+                                                                <strong>{locationStatus.closestOffice?.radius_meter} meter</strong>. Silakan mendekat ke area kantor untuk absen Hadir WFO, atau pilih mode <strong>Hadir Daring (Zoom)</strong> jika sedang rapat daring.
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            )}
 
                                             {/* Mini Map Preview */}
                                             {userCoords && (
@@ -700,6 +874,10 @@ function Absensi() {
                                                 ? "Menunggu keputusan pembimbing"
                                                 : data?.jam_masuk
                                                 ? "Waktu masuk tercatat"
+                                                : isZoom
+                                                ? policy.require_zoom_proof && !zoomFile
+                                                    ? "Wajib pilih foto screenshot Zoom"
+                                                    : "Siap melakukan absensi daring (Zoom)"
                                                 : attendanceStatus === "Hadir"
                                                 ? beforeCheckInTime
                                                     ? "Absen masuk aktif mulai pukul 08:00"
@@ -712,11 +890,11 @@ function Absensi() {
                                         <button
                                             type="button"
                                             onClick={() => submitAttendance("in")}
-                                            disabled={loading || !!data?.id || (attendanceStatus === "Hadir" && (beforeCheckInTime || (locationStatus.hasOffices && !locationStatus.isWithinRadius)))}
+                                            disabled={loading || !!data?.id || (isZoom && policy.require_zoom_proof && !zoomFile) || (attendanceStatus === "Hadir" && (beforeCheckInTime || (locationStatus.hasOffices && !locationStatus.isWithinRadius)))}
                                             className={attendanceStatus === "Hadir" && (beforeCheckInTime || (locationStatus.hasOffices && !locationStatus.isWithinRadius)) && !data?.id ? "btn-secondary" : "btn-attendance-in"}
                                             style={
-                                                (beforeCheckInTime || (locationStatus.hasOffices && !locationStatus.isWithinRadius)) && attendanceStatus === "Hadir" && !data?.id
-                                                    ? { opacity: 0.6, cursor: "not-allowed", background: "#cbd5e1", color: "#64748b" }
+                                                attendanceStatus === "Hadir" && locationStatus.hasOffices && !locationStatus.isWithinRadius && !data
+                                                    ? { background: "#cbd5e1", color: "#64748b", cursor: "not-allowed" }
                                                     : {}
                                             }
                                         >
@@ -730,6 +908,8 @@ function Absensi() {
                                                 ? "Tidak hadir (Alpa)"
                                                 : data?.id
                                                 ? "Sudah tercatat"
+                                                : isZoom
+                                                ? "Absen Masuk (Zoom)"
                                                 : attendanceStatus === "Hadir"
                                                 ? beforeCheckInTime
                                                     ? "Belum Buka (08:00)"
@@ -763,7 +943,7 @@ function Absensi() {
                                                 !!data?.jam_pulang ||
                                                 beforeCheckoutTime ||
                                                 data?.status === "Alpa" ||
-                                                (data?.status === "Hadir" && locationStatus.hasOffices && !locationStatus.isWithinRadius)
+                                                (!isZoomAttendance && data?.status === "Hadir" && locationStatus.hasOffices && !locationStatus.isWithinRadius)
                                             }
                                             className={data?.jam_pulang || beforeCheckoutTime || data?.status === "Alpa" ? "btn-secondary" : "btn-success"}
                                             style={
@@ -778,7 +958,6 @@ function Absensi() {
                                 </div>
                             </>
                         )}
-
                         {error && (
                             <div
                                 className="message error"
@@ -816,7 +995,6 @@ function Absensi() {
                                 )}
                             </div>
                         )}
-
                         {!profileLoading && !participant && (
                             <button
                                 type="button"

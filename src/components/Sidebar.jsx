@@ -23,6 +23,8 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
         ? [
             { to: "/admin/pendaftaran", label: "Pendaftaran Magang", icon: "👥" },
             { to: "/admin/periode", label: "Kelola Periode", icon: "🗓️" },
+            { to: "/admin/pembimbing", label: "Kelola Pembimbing", icon: "👨‍🏫" },
+            { to: "/admin/lokasi", label: "Lokasi Absensi", icon: "📍" },
             { to: "/riwayat", label: "Absensi Magang", icon: "📅" },
             { to: "/tugas", label: "Tugas Magang", icon: "📋" },
             { to: "/laporan", label: "Laporan Magang", icon: "📁" },
@@ -30,6 +32,7 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
         : isPembimbing
             ? [
                 { to: "/riwayat", label: "Absensi Magang", icon: "📅" },
+                { to: "/pembimbing/jadwal-absensi", label: "Jadwal Absensi", icon: "🕒" },
                 { to: "/tugas", label: "Tugas Magang", icon: "📋" },
                 { to: "/laporan", label: "Laporan Magang", icon: "📁" },
                 { to: "/master-penilaian", label: "Master Penilaian", icon: "⚙️" },
