@@ -71,7 +71,12 @@ export default function FormPendaftaran() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
+    if (!formData.periode_id) {
+      alert('Periode magang belum dipilih. Hubungi admin untuk menambahkan periode pendaftaran.');
+      return;
+    }
+
     const payload = new FormData();
     payload.append('no_hp', formData.no_hp);
     payload.append('program_studi', formData.program_studi);
@@ -290,6 +295,12 @@ export default function FormPendaftaran() {
               <h2 style={{ margin: '0 0 5px 0', color: '#0f172a', fontSize: '22px' }}>Pengajuan Magang Baru</h2>
               <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '30px' }}>Lengkapi informasi diri dan pastikan data sesuai dengan surat pengantar.</p>
 
+              {listPeriode.length === 0 && (
+                <div role="alert" style={{ marginBottom: '20px', padding: '14px 16px', borderRadius: '8px', border: '1px solid #fecaca', background: '#fef2f2', color: '#991b1b', fontSize: '14px', lineHeight: 1.5 }}>
+                  Belum ada periode pendaftaran magang. Hubungi admin agar menambahkan periode sebelum Anda mengirim pengajuan.
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <section style={{ padding: '18px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                   <h3 style={{ margin: '0 0 14px', fontSize: '16px', color: '#0f172a' }}>Informasi Pribadi</h3>
@@ -371,8 +382,9 @@ export default function FormPendaftaran() {
                     value={formData.periode_id} 
                     onChange={(e) => setFormData({...formData, periode_id: e.target.value})}
                     style={{ width: '100%', padding: '12px 15px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', background: 'white', color: '#334155' }}
+                    required
                   >
-                    <option value="" disabled>-- Pilih Periode --</option>
+                    <option value="" disabled>-- {listPeriode.length ? 'Pilih Periode' : 'Periode Belum Tersedia'} --</option>
                     {listPeriode.map(p => {
                       const formatDate = (d) => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).toLowerCase();
                       return (
@@ -449,7 +461,8 @@ export default function FormPendaftaran() {
 
                 <button 
                   type="submit" 
-                  style={{ background: '#4f46e5', color: 'white', padding: '14px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '15px', boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.4)' }}
+                  disabled={listPeriode.length === 0}
+                  style={{ background: listPeriode.length === 0 ? '#94a3b8' : '#4f46e5', color: 'white', padding: '14px', border: 'none', borderRadius: '8px', cursor: listPeriode.length === 0 ? 'not-allowed' : 'pointer', fontWeight: '600', fontSize: '15px', boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.4)' }}
                 >
                   Kirim Pengajuan Magang
                 </button>

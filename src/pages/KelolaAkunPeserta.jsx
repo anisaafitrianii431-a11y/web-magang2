@@ -145,7 +145,7 @@ function KelolaAkunPeserta() {
                                 <tr>
                                     <th>Nama akun</th>
                                     <th>Email</th>
-                                    <th>NPM peserta</th>
+                                    <th>NPM/NIM peserta</th>
                                     <th>Aksi</th>
                                 </tr>
                             </thead>
