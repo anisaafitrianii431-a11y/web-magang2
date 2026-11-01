@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AuthController as ApiAuthController;
 use App\Http\Controllers\Api\BerandaController as ApiBerandaController;
 use App\Http\Controllers\Api\LaporanMagangController;
 use App\Http\Controllers\Api\LokasiAbsensiController;
+use App\Http\Controllers\Api\MasterPenilaianController;
 use App\Http\Controllers\Api\ParticipantAccountController;
 use App\Http\Controllers\Api\PendaftaranController;
 use App\Http\Controllers\Api\PenilaianController;
@@ -127,6 +128,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
         Route::get('/laporan-magang/{id}', [LaporanMagangController::class, 'show']);
         Route::get('/laporan-magang/{id}/download', [LaporanMagangController::class, 'download']);
         Route::delete('/laporan-magang/{id}', [LaporanMagangController::class, 'destroy']);
+        Route::get('/master-penilaian/aktif', [MasterPenilaianController::class, 'active']);
     });
 
     Route::middleware('role:peserta')->group(function () {
@@ -136,6 +138,10 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
 
     Route::middleware('role:admin,pembimbing')->group(function () {
         Route::post('/laporan-magang/{id}/review', [LaporanMagangController::class, 'review']);
+        Route::get('/master-penilaian', [MasterPenilaianController::class, 'index']);
+        Route::post('/master-penilaian', [MasterPenilaianController::class, 'store']);
+        Route::put('/master-penilaian/{id}', [MasterPenilaianController::class, 'update']);
+        Route::delete('/master-penilaian/{id}', [MasterPenilaianController::class, 'destroy']);
         Route::get('/penilaian', [PenilaianController::class, 'index']);
         Route::get('/penilaian/peserta', [PenilaianController::class, 'participants']);
         Route::post('/penilaian', [PenilaianController::class, 'store']);
