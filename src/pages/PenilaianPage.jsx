@@ -2,14 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import PenilaianAkhirPdfModal from '../components/PenilaianAkhirPdfModal';
 
-const RUBRIC = [
-  { key: 'ketertiban_awal', aspek: 'Ketertiban Proses Magang', bobot: 10 },
-  { key: 'kelengkapan_laporan', aspek: 'Kelengkapan Sistematika Laporan', bobot: 50 },
-  { key: 'kerapian_dokumentasi', aspek: 'Kerapian Catatan Dokumentasi Kegiatan Magang', bobot: 20 },
-  { key: 'analisis_penugasan', aspek: 'Analisis Hasil Penugasan', bobot: 10 },
-  { key: 'ketertiban_akhir', aspek: 'Ketertiban Proses Magang', bobot: 10 },
-];
-
 function getPredicate(score) {
   if (score >= 85) return 'A (Sangat Baik)';
   if (score >= 75) return 'B+ (Baik)';
@@ -22,11 +14,11 @@ function formatScore(score) {
   return Number.isInteger(score) ? String(score) : score.toFixed(2);
 }
 
-function getInitialScores(penilaian) {
+function getInitialScores(penilaian, criteria) {
   const savedScores = penilaian?.rincian_nilai || {};
-  return Object.fromEntries(RUBRIC.map(({ key }) => [
-    key,
-    savedScores[key]?.nilai ?? '',
+  return Object.fromEntries(criteria.map((criterion) => [
+    String(criterion.id),
+    savedScores[String(criterion.id)]?.nilai ?? savedScores[criterion.kode]?.nilai ?? '',
   ]));
 }
 
@@ -34,6 +26,14 @@ function getApiError(error) {
   const validationErrors = error.response?.data?.errors;
   if (validationErrors) return Object.values(validationErrors).flat().join(' ');
   return error.response?.data?.message || 'Daftar pemagang gagal dimuat.';
+}
+
+function isCurrentUserPembimbing() {
+  try {
+    return String(JSON.parse(localStorage.getItem('user') || 'null')?.role || '').trim().toLowerCase() === 'pembimbing';
+  } catch {
+    return false;
+  }
 }
 
 async function requestParticipants() {
@@ -45,6 +45,7 @@ async function requestParticipants() {
 
 export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
   const [participants, setParticipants] = useState([]);
+  const [criteria, setCriteria] = useState([]);
   const [selectedParticipant, setSelectedParticipant] = useState(null);
   const [pdfParticipant, setPdfParticipant] = useState(null);
   const [scores, setScores] = useState({});
@@ -55,10 +56,11 @@ export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
   useEffect(() => {
     let cancelled = false;
 
-    requestParticipants()
-      .then((data) => {
+    Promise.all([requestParticipants(), api.get('/v1/master-penilaian/aktif')])
+      .then(([data, criteriaResponse]) => {
         if (!cancelled) {
           setParticipants(data);
+          setCriteria(Array.isArray(criteriaResponse.data?.data) ? criteriaResponse.data.data : []);
           setLoadError('');
         }
       })
@@ -75,21 +77,23 @@ export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
   }, []);
 
   const report = selectedParticipant?.laporan;
-  const weightedTotal = useMemo(() => RUBRIC.reduce((total, criterion) => {
-    const score = scores[criterion.key];
+  const activeWeight = criteria.reduce((total, criterion) => total + Number(criterion.bobot || 0), 0);
+  const validWeight = criteria.length > 0 && Math.round(activeWeight * 100) === 10000;
+  const weightedTotal = useMemo(() => criteria.reduce((total, criterion) => {
+    const score = scores[String(criterion.id)];
     return score === '' || score === undefined
       ? total
-      : total + Math.round(Number(score) * criterion.bobot);
-  }, 0) / 100, [scores]);
-  const allScoresEntered = RUBRIC.every(({ key }) => {
-    const score = scores[key];
+      : total + Number(score) * Number(criterion.bobot) / 100;
+  }, 0), [criteria, scores]);
+  const allScoresEntered = validWeight && criteria.every((criterion) => {
+    const score = scores[String(criterion.id)];
     return score !== '' && score !== undefined && Number.isFinite(Number(score)) &&
       Number(score) >= 0 && Number(score) <= 100;
   });
 
   const openAssessment = (participant) => {
     setSelectedParticipant(participant);
-    setScores(getInitialScores(participant.penilaian));
+    setScores(getInitialScores(participant.penilaian, criteria));
     setFormError('');
   };
 
@@ -102,7 +106,7 @@ export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!allScoresEntered) {
-      setFormError('Isi seluruh nilai aspek dengan angka 0 sampai 100.');
+      setFormError(validWeight ? 'Isi seluruh nilai aspek dengan angka 0 sampai 100.' : 'Total bobot pertanyaan aktif harus tepat 100%.');
       return;
     }
 
@@ -137,6 +141,10 @@ export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
           </div>
 
           {loadError && <p className="report-error" role="alert">{loadError}</p>}
+          {!validWeight && <p className="report-error" role="alert">
+            {criteria.length === 0 ? 'Belum ada pertanyaan penilaian aktif.' : `Total bobot aktif saat ini ${activeWeight.toFixed(2)}%, harus tepat 100%.`}{' '}
+            {isCurrentUserPembimbing() && <a href="/master-penilaian">Atur Master Penilaian</a>}
+          </p>}
           <div className="table-card">
             <div className="table-card-header">
               Daftar Pemagang Aktif
@@ -231,18 +239,19 @@ export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {RUBRIC.map((criterion, index) => {
-                      const score = scores[criterion.key];
+                    {criteria.map((criterion, index) => {
+                      const criterionKey = String(criterion.id);
+                      const score = scores[criterionKey];
                       const weightedScore = score === '' || score === undefined
                         ? null
-                        : Math.round(Number(score) * criterion.bobot) / 100;
+                        : Math.round(Number(score) * Number(criterion.bobot)) / 100;
                       return (
-                        <tr key={criterion.key}>
+                        <tr key={criterion.id}>
                           <td>{index + 1}</td>
-                          <td>{criterion.aspek}</td>
+                          <td>{criterion.pertanyaan}</td>
                           <td>
                             <input
-                              aria-label={`Nilai ${criterion.aspek} nomor ${index + 1}`}
+                              aria-label={`Nilai ${criterion.pertanyaan} nomor ${index + 1}`}
                               type="number"
                               className="form-control"
                               min="0"
@@ -251,19 +260,19 @@ export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
                               value={score}
                               onChange={(event) => setScores((current) => ({
                                 ...current,
-                                [criterion.key]: event.target.value,
+                                [criterionKey]: event.target.value,
                               }))}
                               required
                             />
                           </td>
-                          <td>{criterion.bobot}%</td>
+                          <td>{Number(criterion.bobot)}%</td>
                           <td>{weightedScore === null ? '—' : formatScore(weightedScore)}</td>
                         </tr>
                       );
                     })}
                     <tr>
                       <th colSpan="3" style={{ textAlign: 'right' }}>Total nilai</th>
-                      <th>100%</th>
+                      <th>{activeWeight.toFixed(2)}%</th>
                       <th>{allScoresEntered ? formatScore(weightedTotal) : '—'}</th>
                     </tr>
                   </tbody>

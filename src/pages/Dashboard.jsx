@@ -103,7 +103,6 @@ function Dashboard() {
                 { to: "/tugas", icon: "📋", title: "Tugas Magang", description: "Lihat tugas dan status pengumpulan." },
                 { to: "/laporan", icon: "📁", title: "Laporan Magang", description: "Lihat dan kelola laporan magang." },
             ];
-
     return (
         <div className="layout">
             <Sidebar />

@@ -471,6 +471,31 @@
 .report-module .evaluation-date { color: #64748b; font-size: 13px; white-space: nowrap; }
 .report-module .evaluation-notes { color: #475569; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 
+/* Halaman surat balasan dan aksi tugas memakai ukuran yang sama dengan modul lain. */
+.surat-balasan-welcome { display: grid; min-height: 100vh; padding: 24px; place-items: center; background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%); }
+.surat-balasan-welcome-card { width: min(100%, 760px); padding: 38px; background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 18px 45px rgba(15, 23, 42, .1); }
+.surat-balasan-welcome-header { margin-bottom: 26px; text-align: center; }
+.surat-balasan-welcome-logo { display: grid; width: 58px; height: 58px; margin: 0 auto 16px; place-items: center; border-radius: 16px; background: #4f46e5; box-shadow: 0 8px 18px rgba(79, 70, 229, .25); font-size: 28px; }
+.surat-balasan-welcome-header h1 { margin: 7px 0 9px; color: #1e293b; font-size: clamp(26px, 4vw, 34px); }
+.surat-balasan-welcome-header > p:last-child { margin: 0; color: #64748b; font-size: 14px; line-height: 1.6; }
+.surat-balasan-card { display: flex; align-items: flex-start; gap: 20px; padding: 30px; background: #fff; border: 1px solid #dbe5f0; border-radius: 16px; }
+.surat-balasan-icon { display: grid; width: 56px; height: 56px; flex: 0 0 56px; place-items: center; border-radius: 14px; background: #ecfdf5; font-size: 27px; }
+.surat-balasan-content { min-width: 0; }
+.surat-balasan-label { display: block; margin-bottom: 7px; color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.surat-balasan-content h2 { margin: 0 0 8px; color: #1e293b; font-size: 21px; }
+.surat-balasan-content p, .surat-balasan-message { margin: 0; color: #64748b; font-size: 14px; line-height: 1.6; }
+.surat-balasan-file { margin-top: 12px !important; overflow-wrap: anywhere; color: #334155 !important; font-size: 12px !important; }
+.surat-balasan-download { display: inline-flex; margin-top: 18px; padding: 10px 14px; border: 0; border-radius: 8px; background: #16a34a; color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.surat-balasan-download:hover:not(:disabled) { background: #15803d; }
+.surat-balasan-download:disabled { cursor: wait; opacity: .7; }
+.surat-balasan-message.is-error { color: #b91c1c; }
+
+.task-table th:last-child, .task-table .task-actions-cell { width: 244px; min-width: 244px; }
+.task-table .task-actions-cell { padding-top: 10px; padding-bottom: 10px; text-align: right; vertical-align: middle; }
+.task-table .task-action-group { display: grid; grid-template-columns: repeat(3, max-content); justify-content: end; gap: 5px; }
+.task-table .action-btn { min-height: 30px; padding: 4px 8px; border-radius: 6px; font-size: .72rem; line-height: 1; }
+.task-table .action-btn svg { width: 12px; height: 12px; }
+
 @media (max-width: 760px) {
   .report-module .custom-table { min-width: 1120px; }
   .report-module .custom-table th,
@@ -739,6 +764,161 @@
   min-width: 36px;
   padding: 6px;
   font-size: 18px;
+}
+
+/* Master penilaian: scoped supaya gaya hanya memengaruhi halaman ini. */
+.master-assessment .page-title {
+  font-size: 28px;
+  letter-spacing: -0.025em;
+}
+
+.master-assessment .page-description {
+  margin: 0;
+  font-size: 14px;
+}
+
+.master-assessment .table-card-header {
+  color: #1e293b;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.master-assessment-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 130px 130px auto;
+  align-items: end;
+  gap: 14px;
+  padding: 20px;
+}
+
+.master-assessment-field > span {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.master-assessment .custom-table {
+  font-size: 13px;
+}
+
+.master-assessment .custom-table th {
+  color: #64748b;
+  font-size: 11px;
+  letter-spacing: .045em;
+}
+
+.master-assessment .custom-table td {
+  color: #334155;
+  line-height: 1.55;
+}
+
+.master-assessment-actions,
+.master-assessment-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.master-assessment-actions button,
+.master-assessment-form-actions button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+.master-assessment-actions button:hover,
+.master-assessment-form-actions button:hover {
+  transform: translateY(-1px);
+}
+
+.master-assessment-actions button:focus-visible,
+.master-assessment-form-actions button:focus-visible {
+  outline: 3px solid #bfdbfe;
+  outline-offset: 2px;
+}
+
+.master-assessment-actions .master-assessment-edit {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.master-assessment-actions .master-assessment-edit:hover {
+  background: #dbeafe;
+}
+
+.master-assessment-actions .master-assessment-delete {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.master-assessment-actions .master-assessment-delete:hover {
+  background: #ffe4e6;
+}
+
+.master-assessment-actions .master-assessment-enable {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.master-assessment-actions .master-assessment-enable:hover {
+  background: #d1fae5;
+}
+
+.master-assessment-form-actions button:disabled {
+  cursor: wait;
+  opacity: .7;
+  transform: none;
+}
+
+@media (max-width: 900px) {
+  .master-assessment-form {
+    grid-template-columns: minmax(200px, 1fr) 130px 130px;
+  }
+
+  .master-assessment-form-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 600px) {
+  .master-assessment .report-main {
+    padding: 20px 14px;
+  }
+
+  .master-assessment-form {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .master-assessment-field:first-child,
+  .master-assessment-form-actions {
+    grid-column: 1 / -1;
+  }
+
+  .master-assessment .table-card-header {
+    padding: 14px 16px;
+    font-size: 14px;
+  }
+
+  .master-assessment .custom-table {
+    min-width: 620px;
+  }
 }
 
 @media (max-width: 900px) {

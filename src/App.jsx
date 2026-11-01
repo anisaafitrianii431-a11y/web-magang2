@@ -10,17 +10,19 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Absensi from "./pages/Absensi";
 import Dashboard from "./pages/Dashboard";
+import LaporanApp from "./pages/LaporanApp";
 import KelolaAkunPeserta from "./pages/KelolaAkunPeserta";
 import LaporanMagang from "./pages/LaporanMagang";
 import LaporanModule from "./pages/LaporanModule";
-import Pembimbing from "./pages/Pembimbing";
-import DashboardPembimbing from "./pages/pembimbing/DashboardPembimbing";
+import MasterPenilaian from "./pages/MasterPenilaian";
 import Periode from "./pages/Periode";
 import Peserta from "./pages/Peserta";
 import FormPendaftaran from "./pages/pemagang/FromPendaftaran";
 import Rekapitulasi from "./pages/Rekapitulasi";
 import Riwayat from "./pages/Riwayat";
+import SuratBalasan from "./pages/SuratBalasan";
 import Tugas from "./pages/Tugas";
+import PengaturanAbsensi from "./pages/PengaturanAbsensi";
 import { getRoleHome, getStoredUser, normalizeRole } from "./utils/auth";
 
 function ProtectedRoute({ children, allowedRole }) {
@@ -59,25 +61,28 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
 
-                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                <Route path="/tugas" element={<ProtectedRoute><Tugas /></ProtectedRoute>} />
-                <Route path="/absensi" element={<ProtectedRoute><Absensi /></ProtectedRoute>} />
-                <Route path="/peserta" element={<ProtectedRoute><Peserta /></ProtectedRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Dashboard /></ProtectedRoute>} />
+                <Route path="/tugas" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><Tugas /></ProtectedRoute>} />
+                <Route path="/absensi" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><Absensi /></ProtectedRoute>} />
+                <Route path="/peserta" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Peserta /></ProtectedRoute>} />
                 <Route path="/periode" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Periode /></ProtectedRoute>} />
-                <Route path="/riwayat" element={<ProtectedRoute><Riwayat /></ProtectedRoute>} />
-                <Route path="/akun-peserta" element={<ProtectedRoute allowedRole="admin"><KelolaAkunPeserta /></ProtectedRoute>} />
+                <Route path="/riwayat" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><Riwayat /></ProtectedRoute>} />
+                <Route path="/akun-peserta" element={<ProtectedRoute allowedRole="admin"><Navigate to="/riwayat" replace /></ProtectedRoute>} />
                 <Route path="/kelola-pembimbing" element={<ProtectedRoute allowedRole="admin"><Navigate to="/admin/pembimbing" replace /></ProtectedRoute>} />
-                <Route path="/pembimbing" element={<ProtectedRoute allowedRole="pembimbing"><Pembimbing /></ProtectedRoute>} />
-                <Route path="/pembimbing/dashboard" element={<ProtectedRoute allowedRole="pembimbing"><DashboardPembimbing /></ProtectedRoute>} />
+                <Route path="/pembimbing" element={<ProtectedRoute allowedRole="pembimbing"><Dashboard /></ProtectedRoute>} />
+                <Route path="/pembimbing/dashboard" element={<ProtectedRoute allowedRole="pembimbing"><Dashboard /></ProtectedRoute>} />
+                <Route path="/pembimbing/jadwal-absensi" element={<ProtectedRoute allowedRole="pembimbing"><PengaturanAbsensi /></ProtectedRoute>} />
                 <Route path="/pemagang/daftar" element={<ProtectedRoute allowedRole="pemagang"><FormPendaftaran /></ProtectedRoute>} />
+                <Route path="/surat-balasan" element={<ProtectedRoute allowedRole="pemagang"><SuratBalasan /></ProtectedRoute>} />
 
-                <Route path="/laporan" element={<ProtectedRoute><LaporanModule /></ProtectedRoute>} />
-                <Route path="/laporan/penilaian" element={<ProtectedRoute allowedRole="pembimbing"><LaporanModule /></ProtectedRoute>} />
-                <Route path="/laporan/rekapitulasi" element={<ProtectedRoute><LaporanModule /></ProtectedRoute>} />
-                <Route path="/laporan-magang" element={<ProtectedRoute><LaporanMagang /></ProtectedRoute>} />
-                <Route path="/rekapitulasi" element={<ProtectedRoute><Rekapitulasi /></ProtectedRoute>} />
-                <Route path="/penilaian" element={<ProtectedRoute allowedRole="pembimbing"><Navigate to="/laporan/penilaian" replace /></ProtectedRoute>} />
-                <Route path="/laporan-app" element={<ProtectedRoute allowedRole="pembimbing"><Navigate to="/laporan/penilaian" replace /></ProtectedRoute>} />
+                <Route path="/laporan" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><LaporanModule /></ProtectedRoute>} />
+                <Route path="/laporan/penilaian" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><LaporanModule /></ProtectedRoute>} />
+                <Route path="/master-penilaian" element={<ProtectedRoute allowedRole="pembimbing"><MasterPenilaian /></ProtectedRoute>} />
+                <Route path="/laporan/rekapitulasi" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><LaporanModule /></ProtectedRoute>} />
+                <Route path="/laporan-magang" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><LaporanMagang /></ProtectedRoute>} />
+                <Route path="/rekapitulasi" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Rekapitulasi /></ProtectedRoute>} />
+                <Route path="/penilaian" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Navigate to="/laporan/penilaian" replace /></ProtectedRoute>} />
+                <Route path="/laporan-app" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Navigate to="/laporan/penilaian" replace /></ProtectedRoute>} />
 
                 <Route
                     path="/admin"

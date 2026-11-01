@@ -22,7 +22,10 @@ export default function DaftarPemagang() {
       const periode = periodeRes.data?.data;
       const pembimbing = pembimbingRes.data?.data ?? pembimbingRes.data;
 
-      setDataPendaftaran(Array.isArray(pendaftaran) ? pendaftaran : []);
+      const sortedPendaftaran = Array.isArray(pendaftaran)
+        ? [...pendaftaran].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0))
+        : [];
+      setDataPendaftaran(sortedPendaftaran);
       setListPeriode(Array.isArray(periode) ? periode : []);
       setListPembimbing(Array.isArray(pembimbing) ? pembimbing : []);
     } catch (error) {
@@ -35,18 +38,18 @@ export default function DaftarPemagang() {
     return () => clearTimeout(timeoutId);
   }, []);
 
-  const [formData, setFormData] = useState({ 
-    nama_user: '', 
+  const [formData, setFormData] = useState({
+    nama_user: '',
     nim_user: '',
     program_studi_user: '',
     alamat_user: '',
     email_user: '',
     no_hp_user: '',
-    periode_id: '1', 
+    periode_id: '1',
     pembimbing_id: '',
-    asal_instansi: '', 
-    file_surat_pengantar: null, 
-    status: 'Calon Pemagang',
+    asal_instansi: '',
+    file_surat_pengantar: null,
+    status: 'Pemagang Aktif',
     tanggal_daftar: new Date().toISOString().split('T')[0],
     tanggal_selesai: '',
     file_surat_balasan: null
@@ -61,27 +64,27 @@ export default function DaftarPemagang() {
     const payload = new FormData();
     payload.append('status', formData.status);
     if (formData.pembimbing_id) {
-        payload.append('pembimbing_id', formData.pembimbing_id);
+      payload.append('pembimbing_id', formData.pembimbing_id);
     }
     if (formData.tanggal_selesai) {
-        payload.append('tanggal_selesai', formData.tanggal_selesai);
+      payload.append('tanggal_selesai', formData.tanggal_selesai);
     }
     if (formData.file_surat_balasan instanceof File) {
-        payload.append('file_surat_balasan', formData.file_surat_balasan);
+      payload.append('file_surat_balasan', formData.file_surat_balasan);
     }
 
     try {
-        await api.post(`/pendaftaran/${editingId}/status`, payload, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
-        });
-        alert('Status pendaftaran berhasil diupdate');
-        setEditingId(null);
-        fetchData(); // Refresh
+      await api.post(`/pendaftaran/${editingId}/status`, payload, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      alert('Status pendaftaran berhasil diupdate');
+      setEditingId(null);
+      fetchData(); // Refresh
     } catch (error) {
-        console.log(error.response?.data);
-        alert(`Gagal mengupdate status pendaftaran: ${error.response?.data?.message || JSON.stringify(error.response?.data?.errors)}`);
+      console.log(error.response?.data);
+      alert(`Gagal mengupdate status pendaftaran: ${error.response?.data?.message || JSON.stringify(error.response?.data?.errors)}`);
     }
   };
 
@@ -99,7 +102,7 @@ export default function DaftarPemagang() {
       pembimbing_id: item.pembimbing_id ? item.pembimbing_id.toString() : '',
       asal_instansi: item.asal_instansi,
       file_surat_pengantar: item.file_surat_pengantar, // Tetap set supaya tampil namanya
-      status: item.status,
+      status: item.status === 'Ditolak' ? 'Ditolak' : 'Pemagang Aktif',
       tanggal_daftar: item.tanggal_daftar,
       tanggal_selesai: item.tanggal_selesai ? String(item.tanggal_selesai).slice(0, 10) : '',
       file_surat_balasan: item.file_surat_balasan || null
@@ -122,22 +125,22 @@ export default function DaftarPemagang() {
 
       {/* Form Pengelolaan Data (Hanya Muncul Saat Edit) */}
       {editingId !== null && (
-      <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '30px', border: '2px solid #3b82f6', boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.1)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '15px' }}>
-          <h3 style={{ margin: 0, fontSize: '16px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '8px' }}>✏️ Ubah Status / Data Pendaftaran</h3>
-          <button
-            type="button"
-            onClick={() => setEditingId(null)}
-            style={{ background: 'white', color: '#475569', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', flexShrink: 0 }}
-          >
-            ← Kembali ke daftar
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-          {/* Kiri: Data Pemagang (Read-Only) */}
-          <div style={{ background: '#f1f5f9', padding: '15px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#334155', borderBottom: '1px solid #cbd5e1', paddingBottom: '8px' }}>Data Pendaftar (Otomatis)</h4>
-            <div>
+        <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '30px', border: '2px solid #3b82f6', boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.1)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '15px' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '8px' }}>✏️ Ubah Status / Data Pendaftaran</h3>
+            <button
+              type="button"
+              onClick={() => setEditingId(null)}
+              style={{ background: 'white', color: '#475569', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '13px', flexShrink: 0 }}
+            >
+              ← Kembali ke daftar
+            </button>
+          </div>
+          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            {/* Kiri: Data Pemagang (Read-Only) */}
+            <div style={{ background: '#f1f5f9', padding: '15px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#334155', borderBottom: '1px solid #cbd5e1', paddingBottom: '8px' }}>Data Pendaftar (Otomatis)</h4>
+              <div>
                 <span style={{ display: 'block', fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>NAMA PEMAGANG</span>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', gap: '10px', marginTop: '4px' }}>
                   <div style={{ minWidth: 0, flex: '0 1 260px' }}>
@@ -157,12 +160,12 @@ export default function DaftarPemagang() {
                     />
                   )}
                 </div>
-            </div>
-            <div>
+              </div>
+              <div>
                 <span style={{ display: 'block', fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>ASAL INSTANSI</span>
                 <div style={{ fontSize: '14px', color: '#0f172a' }}>{formData.asal_instansi}</div>
-            </div>
-            <div>
+              </div>
+              <div>
                 <span style={{ display: 'block', fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>GELOMBANG MAGANG</span>
                 <div style={{ fontSize: '14px', color: '#0f172a' }}>
                   {(() => {
@@ -170,112 +173,148 @@ export default function DaftarPemagang() {
                     return p ? `${new Date(p.tanggal_mulai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).toLowerCase()} - ${new Date(p.tanggal_selesai).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).toLowerCase()}` : '-';
                   })()}
                 </div>
-            </div>
-            <div>
+              </div>
+              <div>
                 <span style={{ display: 'block', fontSize: '11px', color: '#64748b', fontWeight: 'bold' }}>SURAT PENGANTAR (DARI KAMPUS/SEKOLAH)</span>
                 <div style={{ fontSize: '13px', color: '#3b82f6', fontWeight: '500', cursor: 'pointer' }}>📄 {formData.file_surat_pengantar ? (typeof formData.file_surat_pengantar === 'string' ? formData.file_surat_pengantar : formData.file_surat_pengantar.name) : 'Tidak ada berkas'}</div>
+              </div>
             </div>
-          </div>
 
-          {/* Kanan: Aksi Admin (Editable) */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <h4 style={{ margin: '0', fontSize: '14px', color: '#334155', borderBottom: '1px solid #cbd5e1', paddingBottom: '8px' }}>Tindakan Admin</h4>
-            
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>Upload Surat Balasan (.pdf) <span style={{color: '#ef4444'}}>*</span></label>
-              <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#64748b' }}>Berikan surat balasan persetujuan/penolakan resmi kepada pemagang.</p>
-              <div style={{ position: 'relative', width: '100%', padding: '15px', border: '1px dashed #cbd5e1', borderRadius: '6px', textAlign: 'center', background: 'white', cursor: 'pointer' }}>
-                <input 
-                  type="file" 
-                  accept=".pdf"
-                  onChange={(e) => setFormData({...formData, file_surat_balasan: e.target.files[0]})}
-                  style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
-                />
-                <div style={{ fontSize: '13px', color: '#475569', fontWeight: '500' }}>
-                  {formData.file_surat_balasan ? (typeof formData.file_surat_balasan === 'string' ? formData.file_surat_balasan : formData.file_surat_balasan.name) : 'Klik untuk upload surat balasan'}
+            {/* Kanan: Aksi Admin (Editable) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <h4 style={{ margin: '0', fontSize: '14px', color: '#334155', borderBottom: '1px solid #cbd5e1', paddingBottom: '8px' }}>Tindakan Admin</h4>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>Upload Surat Balasan (.pdf) <span style={{ color: '#ef4444' }}>*</span></label>
+                <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#64748b' }}>Berikan surat balasan persetujuan/penolakan resmi kepada pemagang.</p>
+                <div style={{ position: 'relative', width: '100%', padding: '15px', border: '1px dashed #cbd5e1', borderRadius: '6px', textAlign: 'center', background: 'white', cursor: 'pointer' }}>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => setFormData({ ...formData, file_surat_balasan: e.target.files[0] })}
+                    style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                  />
+                  <div style={{ fontSize: '13px', color: '#475569', fontWeight: '500' }}>
+                    {formData.file_surat_balasan ? (typeof formData.file_surat_balasan === 'string' ? formData.file_surat_balasan : formData.file_surat_balasan.name) : 'Klik untuk upload surat balasan'}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>Pilih Status Pendaftaran</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, status: 'Pemagang Aktif' })}
+                    style={{
+                      padding: '11px 16px',
+                      borderRadius: '8px',
+                      border: formData.status === 'Pemagang Aktif' ? '2px solid #16a34a' : '1px solid #cbd5e1',
+                      background: formData.status === 'Pemagang Aktif' ? '#dcfce7' : '#ffffff',
+                      color: formData.status === 'Pemagang Aktif' ? '#15803d' : '#475569',
+                      fontWeight: '700',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: formData.status === 'Pemagang Aktif' ? '0 2px 4px rgba(22, 163, 74, 0.15)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <span style={{ fontSize: '15px' }}>✓</span> Terima
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, status: 'Ditolak' })}
+                    style={{
+                      padding: '11px 16px',
+                      borderRadius: '8px',
+                      border: formData.status === 'Ditolak' ? '2px solid #dc2626' : '1px solid #cbd5e1',
+                      background: formData.status === 'Ditolak' ? '#fee2e2' : '#ffffff',
+                      color: formData.status === 'Ditolak' ? '#b91c1c' : '#475569',
+                      fontWeight: '700',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: formData.status === 'Ditolak' ? '0 2px 4px rgba(220, 38, 38, 0.15)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <span style={{ fontSize: '15px' }}>✕</span> Tolak
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>Tugaskan Pembimbing Lapangan</label>
+                <select
+                  value={formData.pembimbing_id}
+                  onChange={(e) => setFormData({ ...formData, pembimbing_id: e.target.value })}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', background: '#ffffff', color: '#0f172a', cursor: 'pointer' }}
+                >
+                  <option value="">-- Belum Ditentukan --</option>
+                  {listPembimbing.map(p => (
+                    <option key={p.id} value={p.id}>{p.nama || p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>Set Tanggal Selesai Magang</label>
+                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                  <input
+                    ref={tanggalSelesaiRef}
+                    type="date"
+                    value={formData.tanggal_selesai}
+                    onChange={(e) => setFormData({ ...formData, tanggal_selesai: e.target.value })}
+                    style={{ width: '100%', padding: '10px 44px 10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', color: '#0f172a', background: 'white' }}
+                  />
+                  <button
+                    type="button"
+                    aria-label="Pilih tanggal selesai magang dari kalender"
+                    title="Pilih tanggal dari kalender"
+                    onClick={() => {
+                      const input = tanggalSelesaiRef.current;
+                      if (!input) return;
+                      if (typeof input.showPicker === 'function') input.showPicker();
+                      else input.focus();
+                    }}
+                    style={{ position: 'absolute', right: '6px', display: 'grid', placeItems: 'center', width: '32px', height: '32px', border: 0, borderRadius: '5px', color: '#4f46e5', background: '#eef2ff', cursor: 'pointer' }}
+                  >
+                    <CalendarDays size={18} />
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>Pilih Status Pendaftaran</label>
-              <select 
-                value={formData.status} 
-                onChange={(e) => setFormData({...formData, status: e.target.value})}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', background: 'white', color: '#0f172a' }}
-              >
-                <option value="Calon Pemagang" style={{ color: '#0f172a', background: 'white' }}>Menunggu Keputusan</option>
-                <option value="Pemagang Aktif" style={{ color: '#0f172a', background: 'white' }}>Terima (Pemagang Aktif)</option>
-                <option value="Ditolak" style={{ color: '#0f172a', background: 'white' }}>Tolak</option>
-                <option value="Alumni" style={{ color: '#0f172a', background: 'white' }}>Selesai Magang (Alumni)</option>
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>Tugaskan Pembimbing Lapangan</label>
-              <select 
-                value={formData.pembimbing_id} 
-                onChange={(e) => setFormData({...formData, pembimbing_id: e.target.value})}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', background: 'white', color: '#0f172a' }}
-              >
-                <option value="" style={{ color: '#0f172a', background: 'white' }}>-- Belum Ditentukan --</option>
-                {listPembimbing.map(p => (
-                  <option key={p.id} value={p.id} style={{ color: '#0f172a', background: 'white' }}>{p.nama || p.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>Set Tanggal Selesai Magang</label>
-              <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                <input
-                  ref={tanggalSelesaiRef}
-                  type="date"
-                  value={formData.tanggal_selesai}
-                  onChange={(e) => setFormData({...formData, tanggal_selesai: e.target.value})}
-                  style={{ width: '100%', padding: '10px 44px 10px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px', boxSizing: 'border-box', color: '#0f172a', background: 'white' }}
-                />
+            <div style={{ display: 'flex', gap: '10px', gridColumn: '1 / -1', marginTop: '5px' }}>
+              <button type="submit" style={{ background: '#4f46e5', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                {editingId !== null ? 'Simpan Perubahan' : 'Tambah Data'}
+              </button>
+              {editingId !== null && (
                 <button
                   type="button"
-                  aria-label="Pilih tanggal selesai magang dari kalender"
-                  title="Pilih tanggal dari kalender"
-                  onClick={() => {
-                    const input = tanggalSelesaiRef.current;
-                    if (!input) return;
-                    if (typeof input.showPicker === 'function') input.showPicker();
-                    else input.focus();
-                  }}
-                  style={{ position: 'absolute', right: '6px', display: 'grid', placeItems: 'center', width: '32px', height: '32px', border: 0, borderRadius: '5px', color: '#4f46e5', background: '#eef2ff', cursor: 'pointer' }}
+                  onClick={() => setEditingId(null)}
+                  style={{ background: 'white', color: '#475569', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}
                 >
-                  <CalendarDays size={18} />
+                  Batal
                 </button>
-              </div>
+              )}
             </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', gridColumn: '1 / -1', marginTop: '5px' }}>
-            <button type="submit" style={{ background: '#4f46e5', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-              {editingId !== null ? 'Simpan Perubahan' : 'Tambah Data'}
-            </button>
-            {editingId !== null && (
-              <button 
-                type="button" 
-                onClick={() => setEditingId(null)}
-                style={{ background: 'white', color: '#475569', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}
-              >
-                Batal
-              </button>
-            )}
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
       )}
 
       {/* Tabel Rekapitulasi Data Pendaftaran */}
       {editingId === null && <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
         <div style={{ padding: '15px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '16px' }}>👥</span>
-            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>Daftar Pendaftaran / Pemagang ({dataPendaftaran.length} Data)</h3>
+          <span style={{ fontSize: '16px' }}>👥</span>
+          <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>Daftar Pendaftaran / Pemagang ({dataPendaftaran.length} Data)</h3>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
@@ -310,9 +349,9 @@ export default function DaftarPemagang() {
                     <div style={{ fontSize: '12px', color: '#10b981' }}>✉️ {item.file_surat_balasan || '-'}</div>
                   </td>
                   <td style={{ padding: '15px 20px' }}>
-                    <span style={{ 
-                      padding: '4px 10px', 
-                      borderRadius: '20px', 
+                    <span style={{
+                      padding: '4px 10px',
+                      borderRadius: '20px',
                       fontSize: '12px',
                       fontWeight: '600',
                       background: item.status === 'Pemagang Aktif' ? '#dcfce7' : item.status === 'Ditolak' ? '#fee2e2' : item.status === 'Alumni' ? '#e0e7ff' : '#fef3c7',
@@ -322,13 +361,13 @@ export default function DaftarPemagang() {
                     </span>
                   </td>
                   <td style={{ padding: '15px 20px', textAlign: 'right' }}>
-                    <button 
+                    <button
                       onClick={() => handleEdit(item)}
                       style={{ background: 'white', color: '#0ea5e9', border: '1px solid #bae6fd', padding: '6px 12px', marginRight: '8px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
                     >
                       Edit
                     </button>
-                    <button 
+                    <button
                       onClick={handleDelete}
                       style={{ background: 'white', color: '#ef4444', border: '1px solid #fecaca', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
                     >
