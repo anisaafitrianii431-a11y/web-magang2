@@ -958,7 +958,6 @@ function Absensi() {
                                 </div>
                             </>
                         )}
-
                         {error && (
                             <div
                                 className="message error"
@@ -996,7 +995,6 @@ function Absensi() {
                                 )}
                             </div>
                         )}
-
                         {!profileLoading && !participant && (
                             <button
                                 type="button"
