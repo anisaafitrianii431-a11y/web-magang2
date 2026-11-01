@@ -126,6 +126,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
         Route::get('/laporan-magang', [LaporanMagangController::class, 'index']);
         Route::get('/laporan-magang/{id}', [LaporanMagangController::class, 'show']);
         Route::get('/laporan-magang/{id}/download', [LaporanMagangController::class, 'download']);
+        Route::delete('/laporan-magang/{id}', [LaporanMagangController::class, 'destroy']);
     });
 
     Route::middleware('role:peserta')->group(function () {
@@ -135,7 +136,6 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
 
     Route::middleware('role:admin,pembimbing')->group(function () {
         Route::post('/laporan-magang/{id}/review', [LaporanMagangController::class, 'review']);
-        Route::delete('/laporan-magang/{id}', [LaporanMagangController::class, 'destroy']);
         Route::get('/penilaian', [PenilaianController::class, 'index']);
         Route::get('/penilaian/peserta', [PenilaianController::class, 'participants']);
         Route::post('/penilaian', [PenilaianController::class, 'store']);

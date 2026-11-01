@@ -78,16 +78,7 @@ class LaporanMagangController extends Controller
         $validator = Validator::make($request->all(), [
             'judul_laporan' => 'required|string|max:255',
             'kategori_laporan' => 'required|in:Individu,Kelompok',
-            'link_google_doc' => [
-                'required',
-                'url',
-                'max:255',
-                function ($attribute, $value, $fail) {
-                    if (strtolower((string) parse_url($value, PHP_URL_HOST)) !== 'docs.google.com') {
-                        $fail('Link laporan harus berasal dari docs.google.com.');
-                    }
-                },
-            ],
+            'file_laporan' => 'required|file|mimes:pdf|max:25600',
         ]);
 
         if ($validator->fails()) {
@@ -109,19 +100,36 @@ class LaporanMagangController extends Controller
             ], 403);
         }
 
-        $laporan = LaporanMagang::create([
-            'id_peserta' => $request->user()->id,
-            'judul_laporan' => $request->judul_laporan,
-            'kategori_laporan' => $request->kategori_laporan,
-            'file_laporan_pdf' => $request->link_google_doc,
-            'link_google_doc' => $request->link_google_doc,
-            'tgl_submit' => now(),
-            'status_laporan' => 'Menunggu Review',
-        ]);
+        $filePath = $request->file('file_laporan')->store(
+            "laporan/{$request->user()->id}",
+            'public'
+        );
+        if (! is_string($filePath) || $filePath === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'PDF laporan gagal disimpan.',
+            ], 500);
+        }
+
+        try {
+            $laporan = LaporanMagang::create([
+                'id_peserta' => $request->user()->id,
+                'judul_laporan' => $request->judul_laporan,
+                'kategori_laporan' => $request->kategori_laporan,
+                'file_laporan_pdf' => $filePath,
+                'link_google_doc' => null,
+                'tgl_submit' => now(),
+                'status_laporan' => 'Menunggu Review',
+            ]);
+        } catch (\Throwable $exception) {
+            Storage::disk('public')->delete($filePath);
+
+            throw $exception;
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Laporan magang berhasil diunggah',
+            'message' => 'Laporan PDF berhasil diunggah',
             'data' => $laporan
         ], 201);
     }
@@ -265,7 +273,7 @@ class LaporanMagangController extends Controller
     /**
      * Destroy a report.
      */
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $laporan = LaporanMagang::find($id);
         if (!$laporan) {
@@ -275,11 +283,40 @@ class LaporanMagangController extends Controller
             ], 404);
         }
 
+        $user = $request->user();
+        $role = strtolower(trim((string) $user?->role));
+        $canDelete = $role === 'admin'
+            || (in_array($role, ['peserta', 'pemagang'], true)
+                && (int) $laporan->id_peserta === (int) $user->id)
+            || ($role === 'pembimbing' && Pendaftaran::where('user_id', $laporan->id_peserta)
+                ->where('pembimbing_id', $user->id)
+                ->where('status', 'Pemagang Aktif')
+                ->exists());
+
+        if (!$canDelete) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk menghapus laporan ini.',
+            ], 403);
+        }
+
         $filePath = $laporan->file_laporan_pdf;
         DB::transaction(function () use ($laporan) {
             $laporan->delete();
         });
-        Storage::disk('public')->delete($filePath);
+
+        if (
+            is_string($filePath)
+            && $filePath !== ''
+            && !filter_var($filePath, FILTER_VALIDATE_URL)
+            && !str_contains($filePath, '..')
+            && !str_starts_with($filePath, '/')
+            && !preg_match('/^[A-Za-z]:/', $filePath)
+            && Storage::disk('public')->exists($filePath)
+            && !Storage::disk('public')->delete($filePath)
+        ) {
+            throw new \RuntimeException('Data laporan telah dihapus, tetapi berkas PDF gagal dihapus dari penyimpanan.');
+        }
 
         return response()->json([
             'success' => true,
