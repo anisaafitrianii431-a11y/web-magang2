@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\LaporanMagang;
+use App\Models\MasterPenilaian;
 use App\Models\Pendaftaran;
 use App\Models\Penilaian;
 use Illuminate\Http\Request;
@@ -13,14 +14,6 @@ use Illuminate\Support\Facades\Validator;
 
 class PenilaianController extends Controller
 {
-    private const RUBRIC = [
-        'ketertiban_awal' => ['aspek' => 'Ketertiban Proses Magang', 'bobot' => 10],
-        'kelengkapan_laporan' => ['aspek' => 'Kelengkapan Sistematika Laporan', 'bobot' => 50],
-        'kerapian_dokumentasi' => ['aspek' => 'Kerapian Catatan Dokumentasi Kegiatan Magang', 'bobot' => 20],
-        'analisis_penugasan' => ['aspek' => 'Analisis Hasil Penugasan', 'bobot' => 10],
-        'ketertiban_akhir' => ['aspek' => 'Ketertiban Proses Magang', 'bobot' => 10],
-    ];
-
     public function participants(Request $request)
     {
         $registrations = Pendaftaran::with(['user:id,name,email'])
@@ -168,16 +161,29 @@ class PenilaianController extends Controller
      */
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        $criteria = MasterPenilaian::query()
+            ->where('aktif', true)
+            ->orderBy('urutan')
+            ->orderBy('id')
+            ->get();
+
+        if ($criteria->isEmpty() || round((float) $criteria->sum('bobot'), 2) !== 100.0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aktifkan pertanyaan penilaian dengan total bobot tepat 100% sebelum mengisi penilaian.',
+            ], 422);
+        }
+
+        $rules = [
             'id_peserta' => 'required|integer|exists:users,id',
             'id_laporan_magang' => 'nullable|integer|exists:laporan_magang,id_laporan',
-            'rincian_nilai' => 'required|array|size:5',
-            'rincian_nilai.ketertiban_awal' => 'required|numeric|between:0,100',
-            'rincian_nilai.kelengkapan_laporan' => 'required|numeric|between:0,100',
-            'rincian_nilai.kerapian_dokumentasi' => 'required|numeric|between:0,100',
-            'rincian_nilai.analisis_penugasan' => 'required|numeric|between:0,100',
-            'rincian_nilai.ketertiban_akhir' => 'required|numeric|between:0,100',
-        ]);
+            'rincian_nilai' => ['required', 'array', 'size:'.$criteria->count()],
+        ];
+        foreach ($criteria as $criterion) {
+            $rules['rincian_nilai.'.$criterion->id] = ['required', 'numeric', 'between:0,100'];
+        }
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return response()->json([
@@ -220,13 +226,16 @@ class PenilaianController extends Controller
 
         $rubric = [];
         $total = 0;
-        foreach (self::RUBRIC as $key => $criteria) {
-            $score = (float) $request->input("rincian_nilai.{$key}");
-            $weightedScore = round($score * $criteria['bobot'] / 100, 2);
-            $rubric[$key] = [
-                'aspek' => $criteria['aspek'],
+        foreach ($criteria as $criterion) {
+            $score = (float) $request->input('rincian_nilai.'.$criterion->id);
+            $weightedScore = round($score * $criterion->bobot / 100, 2);
+            $rubric[(string) $criterion->id] = [
+                'master_id' => $criterion->id,
+                'kode' => $criterion->kode,
+                'pertanyaan' => $criterion->pertanyaan,
+                'aspek' => $criterion->pertanyaan,
                 'nilai' => $score,
-                'bobot' => $criteria['bobot'],
+                'bobot' => $criterion->bobot,
                 'nilai_akhir' => $weightedScore,
             ];
             $total += $weightedScore;
