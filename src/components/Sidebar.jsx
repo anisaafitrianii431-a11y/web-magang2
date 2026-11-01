@@ -22,6 +22,7 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
     const menu = isAdmin
         ? [
             { to: "/dashboard", label: "Dashboard", icon: "🏠" },
+            { to: "/admin/landing-page", label: "Landing Page", icon: "🌐" },
             { to: "/admin/pendaftaran", label: "Pendaftaran Magang", icon: "👥" },
             { to: "/admin/periode", label: "Kelola Periode", icon: "🗓️" },
             { to: "/admin/pembimbing", label: "Kelola Pembimbing", icon: "👨‍🏫" },
@@ -39,9 +40,10 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                 { to: "/laporan", label: "Laporan Magang", icon: "📁" },
                 { to: "/master-penilaian", label: "Master Penilaian", icon: "⚙️" },
                 { to: "/laporan/penilaian", label: "Tabel Penilaian", icon: "⭐" },
-                { to: "/laporan/rekapitulasi", label: "Rekapitulasi", icon: "📊" },
             ]
             : [
+                { to: "/beranda", label: "Landing Page", icon: "🌐" },
+                { to: "/dashboard", label: "Dashboard", icon: "🏠" },
                 { to: "/absensi", label: "Absen Hari Ini", icon: "📅" },
                 { to: "/tugas", label: "Tugas Magang", icon: "📋" },
                 { to: "/riwayat", label: "Riwayat Absensi", icon: "🗓️" },
