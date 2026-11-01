@@ -32,14 +32,14 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                 { to: "/riwayat", label: "Absensi Magang", icon: "📅" },
                 { to: "/tugas", label: "Tugas Magang", icon: "📋" },
                 { to: "/laporan", label: "Laporan Magang", icon: "📁" },
+                { to: "/master-penilaian", label: "Master Penilaian", icon: "⚙️" },
                 { to: "/laporan/penilaian", label: "Tabel Penilaian", icon: "⭐" },
                 { to: "/laporan/rekapitulasi", label: "Rekapitulasi", icon: "📊" },
             ]
             : [
-                { to: "/beranda", label: "Landing Page", icon: "🌐" },
-                { to: "/dashboard", label: "Dashboard", icon: "📊" },
                 { to: "/absensi", label: "Absen Hari Ini", icon: "📅" },
                 { to: "/tugas", label: "Tugas Magang", icon: "📋" },
+                { to: "/riwayat", label: "Riwayat Absensi", icon: "🗓️" },
                 { to: "/laporan", label: "Laporan Magang", icon: "📁" },
             ];
 
