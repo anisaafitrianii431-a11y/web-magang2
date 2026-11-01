@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { MessageSquare, Star, User } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Star, User } from 'lucide-react';
 
 function ListKomentar({ refreshTrigger }) {
   const [komentarList, setKomentarList] = useState([]);
@@ -46,7 +46,7 @@ function ListKomentar({ refreshTrigger }) {
                     <User size={16} />
                   </div>
                   <div>
-                    <span className="user-name">{item.nama_pengguna || 'Pengguna App'}</span>
+                    <span className="user-name">{item.user?.name || item.nama_pengguna || 'Pengguna App'}</span>
                     <span className="review-date">
                       {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID') : 'Terbaru'}
                     </span>

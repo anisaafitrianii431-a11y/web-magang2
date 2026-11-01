@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { jsPDF } from 'jspdf';
 import api from '../services/api';
-import PenilaianAkhirPdfModal from '../components/PenilaianAkhirPdfModal';
 
 function getPredicate(score) {
   if (score >= 85) return 'A (Sangat Baik)';
@@ -20,6 +21,22 @@ function getInitialScores(penilaian, criteria) {
     String(criterion.id),
     savedScores[String(criterion.id)]?.nilai ?? savedScores[criterion.kode]?.nilai ?? '',
   ]));
+}
+
+function getSavedCriteria(penilaian) {
+  const details = penilaian?.rincian_nilai;
+  if (!details || typeof details !== 'object' || Array.isArray(details)) return [];
+
+  return Object.entries(details)
+    .filter(([, criterion]) => criterion && criterion.nilai !== undefined && criterion.nilai !== null)
+    .map(([id, criterion]) => ({ id, ...criterion }));
+}
+
+function hasCompletedAssessment(penilaian) {
+  const savedCriteria = getSavedCriteria(penilaian);
+  return savedCriteria.length > 0 && savedCriteria.every(({ nilai }) => (
+    Number.isFinite(Number(nilai)) && Number(nilai) >= 0 && Number(nilai) <= 100
+  ));
 }
 
 function getApiError(error) {
@@ -47,10 +64,11 @@ export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
   const [participants, setParticipants] = useState([]);
   const [criteria, setCriteria] = useState([]);
   const [selectedParticipant, setSelectedParticipant] = useState(null);
-  const [pdfParticipant, setPdfParticipant] = useState(null);
+  const [downloadingUserId, setDownloadingUserId] = useState(null);
   const [scores, setScores] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [downloadError, setDownloadError] = useState('');
   const [formError, setFormError] = useState('');
 
   useEffect(() => {
@@ -97,10 +115,83 @@ export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
     setFormError('');
   };
 
-  const handlePdfUploaded = (userId) => {
-    setParticipants((current) => current.map((participant) => participant.user_id === userId
-      ? { ...participant, has_penilaian_akhir_pdf: true }
-      : participant));
+  const handleDownloadPdf = async (participant) => {
+    setDownloadingUserId(participant.user_id);
+    setDownloadError('');
+
+    try {
+      const evaluation = participant.penilaian;
+      if (!hasCompletedAssessment(evaluation)) {
+        throw new Error('Penilaian belum lengkap dan belum dapat diunduh.');
+      }
+
+      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 18;
+      const total = Number(evaluation.nilai_akhir);
+
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('FORM PENILAIAN AKHIR PEMAGANG', margin, 22);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Nama peserta: ${participant.nama_peserta || '-'}`, margin, 34);
+      doc.text(`Asal instansi: ${participant.asal_instansi || '-'}`, margin, 41);
+      if (participant.laporan?.judul_laporan) {
+        doc.text(`Judul laporan: ${participant.laporan.judul_laporan}`, margin, 48, {
+          maxWidth: pageWidth - margin * 2,
+        });
+      }
+
+      const tableTop = participant.laporan?.judul_laporan ? 62 : 57;
+      const columns = [margin, margin + 10, margin + 101, margin + 128, margin + 151];
+      const tableRight = pageWidth - margin;
+      const rowHeight = 10;
+
+      doc.setFillColor(239, 246, 255);
+      doc.rect(margin, tableTop, tableRight - margin, rowHeight, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.text('No.', columns[0] + 1, tableTop + 6.5);
+      doc.text('Aspek yang dinilai', columns[1], tableTop + 6.5);
+      doc.text('Nilai', columns[2], tableTop + 6.5);
+      doc.text('Bobot', columns[3], tableTop + 6.5);
+      doc.text('Nilai akhir', columns[4], tableTop + 6.5);
+
+      const savedCriteria = getSavedCriteria(evaluation);
+      savedCriteria.forEach((criterion, index) => {
+        const rowY = tableTop + rowHeight * (index + 1);
+        const score = Number(criterion.nilai);
+        const weight = Number(criterion.bobot);
+        const weightedScore = Number(criterion.nilai_akhir ?? (score * weight / 100));
+
+        doc.setDrawColor(203, 213, 225);
+        doc.line(margin, rowY + rowHeight, tableRight, rowY + rowHeight);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(index + 1), columns[0] + 1, rowY + 6.5);
+        doc.text(criterion.pertanyaan || criterion.aspek || '-', columns[1], rowY + 6.5, { maxWidth: 88 });
+        doc.text(formatScore(score), columns[2], rowY + 6.5);
+        doc.text(`${weight}%`, columns[3], rowY + 6.5);
+        doc.text(formatScore(weightedScore), columns[4], rowY + 6.5);
+      });
+
+      const totalY = tableTop + rowHeight * (savedCriteria.length + 1) + 10;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Total nilai:', columns[3], totalY);
+      doc.text(formatScore(total), columns[4], totalY);
+      doc.text(`Predikat: ${evaluation.poin_nilai || getPredicate(total)}`, margin, totalY + 9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(
+        `Tanggal penilaian: ${evaluation.tanggal_nilai ? new Date(evaluation.tanggal_nilai).toLocaleDateString('id-ID') : '-'}`,
+        margin,
+        totalY + 18
+      );
+
+      doc.save(`penilaian-akhir-${participant.user_id}.pdf`);
+    } catch (error) {
+      setDownloadError(error.message || 'PDF penilaian akhir gagal dibuat.');
+    } finally {
+      setDownloadingUserId(null);
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -135,15 +226,20 @@ export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
             <div>
               <h1 className="page-title">Tabel Penilaian</h1>
               <p className="page-description">
-                Klik nama pemagang untuk mengisi form penilaian, atau tambahkan PDF penilaian akhir.
+                Klik nama pemagang untuk membuka formulir penilaian, atau unduh PDF penilaian akhir.
               </p>
             </div>
+            {isCurrentUserPembimbing() && (
+              <Link to="/master-penilaian" className="btn-secondary" style={{ textDecoration: 'none' }}>
+                Atur Master Penilaian
+              </Link>
+            )}
           </div>
 
           {loadError && <p className="report-error" role="alert">{loadError}</p>}
           {!validWeight && <p className="report-error" role="alert">
             {criteria.length === 0 ? 'Belum ada pertanyaan penilaian aktif.' : `Total bobot aktif saat ini ${activeWeight.toFixed(2)}%, harus tepat 100%.`}{' '}
-            {isCurrentUserPembimbing() && <a href="/master-penilaian">Atur Master Penilaian</a>}
+            {isCurrentUserPembimbing() && <Link to="/master-penilaian">Atur Master Penilaian</Link>}
           </p>}
           <div className="table-card">
             <div className="table-card-header">
@@ -153,9 +249,9 @@ export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
               <thead>
                 <tr>
                   <th style={{ width: '8%' }}>#</th>
-                  <th style={{ width: '46%' }}>NAMA PEMAGANG</th>
-                  <th style={{ width: '18%' }}>NILAI AKHIR</th>
-                  <th style={{ width: '28%' }}>PENILAIAN AKHIR</th>
+                  <th style={{ width: '45%' }}>NAMA PEMAGANG</th>
+                  <th style={{ width: '20%' }}>NILAI AKHIR</th>
+                  <th style={{ width: '27%' }}>DOWNLOAD PENILAIAN</th>
                 </tr>
               </thead>
               <tbody>
@@ -191,9 +287,17 @@ export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
                         <button
                           type="button"
                           className="btn-action btn-action-detail"
-                          onClick={() => setPdfParticipant(participant)}
+                          onClick={() => handleDownloadPdf(participant)}
+                          disabled={!hasCompletedAssessment(participant.penilaian) || downloadingUserId === participant.user_id}
+                          title={hasCompletedAssessment(participant.penilaian)
+                            ? 'Unduh PDF berdasarkan data penilaian'
+                            : 'Penilaian akhir belum lengkap'}
                         >
-                          {participant.has_penilaian_akhir_pdf ? 'Lihat / Ganti PDF' : 'Tambah PDF'}
+                          {downloadingUserId === participant.user_id
+                            ? 'Membuat PDF...'
+                            : hasCompletedAssessment(participant.penilaian)
+                              ? 'Download PDF'
+                              : 'Belum dinilai'}
                         </button>
                       </td>
                     </tr>
@@ -201,6 +305,7 @@ export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
               </tbody>
             </table>
           </div>
+          {downloadError && <p className="report-error" role="alert">{downloadError}</p>}
         </>
       ) : (
         <>
@@ -290,11 +395,6 @@ export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
           </form>
         </>
       )}
-      <PenilaianAkhirPdfModal
-        participant={pdfParticipant}
-        onClose={() => setPdfParticipant(null)}
-        onUploaded={handlePdfUploaded}
-      />
     </div>
   );
 }

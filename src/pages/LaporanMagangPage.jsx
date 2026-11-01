@@ -1,5 +1,3 @@
-import StatusBadge from '../components/StatusBadge';
-
 function formatSubmittedAt(value) {
   if (!value) return { date: '—', time: '' };
   const parsed = new Date(value);
@@ -67,14 +65,13 @@ export default function LaporanMagangPage({
               <th style={{ width: '34%' }}>JUDUL LAPORAN & PESERTA</th>
               <th style={{ width: '12%' }}>KATEGORI</th>
               <th style={{ width: '15%' }}>TANGGAL SUBMIT</th>
-              <th style={{ width: '18%' }}>STATUS LAPORAN</th>
-              <th style={{ width: '16%', textAlign: 'right' }}>AKSI</th>
+              <th style={{ width: '34%', textAlign: 'right' }}>AKSI</th>
             </tr>
           </thead>
           <tbody>
             {laporanList.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
                   Tidak ada data laporan magang ditemukan.
                 </td>
               </tr>
@@ -101,9 +98,6 @@ export default function LaporanMagangPage({
                         </div>
                       );
                     })()}
-                  </td>
-                  <td>
-                    <StatusBadge status={item.status_laporan} />
                   </td>
                   <td>
                     <div className="action-buttons" style={{ justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem' }}>

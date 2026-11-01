@@ -40,7 +40,6 @@ function LaporanModule() {
   const [apiError, setApiError] = useState('');
   const [revisiError, setRevisiError] = useState('');
   const [assessmentError, setAssessmentError] = useState('');
-  const [statusError, setStatusError] = useState('');
 
   const fetchLaporan = useCallback(async () => {
     try {
@@ -82,7 +81,9 @@ function LaporanModule() {
     setApiError('');
 
     try {
-      const response = await api.post(laporanEndpoint, laporan);
+      const response = await api.post(laporanEndpoint, laporan, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       setLaporanList((items) => [response.data.data, ...items]);
       await fetchLaporan();
       return true;
@@ -132,32 +133,8 @@ function LaporanModule() {
     }
   };
 
-  const handleSaveDetailStatus = async (idLaporan, status) => {
-    setIsSaving(true);
-    setStatusError('');
-
-    try {
-      const response = await api.post(`${laporanEndpoint}/${idLaporan}/review`, {
-        status_laporan: status,
-      });
-      const updatedLaporan = response.data.data;
-      setLaporanList((items) => items.map((item) => item.id_laporan === idLaporan
-        ? { ...item, ...updatedLaporan }
-        : item));
-      setSelectedLaporan((item) => item?.id_laporan === idLaporan
-        ? { ...item, ...updatedLaporan }
-        : item);
-      return true;
-    } catch (error) {
-      setStatusError(getApiError(error, 'Status laporan gagal disimpan.'));
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleDelete = async (idLaporan) => {
-    if (!window.confirm('Yakin ingin menghapus laporan ini?')) return;
+    if (!window.confirm('Hapus laporan ini secara permanen? Laporan juga akan hilang dari daftar pembimbing.')) return;
     setApiError('');
 
     try {
@@ -196,7 +173,6 @@ function LaporanModule() {
                 setIsRevisiOpen(true);
               }}
               onOpenDetail={(laporan) => {
-                setStatusError('');
                 setSelectedLaporan(laporan);
                 setIsDetailOpen(true);
               }}
@@ -237,10 +213,7 @@ function LaporanModule() {
           isOpen={isDetailOpen}
           onClose={() => setIsDetailOpen(false)}
           laporan={selectedLaporan}
-          canModerate={currentRole === 'pembimbing'}
-          onSubmitStatus={handleSaveDetailStatus}
-          isSavingStatus={isSaving}
-          statusError={statusError}
+          showStatus={false}
         />
       )}
     </div>
