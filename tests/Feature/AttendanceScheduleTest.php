@@ -14,7 +14,7 @@ class AttendanceScheduleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_supervisor_can_update_the_checkout_time_for_their_participants(): void
+    public function test_supervisor_can_update_attendance_times_for_their_participants(): void
     {
         $supervisor = User::factory()->create(['role' => 'pembimbing']);
         $otherSupervisor = User::factory()->create(['role' => 'pembimbing']);
@@ -22,17 +22,85 @@ class AttendanceScheduleTest extends TestCase
         $this->actingAs($supervisor, 'sanctum')
             ->getJson('/api/pembimbing/jadwal-absensi')
             ->assertOk()
+            ->assertJsonPath('data.jam_masuk', '08:00')
             ->assertJsonPath('data.jam_pulang', '17:00');
 
         $this->actingAs($supervisor, 'sanctum')
-            ->putJson('/api/pembimbing/jadwal-absensi', ['jam_pulang' => '16:30'])
+            ->putJson('/api/pembimbing/jadwal-absensi', [
+                'jam_masuk' => '08:15',
+                'jam_pulang' => '16:30',
+            ])
             ->assertOk()
+            ->assertJsonPath('data.jam_masuk', '08:15')
             ->assertJsonPath('data.jam_pulang', '16:30');
+
+        $this->actingAs($supervisor, 'sanctum')
+            ->putJson('/api/pembimbing/jadwal-absensi', ['jam_pulang' => '16:45'])
+            ->assertOk()
+            ->assertJsonPath('data.jam_masuk', '08:15')
+            ->assertJsonPath('data.jam_pulang', '16:45');
 
         $this->actingAs($otherSupervisor, 'sanctum')
             ->getJson('/api/pembimbing/jadwal-absensi')
             ->assertOk()
+            ->assertJsonPath('data.jam_masuk', '08:00')
             ->assertJsonPath('data.jam_pulang', '17:00');
+    }
+
+    public function test_supervisor_can_set_checkin_time_after_the_default_deadline(): void
+    {
+        $supervisor = User::factory()->create(['role' => 'pembimbing']);
+
+        $this->actingAs($supervisor, 'sanctum')
+            ->putJson('/api/pembimbing/jadwal-absensi', ['jam_masuk' => '09:00'])
+            ->assertOk()
+            ->assertJsonPath('data.jam_masuk', '09:00');
+    }
+
+    public function test_participant_checkin_uses_the_assigned_supervisors_schedule(): void
+    {
+        $supervisor = User::factory()->create(['role' => 'pembimbing']);
+        AttendanceSchedule::create([
+            'pembimbing_id' => $supervisor->id,
+            'jam_masuk' => '08:15',
+            'jam_pulang' => '17:00',
+        ]);
+        $magang = Magang::create([
+            'participant_code' => 'TEST-CHECKIN',
+            'participant_name' => 'Peserta Test',
+            'institution' => 'Kampus Test',
+            'status' => 'Aktif',
+        ]);
+        $participant = User::factory()->create([
+            'role' => 'peserta',
+            'magang_id' => $magang->id,
+        ]);
+        Pendaftaran::create([
+            'user_id' => $participant->id,
+            'pembimbing_id' => $supervisor->id,
+            'asal_instansi' => 'Kampus Test',
+            'file_surat_pengantar' => 'surat_pengantar/test.pdf',
+            'status' => 'Pemagang Aktif',
+            'tanggal_daftar' => today(),
+            'file_surat_balasan' => 'storage/surat_balasan/test.pdf',
+            'surat_balasan_diterima_at' => now(),
+        ]);
+
+        $this->actingAs($participant, 'sanctum')
+            ->getJson('/api/absensi/jadwal')
+            ->assertOk()
+            ->assertJsonPath('data.jam_masuk', '08:15');
+
+        $this->travelTo(now()->setTime(8, 14));
+        $this->actingAs($participant, 'sanctum')
+            ->postJson('/api/absensi/masuk', ['status' => 'Hadir'])
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Belum waktunya absen masuk. Absensi masuk hanya bisa dilakukan mulai jam 08:15.');
+
+        $this->travelTo(now()->setTime(8, 15));
+        $this->actingAs($participant, 'sanctum')
+            ->postJson('/api/absensi/masuk', ['status' => 'Hadir'])
+            ->assertCreated();
     }
 
     public function test_participant_checkout_uses_the_assigned_supervisors_schedule(): void

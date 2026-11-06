@@ -20,6 +20,7 @@ class MagangController extends Controller
                 ->map(fn (Pendaftaran $pendaftaran) => [
                     'id' => $pendaftaran->id,
                     'participant_code' => 'USER-' . $pendaftaran->user_id,
+                    'nim' => $pendaftaran->user->nim,
                     'participant_name' => $pendaftaran->user->name,
                     'institution' => $pendaftaran->asal_instansi,
                     'status' => 'Aktif',

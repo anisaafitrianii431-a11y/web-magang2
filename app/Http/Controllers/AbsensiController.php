@@ -142,7 +142,7 @@ class AbsensiController extends Controller
     {
         $user = $request->user();
         $validated = $request->validate([
-            'status' => ['nullable', 'in:Hadir,Tidak Hadir,Izin,Sakit,Alpa'],
+            'status' => ['nullable', 'in:Hadir,Tidak Hadir,Izin,Sakit'],
             'tipe_kehadiran' => ['nullable', 'string', 'in:WFO,Zoom,Daring,WFH'],
             'keterangan' => ['nullable', 'string', 'max:255'],
             'foto' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
@@ -155,11 +155,37 @@ class AbsensiController extends Controller
             return $profile;
         }
 
+        $checkInTime = $profile['schedule_pembimbing_id']
+            ? AttendanceSchedule::where('pembimbing_id', $profile['schedule_pembimbing_id'])->value('jam_masuk')
+            : null;
+        $checkInTime = substr((string) ($checkInTime ?: AttendanceSchedule::DEFAULT_CHECK_IN_TIME), 0, 5);
+        $checkInDeadline = AttendanceSchedule::checkInDeadline($checkInTime);
+
+        if (now()->greaterThanOrEqualTo($checkInDeadline)) {
+            $deadlineLabel = $checkInDeadline->format('H:i');
+            $reason = "Tidak melakukan absensi masuk hingga pukul {$deadlineLabel}.";
+            $this->createAbsentRecordIfNotExists($user, $profile, today(), $reason);
+
+            $attendance = Absensi::where(function ($query) use ($user, $profile) {
+                $query->where('user_id', $user->id)
+                    ->orWhere('participant_code', $profile['participant_code']);
+            })
+                ->whereDate('tanggal', today())
+                ->first();
+
+            if ($attendance?->status === 'Tidak Hadir' && $attendance->keterangan === $reason) {
+                return response()->json([
+                    'message' => "Batas absensi masuk pukul {$deadlineLabel} telah lewat. Status Anda otomatis tercatat Tidak Hadir.",
+                    'data' => $attendance,
+                ], 422);
+            }
+        }
+
         $status = $validated['status'] ?? 'Hadir';
 
-        if ($status === 'Hadir' && now()->format('H:i') < '08:00') {
+        if ($status === 'Hadir' && now()->format('H:i') < $checkInTime) {
             return response()->json([
-                'message' => 'Belum waktunya absen masuk. Absensi masuk hanya bisa dilakukan mulai jam 08:00.',
+                'message' => "Belum waktunya absen masuk. Absensi masuk hanya bisa dilakukan mulai jam {$checkInTime}.",
             ], 422);
         }
 
@@ -648,7 +674,7 @@ class AbsensiController extends Controller
                 'tanggal' => $date,
                 'jam_masuk' => null,
                 'jam_pulang' => null,
-                'status' => 'Alpa',
+                'status' => 'Tidak Hadir',
                 'keterangan' => $reason,
             ]);
         }
@@ -656,17 +682,23 @@ class AbsensiController extends Controller
 
     private function autoMarkAbsentForUserIfDayEnded(User $user, array $profile): void
     {
-        $checkoutTime = $profile['schedule_pembimbing_id']
-            ? AttendanceSchedule::where('pembimbing_id', $profile['schedule_pembimbing_id'])->value('jam_pulang')
+        // 1. Hari ini: tandai Tidak Hadir setelah masa absensi masuk berakhir.
+        $checkInTime = $profile['schedule_pembimbing_id']
+            ? AttendanceSchedule::where('pembimbing_id', $profile['schedule_pembimbing_id'])->value('jam_masuk')
             : null;
-        $checkoutTime = substr((string) ($checkoutTime ?: '17:00'), 0, 5);
+        $checkInDeadline = AttendanceSchedule::checkInDeadline($checkInTime);
 
-        // 1. Hari ini: jika sudah melewati jam pulang dan belum melakukan absensi masuk
-        if (now()->format('H:i') >= $checkoutTime) {
-            $this->createAbsentRecordIfNotExists($user, $profile, today(), 'Tidak hadir dan tidak ada keterangan seharian.');
+        if (now()->greaterThanOrEqualTo($checkInDeadline)) {
+            $reason = 'Tidak melakukan absensi masuk hingga pukul '.$checkInDeadline->format('H:i').'.';
+            $this->createAbsentRecordIfNotExists(
+                $user,
+                $profile,
+                today(),
+                $reason
+            );
         }
 
-        // 2. Hari-hari kerja sebelumnya yang terlewat tanpa absensi (otomatis Alpa)
+        // 2. Hari-hari kerja sebelumnya yang terlewat tanpa absensi.
         $registration = $user->pendaftarans()->where('status', 'Pemagang Aktif')->latest('id')->first();
         if ($registration && $registration->tanggal_daftar) {
             $startDate = \Carbon\Carbon::parse($registration->tanggal_daftar)->startOfDay();

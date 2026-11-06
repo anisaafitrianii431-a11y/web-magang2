@@ -141,6 +141,8 @@ class ApiLoginTest extends TestCase
 
     public function test_participant_with_active_registration_can_check_in_without_a_magang_link(): void
     {
+        $this->travelTo(now()->setTime(8, 0));
+
         $participant = User::factory()->create([
             'name' => 'Peserta Pendaftaran',
             'role' => 'peserta',
@@ -192,6 +194,8 @@ class ApiLoginTest extends TestCase
 
     public function test_participant_can_only_view_their_own_attendance_history(): void
     {
+        $this->travelTo(now()->setTime(8, 0));
+
         $magang = $this->createMagang('231013018', 'Peserta Test');
         $participant = User::factory()->create([
             'email' => 'participant@example.com',

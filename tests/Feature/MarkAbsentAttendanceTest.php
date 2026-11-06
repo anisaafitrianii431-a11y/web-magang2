@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Absensi;
+use App\Models\AttendanceSchedule;
 use App\Models\Magang;
 use App\Models\Pendaftaran;
 use App\Models\User;
@@ -15,7 +16,7 @@ class MarkAbsentAttendanceTest extends TestCase
 
     public function test_it_marks_active_participants_without_attendance_as_absent_and_preserves_existing_records(): void
     {
-        $this->travelTo(now()->setTime(8, 0));
+        $this->travelTo(now()->setTime(8, 30));
 
         $registeredParticipant = User::factory()->create(['role' => 'peserta']);
         Pendaftaran::create([
@@ -64,13 +65,13 @@ class MarkAbsentAttendanceTest extends TestCase
 
         $this->assertDatabaseHas('absensis', [
             'participant_code' => 'USER-'.$registeredParticipant->id,
-            'status' => 'Alpa',
-            'keterangan' => 'Tidak melakukan absensi masuk hingga pukul 08.00.',
+            'status' => 'Tidak Hadir',
+            'keterangan' => 'Tidak melakukan absensi masuk hingga pukul 08:15.',
         ]);
         $this->assertDatabaseHas('absensis', [
             'participant_code' => 'TEST-001',
             'user_id' => $legacyParticipant->id,
-            'status' => 'Alpa',
+            'status' => 'Tidak Hadir',
         ]);
         $this->assertDatabaseHas('absensis', [
             'participant_code' => 'TEST-PRESENT',
@@ -79,9 +80,9 @@ class MarkAbsentAttendanceTest extends TestCase
         $this->assertDatabaseCount('absensis', 3);
     }
 
-    public function test_it_does_not_mark_participants_absent_before_eight(): void
+    public function test_it_does_not_mark_participants_absent_before_their_checkin_window_ends(): void
     {
-        $this->travelTo(now()->setTime(7, 59));
+        $this->travelTo(now()->setTime(8, 14));
 
         $magang = Magang::create([
             'participant_code' => 'TEST-EARLY',
@@ -121,13 +122,14 @@ class MarkAbsentAttendanceTest extends TestCase
             'surat_balasan_diterima_at' => now(),
         ]);
 
+        $this->travelTo(now()->setTime(8, 0));
         $this->actingAs($participant, 'sanctum')
             ->postJson('/api/absensi/masuk', ['status' => 'Alpa'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('status');
     }
 
-    public function test_participant_without_attendance_is_automatically_marked_as_alpa_when_day_ends(): void
+    public function test_participant_without_attendance_is_automatically_marked_not_present_after_checkin_window(): void
     {
         $magang = Magang::create([
             'participant_code' => 'TEST-AUTO-ALPA',
@@ -149,32 +151,122 @@ class MarkAbsentAttendanceTest extends TestCase
             'surat_balasan_diterima_at' => now(),
         ]);
 
-        // Saat siang hari sebelum jam pulang (misal 14:00), belum ada record dan belum otomatis alpa
-        $this->travelTo(now()->setTime(14, 0));
+        // Before the 15-minute window ends, the participant is not yet marked absent.
+        $this->travelTo(now()->setTime(8, 14));
         $this->actingAs($participant, 'sanctum')
             ->getJson('/api/absensi/hari-ini')
             ->assertOk();
         $this->assertDatabaseMissing('absensis', [
             'participant_code' => 'USER-'.$participant->id,
-            'status' => 'Alpa',
+            'status' => 'Tidak Hadir',
         ]);
 
-        // Setelah melewati jam pulang (misal 17:05), otomatis tercatat sebagai Alpa
-        $this->travelTo(now()->setTime(17, 5));
+        // Once the default 08:15 deadline passes, the participant is marked not present.
+        $this->travelTo(now()->setTime(8, 15));
         $response = $this->actingAs($participant, 'sanctum')
             ->getJson('/api/absensi/hari-ini')
             ->assertOk()
-            ->assertJsonPath('status', 'Alpa')
-            ->assertJsonPath('keterangan', 'Tidak hadir dan tidak ada keterangan seharian.');
+            ->assertJsonPath('status', 'Tidak Hadir')
+            ->assertJsonPath('keterangan', 'Tidak melakukan absensi masuk hingga pukul 08:15.');
 
         $this->assertDatabaseHas('absensis', [
             'participant_code' => 'USER-'.$participant->id,
-            'status' => 'Alpa',
-            'keterangan' => 'Tidak hadir dan tidak ada keterangan seharian.',
+            'status' => 'Tidak Hadir',
+            'keterangan' => 'Tidak melakukan absensi masuk hingga pukul 08:15.',
         ]);
     }
 
-    public function test_participant_missed_past_day_is_automatically_marked_as_alpa_in_history(): void
+    public function test_check_in_after_default_fifteen_minute_window_automatically_marks_participant_absent(): void
+    {
+        $participant = User::factory()->create(['role' => 'peserta']);
+        Pendaftaran::create([
+            'user_id' => $participant->id,
+            'asal_instansi' => 'Sekolah Test',
+            'file_surat_pengantar' => 'surat_pengantar/test.pdf',
+            'status' => 'Pemagang Aktif',
+            'tanggal_daftar' => today(),
+            'file_surat_balasan' => 'storage/surat_balasan/test.pdf',
+            'surat_balasan_diterima_at' => now(),
+        ]);
+
+        $this->travelTo(now()->setTime(8, 31));
+        $this->actingAs($participant, 'sanctum')
+            ->postJson('/api/absensi/masuk', ['status' => 'Hadir'])
+            ->assertUnprocessable()
+            ->assertJsonPath('data.status', 'Tidak Hadir')
+            ->assertJsonPath('data.keterangan', 'Tidak melakukan absensi masuk hingga pukul 08:15.');
+
+        $this->assertDatabaseHas('absensis', [
+            'user_id' => $participant->id,
+            'status' => 'Tidak Hadir',
+            'keterangan' => 'Tidak melakukan absensi masuk hingga pukul 08:15.',
+        ]);
+    }
+
+    public function test_absence_command_uses_the_supervisors_checkin_time_plus_fifteen_minutes(): void
+    {
+        $supervisor = User::factory()->create(['role' => 'pembimbing']);
+        AttendanceSchedule::create([
+            'pembimbing_id' => $supervisor->id,
+            'jam_masuk' => '09:00',
+            'jam_pulang' => '17:00',
+        ]);
+        $participant = User::factory()->create(['role' => 'peserta']);
+        Pendaftaran::create([
+            'user_id' => $participant->id,
+            'pembimbing_id' => $supervisor->id,
+            'asal_instansi' => 'Sekolah Test',
+            'file_surat_pengantar' => 'surat_pengantar/test.pdf',
+            'status' => 'Pemagang Aktif',
+            'tanggal_daftar' => today(),
+            'file_surat_balasan' => 'storage/surat_balasan/test.pdf',
+            'surat_balasan_diterima_at' => now(),
+        ]);
+
+        $this->travelTo(now()->setTime(9, 14));
+        $this->artisan('attendance:mark-absent')->assertSuccessful();
+        $this->assertDatabaseMissing('absensis', [
+            'participant_code' => 'USER-'.$participant->id,
+            'status' => 'Tidak Hadir',
+        ]);
+
+        $this->travelTo(now()->setTime(9, 15));
+        $this->artisan('attendance:mark-absent')->assertSuccessful();
+        $this->assertDatabaseHas('absensis', [
+            'participant_code' => 'USER-'.$participant->id,
+            'status' => 'Tidak Hadir',
+            'keterangan' => 'Tidak melakukan absensi masuk hingga pukul 09:15.',
+        ]);
+    }
+
+    public function test_checkin_after_supervisors_fifteen_minute_window_is_marked_absent(): void
+    {
+        $supervisor = User::factory()->create(['role' => 'pembimbing']);
+        AttendanceSchedule::create([
+            'pembimbing_id' => $supervisor->id,
+            'jam_masuk' => '09:00',
+            'jam_pulang' => '17:00',
+        ]);
+        $participant = User::factory()->create(['role' => 'peserta']);
+        Pendaftaran::create([
+            'user_id' => $participant->id,
+            'pembimbing_id' => $supervisor->id,
+            'asal_instansi' => 'Sekolah Test',
+            'file_surat_pengantar' => 'surat_pengantar/test.pdf',
+            'status' => 'Pemagang Aktif',
+            'tanggal_daftar' => today(),
+            'file_surat_balasan' => 'storage/surat_balasan/test.pdf',
+            'surat_balasan_diterima_at' => now(),
+        ]);
+
+        $this->travelTo(now()->setTime(9, 15));
+        $this->actingAs($participant, 'sanctum')
+            ->postJson('/api/absensi/masuk', ['status' => 'Hadir'])
+            ->assertUnprocessable()
+            ->assertJsonPath('data.keterangan', 'Tidak melakukan absensi masuk hingga pukul 09:15.');
+    }
+
+    public function test_participant_missed_past_day_is_automatically_marked_not_present_in_history(): void
     {
         // Misalkan tanggal pendaftaran dimulai 2 hari lalu pada hari kerja
         $this->travelTo(now()->startOfWeek()->addDays(2)->setTime(9, 0)); // Hari Rabu
@@ -195,16 +287,16 @@ class MarkAbsentAttendanceTest extends TestCase
             ->getJson('/api/absensi-saya')
             ->assertOk();
 
-        // Hari Senin dan Selasa otomatis tercatat sebagai Alpa
+        // Hari Senin dan Selasa otomatis tercatat sebagai Tidak Hadir
         $this->assertDatabaseHas('absensis', [
             'user_id' => $participant->id,
             'tanggal' => today()->subDays(2)->format('Y-m-d 00:00:00'),
-            'status' => 'Alpa',
+            'status' => 'Tidak Hadir',
         ]);
         $this->assertDatabaseHas('absensis', [
             'user_id' => $participant->id,
             'tanggal' => today()->subDays(1)->format('Y-m-d 00:00:00'),
-            'status' => 'Alpa',
+            'status' => 'Tidak Hadir',
         ]);
     }
 }

@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Absensi;
+use App\Models\AttendanceSchedule;
+use App\Models\Pembimbing;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,12 +18,6 @@ class MarkAbsentAttendance extends Command
 
     public function handle(): int
     {
-        if (now()->format('H:i') < '08:00') {
-            $this->info('It is too early to mark attendance as absent.');
-
-            return self::SUCCESS;
-        }
-
         $users = User::query()
             ->whereIn('role', ['peserta', 'pemagang', 'user', 'calon pemagang'])
             ->where(function (Builder $query): void {
@@ -49,16 +45,32 @@ class MarkAbsentAttendance extends Command
                     'institution' => $registration->asal_instansi,
                     'magang_id' => $magang?->id,
                     'pembimbing_id' => null,
+                    'schedule_pembimbing_id' => $registration->pembimbing_id,
                 ];
             } elseif ($magang?->status === 'Aktif') {
+                $legacyPembimbingId = $magang->pembimbing_id ?? $user->pembimbing_id;
+                $pembimbingEmail = $legacyPembimbingId
+                    ? Pembimbing::find($legacyPembimbingId)?->email
+                    : null;
                 $participant = [
                     'participant_code' => $magang->participant_code,
                     'participant_name' => $magang->participant_name,
                     'institution' => $magang->institution,
                     'magang_id' => $magang->id,
-                    'pembimbing_id' => $magang->pembimbing_id ?? $user->pembimbing_id,
+                    'pembimbing_id' => $legacyPembimbingId,
+                    'schedule_pembimbing_id' => $pembimbingEmail
+                        ? User::where('email', $pembimbingEmail)->where('role', 'pembimbing')->value('id')
+                        : null,
                 ];
             } else {
+                continue;
+            }
+
+            $jamMasuk = $participant['schedule_pembimbing_id']
+                ? AttendanceSchedule::where('pembimbing_id', $participant['schedule_pembimbing_id'])->value('jam_masuk')
+                : null;
+            $checkInDeadline = AttendanceSchedule::checkInDeadline($jamMasuk);
+            if (now()->lt($checkInDeadline)) {
                 continue;
             }
 
@@ -73,8 +85,8 @@ class MarkAbsentAttendance extends Command
                     'pembimbing_id' => $participant['pembimbing_id'],
                     'participant_name' => $participant['participant_name'],
                     'institution' => $participant['institution'],
-                    'status' => 'Alpa',
-                    'keterangan' => 'Tidak melakukan absensi masuk hingga pukul 08.00.',
+                    'status' => 'Tidak Hadir',
+                    'keterangan' => 'Tidak melakukan absensi masuk hingga pukul '.$checkInDeadline->format('H:i').'.',
                 ]
             );
 
@@ -83,7 +95,7 @@ class MarkAbsentAttendance extends Command
             }
         }
 
-        $this->info("Marked {$created} participant(s) as Alpa.");
+        $this->info("Marked {$created} participant(s) as Tidak Hadir.");
 
         return self::SUCCESS;
     }

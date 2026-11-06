@@ -21,16 +21,16 @@ Laravel is a web application framework with expressive, elegant syntax. We belie
 
 Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
-## Penandaan Alpa otomatis
+## Penandaan Tidak Hadir otomatis
 
-Peserta magang aktif yang belum memiliki catatan absensi masuk akan otomatis dicatat sebagai **Alpa** setiap hari pukul 08.00 WIB. Jalankan scheduler Laravel agar tugas ini berjalan:
+Peserta magang aktif yang belum memiliki catatan absensi masuk akan otomatis dicatat sebagai **Tidak Hadir** setelah 15 menit dari jam masuk yang ditetapkan pembimbing (default pukul 08.15 WIB). Jalankan scheduler Laravel agar tugas ini berjalan:
 
 - Windows/Laragon: dari folder `web-magang`, jalankan `php artisan schedule:work` dan biarkan proses tetap berjalan.
 - Server dengan cron: tambahkan `* * * * * cd /path/to/web-magang && php artisan schedule:run >> /dev/null 2>&1` ke crontab.
 
 Tugas ini tidak mengubah catatan absensi yang sudah ada, seperti Hadir atau Izin.
 
-Pembimbing dapat mengatur waktu mulai absensi pulang untuk peserta bimbingannya melalui menu **Jadwal Absensi**. Jika belum diatur, waktu pulang menggunakan default pukul 17.00 WIB.
+Pembimbing dapat mengatur waktu mulai absensi masuk dan pulang untuk peserta bimbingannya melalui menu **Jadwal Absensi**. Peserta memiliki waktu 15 menit sejak jam masuk yang ditentukan untuk melakukan absensi. Jika belum diatur, jam masuk menggunakan default pukul 08.00 WIB dan jam pulang pukul 17.00 WIB.
 
 ## Learning Laravel
 
