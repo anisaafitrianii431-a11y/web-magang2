@@ -1,0 +1,13 @@
+export { default as BerandaPage } from './BerandaPage';
+export { default as AlumniList } from './AlumniList';
+export { default as ProfilKantor } from './ProfilKantor';
+export { default as ListKomentar } from './ListKomentar';
+export { default as FormKomentar } from './FormKomentar';
+export { default as ListAktivitas } from './ListAktivitas';
+export { default as DetailAktivitas } from './DetailAktivitas';
+export { default as CommentForm } from './CommentForm';
+export { default as AktivitasPage } from './AktivitasPage';
+export { default as LoginForm } from './LoginForm';
+export { default as RegisterForm } from './RegisterForm';
+export { default as LogoutButton } from './LogoutButton';
+export { default as WhatsAppButton } from './WhatsAppButton';
