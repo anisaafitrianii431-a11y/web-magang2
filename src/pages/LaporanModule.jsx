@@ -40,6 +40,7 @@ function LaporanModule() {
   const [apiError, setApiError] = useState('');
   const [revisiError, setRevisiError] = useState('');
   const [assessmentError, setAssessmentError] = useState('');
+  const [statusError, setStatusError] = useState('');
 
   const fetchLaporan = useCallback(async () => {
     try {
@@ -88,7 +89,10 @@ function LaporanModule() {
       await fetchLaporan();
       return true;
     } catch (error) {
-      setApiError(getApiError(error, 'Laporan gagal disimpan. Periksa koneksi server dan konfigurasi database.'));
+      console.error('Gagal menyimpan laporan:', error);
+      setApiError(error.response?.status >= 500
+        ? 'Laporan gagal disimpan. Silakan coba lagi.'
+        : getApiError(error, 'Laporan gagal disimpan. Periksa koneksi server.'));
       return false;
     } finally {
       setIsSaving(false);
@@ -127,6 +131,30 @@ function LaporanModule() {
       return true;
     } catch (error) {
       setRevisiError(getApiError(error, 'Revisi gagal disimpan ke database.'));
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSubmitStatus = async (idLaporan, statusLaporan) => {
+    setIsSaving(true);
+    setStatusError('');
+
+    try {
+      const response = await api.post(`${laporanEndpoint}/${idLaporan}/review`, {
+        status_laporan: statusLaporan,
+      });
+      const updatedReport = response.data.data;
+      setLaporanList((items) => items.map((item) => item.id_laporan === idLaporan
+        ? { ...item, ...updatedReport }
+        : item));
+      setSelectedLaporan((item) => item?.id_laporan === idLaporan
+        ? { ...item, ...updatedReport }
+        : item);
+      return true;
+    } catch (error) {
+      setStatusError(getApiError(error, 'Status laporan gagal disimpan.'));
       return false;
     } finally {
       setIsSaving(false);
@@ -213,7 +241,10 @@ function LaporanModule() {
           isOpen={isDetailOpen}
           onClose={() => setIsDetailOpen(false)}
           laporan={selectedLaporan}
-          showStatus={false}
+          canModerate={currentRole === 'pembimbing'}
+          onSubmitStatus={handleSubmitStatus}
+          isSavingStatus={isSaving}
+          statusError={statusError}
         />
       )}
     </div>

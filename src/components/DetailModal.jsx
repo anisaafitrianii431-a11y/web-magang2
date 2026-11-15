@@ -5,7 +5,7 @@ import StatusBadge from './StatusBadge';
 export default function DetailModal({ isOpen, onClose, laporan, canModerate = false, showStatus = true, onSubmitStatus, isSavingStatus = false, statusError = '' }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState(laporan?.status_laporan || 'Menunggu Review');
 
   if (!isOpen || !laporan) return null;
 
@@ -34,8 +34,7 @@ export default function DetailModal({ isOpen, onClose, laporan, canModerate = fa
 
   const handleSaveStatus = async () => {
     if (!selectedStatus || !onSubmitStatus) return;
-    const saved = await onSubmitStatus(laporan.id_laporan, 'Disetujui');
-    if (saved) setSelectedStatus('');
+    await onSubmitStatus(laporan.id_laporan, selectedStatus);
   };
 
   return (
@@ -98,8 +97,9 @@ export default function DetailModal({ isOpen, onClose, laporan, canModerate = fa
                 value={selectedStatus}
                 onChange={(event) => setSelectedStatus(event.target.value)}
               >
-                <option value="">Pilih status</option>
-                <option value="Diterima">Diterima</option>
+                <option value="Menunggu Review">Review</option>
+                <option value="Disetujui">Selesai</option>
+                {laporan.status_laporan === 'Revisi' && <option value="Revisi">Revisi</option>}
               </select>
               {statusError && <p role="alert" style={{ color: '#b91c1c', marginTop: '0.5rem' }}>{statusError}</p>}
             </div>

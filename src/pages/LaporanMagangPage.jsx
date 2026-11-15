@@ -61,17 +61,18 @@ export default function LaporanMagangPage({
         <table className="custom-table" style={{ width: '100%', tableLayout: 'fixed' }}>
           <thead>
             <tr>
-              <th style={{ width: '5%' }}>#</th>
-              <th style={{ width: '34%' }}>JUDUL LAPORAN & PESERTA</th>
-              <th style={{ width: '12%' }}>KATEGORI</th>
-              <th style={{ width: '15%' }}>TANGGAL SUBMIT</th>
-              <th style={{ width: '34%', textAlign: 'right' }}>AKSI</th>
+              <th style={{ width: '4%' }}>#</th>
+              <th style={{ width: '30%' }}>JUDUL LAPORAN & PESERTA</th>
+              <th style={{ width: '11%' }}>KATEGORI</th>
+              <th style={{ width: '14%' }}>TANGGAL SUBMIT</th>
+              <th style={{ width: '12%' }}>STATUS</th>
+              <th style={{ width: '29%', textAlign: 'right' }}>AKSI</th>
             </tr>
           </thead>
           <tbody>
             {laporanList.length === 0 ? (
               <tr>
-                <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
                   Tidak ada data laporan magang ditemukan.
                 </td>
               </tr>
@@ -98,6 +99,11 @@ export default function LaporanMagangPage({
                         </div>
                       );
                     })()}
+                  </td>
+                  <td>
+                    <span className={`badge ${item.status_laporan === 'Disetujui' ? 'badge-disetujui' : 'badge-review'}`}>
+                      {item.status_laporan === 'Disetujui' ? 'Selesai' : 'Review'}
+                    </span>
                   </td>
                   <td>
                     <div className="action-buttons" style={{ justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem' }}>
