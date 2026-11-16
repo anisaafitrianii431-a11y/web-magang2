@@ -1,10 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+    Calendar,
+    CalendarCheck,
+    Download,
+    FileCheck2,
+    GraduationCap,
+    Building2,
+    FolderCheck,
+    CheckSquare,
+    UserCheck,
+    BookOpen,
+} from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import api from "../services/api";
 import { API_BASE_URL } from "../config/api";
 import { normalizeRole } from "../utils/auth";
+import "./ParticipantDashboard.css";
 
 const roleNames = {
     admin: "Administrator",
@@ -27,22 +40,25 @@ function formatPeriodDate(value) {
         : date.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function formatTaskDeadline(value) {
-    if (!value) return "Deadline belum ditentukan";
-    const date = new Date(value);
-    return Number.isNaN(date.getTime())
-        ? "Deadline belum ditentukan"
-        : date.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
-}
-
 function getPhotoUrl(photo) {
     if (!photo) return null;
-    if (/^https?:\/\//i.test(photo)) return photo;
+    if (/^https?:\/\//i.test(photo) || String(photo).startsWith("data:") || String(photo).startsWith("blob:")) return photo;
     const path = String(photo).replace(/^\/+/, "").replace(/^storage\//, "");
     return `${API_BASE_URL.replace(/\/api\/?$/, "")}/storage/${path}`;
 }
 
+
+function getGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 11) return "Selamat Pagi";
+    if (hour < 15) return "Selamat Siang";
+    if (hour < 18) return "Selamat Sore";
+    return "Selamat Malam";
+}
+
 function ParticipantDashboard({ user }) {
+    const [currentUser, setCurrentUser] = useState(user);
+    const [photoError, setPhotoError] = useState(false);
     const [registration, setRegistration] = useState(null);
     const [attendance, setAttendance] = useState([]);
     const [tasks, setTasks] = useState([]);
@@ -53,6 +69,24 @@ function ParticipantDashboard({ user }) {
     const [downloadMessage, setDownloadMessage] = useState("");
 
     useEffect(() => {
+        setCurrentUser(user);
+    }, [user]);
+
+    useEffect(() => {
+        setPhotoError(false);
+    }, [currentUser?.foto]);
+
+    useEffect(() => {
+        const handleProfileUpdated = (event) => {
+            if (event.detail?.user) {
+                setCurrentUser(event.detail.user);
+            }
+        };
+        window.addEventListener("user-profile-updated", handleProfileUpdated);
+        return () => window.removeEventListener("user-profile-updated", handleProfileUpdated);
+    }, []);
+
+    useEffect(() => {
         let cancelled = false;
 
         const loadDashboard = async () => {
@@ -61,16 +95,32 @@ function ParticipantDashboard({ user }) {
                 api.get("/absensi-saya"),
                 api.get("/tugas"),
                 api.get("/v1/laporan-magang"),
+                api.get("/me"),
             ]);
 
             if (cancelled) return;
 
             const failed = [];
             if (requests[0].status === "fulfilled") {
-                setRegistration(requests[0].value.data?.data || null);
+                const regData = requests[0].value.data?.data || null;
+                setRegistration(regData);
+                if (regData?.user) {
+                    setCurrentUser((prev) => ({ ...prev, ...regData.user }));
+                }
             } else {
                 failed.push("data magang");
                 console.error("Gagal memuat data pendaftaran dashboard:", requests[0].reason);
+            }
+
+            if (requests[4]?.status === "fulfilled") {
+                const freshUser = requests[4].value.data?.data?.user || requests[4].value.data?.data || requests[4].value.data;
+                if (freshUser) {
+                    setCurrentUser((prev) => ({ ...prev, ...freshUser }));
+                    try {
+                        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+                        localStorage.setItem("user", JSON.stringify({ ...localUser, ...freshUser }));
+                    } catch {}
+                }
             }
 
             if (requests[1].status === "fulfilled") {
@@ -114,14 +164,13 @@ function ParticipantDashboard({ user }) {
     )).length;
     const attendanceRate = attendance.length ? Math.round((presentCount / attendance.length) * 100) : 0;
     const submittedTasks = tasks.filter((task) => Array.isArray(task.submisi) && task.submisi.length > 0).length;
-    const recentTasks = tasks.slice(0, 4);
     const latestReport = reports[0] || null;
     const period = registration?.periode;
     const supervisor = registration?.pembimbing;
-    const participantCode = user?.nim || user?.magang?.participant_code;
-    const institution = registration?.asal_instansi || user?.magang?.institution;
+    const participantCode = currentUser?.nim || currentUser?.magang?.participant_code;
+    const institution = registration?.asal_instansi || currentUser?.magang?.institution;
     const periodName = period?.nama_periode || "Periode magang";
-    const photoUrl = getPhotoUrl(user?.foto);
+    const photoUrl = getPhotoUrl(currentUser?.foto);
     const letterAvailable = Boolean(registration?.file_surat_balasan);
 
     const handleDownloadReplyLetter = async () => {
@@ -149,177 +198,199 @@ function ParticipantDashboard({ user }) {
         }
     };
 
+    const greeting = getGreeting();
+    const taskCompletionRate = tasks.length ? Math.round((submittedTasks / tasks.length) * 100) : 0;
+
     return (
         <div className="layout">
             <Sidebar />
             <div className="content">
-                <Navbar />
                 <main className="main participant-dashboard">
-                    <h1 className="participant-dashboard-page-title">Dashboard Peserta</h1>
-
-                    <section className="participant-profile-card">
-                        <div className="participant-profile-heading">
-                            <div className="participant-avatar">
-                                {photoUrl && <img src={photoUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />}
-                                <span>{String(user?.name || user?.nama || "P").trim().charAt(0).toUpperCase()}</span>
+                    {/* 1. HERO PROFILE CARD */}
+                    <section className="pd-hero-card">
+                        <div className="pd-hero-halo" aria-hidden="true"></div>
+                        <div className="pd-hero-content">
+                            <div className="pd-hero-main">
+                                <div className="pd-avatar-wrap">
+                                    <div className="pd-avatar-inner">
+                                        {photoUrl && !photoError ? (
+                                            <img
+                                                src={photoUrl}
+                                                alt="Foto Profil"
+                                                onError={(e) => {
+                                                    const relativeUrl = `/storage/${String(currentUser?.foto || "").replace(/^\/+/, "").replace(/^storage\//, "")}`;
+                                                    if (e.currentTarget.dataset.triedRelative !== "true" && e.currentTarget.src !== window.location.origin + relativeUrl) {
+                                                        e.currentTarget.dataset.triedRelative = "true";
+                                                        e.currentTarget.src = relativeUrl;
+                                                    } else {
+                                                        setPhotoError(true);
+                                                    }
+                                                }}
+                                            />
+                                        ) : (
+                                            <span>{String(currentUser?.name || currentUser?.nama || "P").trim().charAt(0).toUpperCase()}</span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="pd-identity">
+                                    <div className="pd-greeting-row">
+                                        <span className="pd-greeting-subtitle">{greeting},</span>
+                                        <span className="pd-status-pill">
+                                            <span className="pd-pulse-dot"></span>
+                                            {registration?.status || "Peserta Magang"}
+                                        </span>
+                                    </div>
+                                    <h2 className="pd-name">{currentUser?.name || currentUser?.nama || "Peserta"} 👋</h2>
+                                    <div className="pd-meta-chips">
+                                        {participantCode && (
+                                            <span className="pd-chip">
+                                                <GraduationCap size={13} /> NIM: {participantCode}
+                                            </span>
+                                        )}
+                                        {currentUser?.program_studi && (
+                                            <span className="pd-chip">
+                                                <BookOpen size={13} /> {currentUser.program_studi}
+                                            </span>
+                                        )}
+                                        <span className="pd-chip">
+                                            <Building2 size={13} /> {institution || "PAM-TECHNO"}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="participant-identity">
-                                <div className="participant-name-row">
-                                    <h2>Halo, {user?.name || user?.nama || "Peserta"} 👋</h2>
-                                    <span className={`participant-status-badge${registration?.status === "Pemagang Aktif" ? " is-active" : ""}`}>
-                                        {registration?.status || "Status belum tersedia"}
+
+                            <div className="pd-hero-sidebar">
+                                <div className="pd-info-box">
+                                    <span className="pd-info-label">
+                                        <Calendar size={13} /> Periode Magang
+                                    </span>
+                                    <span className="pd-info-val">
+                                        {formatPeriodDate(period?.tanggal_mulai)} – {formatPeriodDate(period?.tanggal_selesai)}
                                     </span>
                                 </div>
+                                <div className="pd-info-box">
+                                    <span className="pd-info-label">
+                                        <UserCheck size={13} /> Pembimbing
+                                    </span>
+                                    <span className="pd-info-val">
+                                        {supervisor?.nama || supervisor?.name || "Belum Ditentukan"}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* 2. STATS CARDS GRID */}
+                    <section className="pd-stats-grid" aria-label="Ringkasan Aktivitas Magang">
+                        <Link to="/riwayat" className="pd-stat-card">
+                            <div className="pd-stat-header">
+                                <span className="pd-stat-title">Presensi Kehadiran</span>
+                                <div className="pd-stat-icon-wrap blue">
+                                    <CalendarCheck size={22} />
+                                </div>
+                            </div>
+                            <div className="pd-stat-main-num">
+                                {loading ? "…" : <>{presentCount}<small>/ {attendance.length} Hari</small></>}
+                            </div>
+                            <div className="pd-stat-progress-bar">
+                                <div className="pd-stat-progress-fill blue" style={{ width: `${attendanceRate}%` }}></div>
+                            </div>
+                            <div className="pd-stat-footer">
+                                <span>Tingkat Kehadiran: <strong>{attendanceRate}%</strong></span>
+                                <span className={`pd-stat-badge ${todayAttendance ? "green" : "gray"}`}>
+                                    {todayAttendance?.status ? `Hari ini: ${todayAttendance.status}` : "Belum Absen"}
+                                </span>
+                            </div>
+                        </Link>
+
+                        <Link to="/tugas" className="pd-stat-card">
+                            <div className="pd-stat-header">
+                                <span className="pd-stat-title">Tugas Magang</span>
+                                <div className="pd-stat-icon-wrap amber">
+                                    <CheckSquare size={22} />
+                                </div>
+                            </div>
+                            <div className="pd-stat-main-num">
+                                {loading ? "…" : <>{submittedTasks}<small>/ {tasks.length} Selesai</small></>}
+                            </div>
+                            <div className="pd-stat-progress-bar">
+                                <div className="pd-stat-progress-fill amber" style={{ width: `${taskCompletionRate}%` }}></div>
+                            </div>
+                            <div className="pd-stat-footer">
+                                <span>Progres Tugas: <strong>{taskCompletionRate}%</strong></span>
+                                <span className={`pd-stat-badge ${tasks.length - submittedTasks > 0 ? "amber" : "green"}`}>
+                                    {tasks.length - submittedTasks > 0
+                                        ? `${tasks.length - submittedTasks} Belum Selesai`
+                                        : "Lengkap ✓"}
+                                </span>
+                            </div>
+                        </Link>
+
+                        <Link to="/laporan" className="pd-stat-card">
+                            <div className="pd-stat-header">
+                                <span className="pd-stat-title">Laporan Akhir</span>
+                                <div className="pd-stat-icon-wrap purple">
+                                    <FolderCheck size={22} />
+                                </div>
+                            </div>
+                            <div className="pd-stat-main-num">
+                                <span style={{ fontSize: "20px" }}>
+                                    {loading ? "…" : latestReport?.status_laporan || "Belum Ada"}
+                                </span>
+                            </div>
+                            <div className="pd-stat-progress-bar">
+                                <div
+                                    className="pd-stat-progress-fill purple"
+                                    style={{
+                                        width: String(latestReport?.status_laporan || "").toLowerCase() === "disetujui" ? "100%" : latestReport ? "60%" : "0%",
+                                    }}
+                                ></div>
+                            </div>
+                            <div className="pd-stat-footer">
+                                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {latestReport?.judul_laporan || "Unggah laporan magang"}
+                                </span>
+                                <span className="pd-stat-badge green">
+                                    Buka →
+                                </span>
+                            </div>
+                        </Link>
+                    </section>
+
+                    {/* 3. SURAT BALASAN NOTIFICATION BANNER */}
+                    <section className="pd-letter-banner">
+                        <div className="pd-letter-left">
+                            <div className="pd-letter-icon-box">
+                                <FileCheck2 size={24} />
+                            </div>
+                            <div className="pd-letter-text">
+                                <h4>
+                                    Surat Balasan Penerimaan Magang
+                                    <span className={`pd-stat-badge ${letterAvailable ? "green" : "amber"}`}>
+                                        {letterAvailable ? "Resmi Diterbitkan" : "Belum Tersedia"}
+                                    </span>
+                                </h4>
                                 <p>
-                                    {participantCode && <><strong>NIM: {participantCode}</strong><span>•</span></>}
-                                    {user?.program_studi && <><span>{user.program_studi}</span><span>•</span></>}
-                                    <span>{institution || "Instansi belum tersedia"}</span>
+                                    {letterAvailable
+                                        ? `Surat balasan resmi untuk ${periodName} telah tersedia dan dapat diunduh untuk kebutuhan instansi/kampus Anda.`
+                                        : "Surat balasan resmi belum diunggah oleh administrator."}
                                 </p>
+                                {downloadMessage && <small style={{ color: "#166534", marginTop: "4px", display: "block" }}>{downloadMessage}</small>}
                             </div>
-                        </div>
-                        <div className="participant-details">
-                            <div>
-                                <span>Periode Magang</span>
-                                <strong>{formatPeriodDate(period?.tanggal_mulai)} s/d {formatPeriodDate(period?.tanggal_selesai)}</strong>
-                            </div>
-                            <div>
-                                <span>Pembimbing Lapangan</span>
-                                <strong>{supervisor?.nama || supervisor?.name || "Belum ditentukan"}</strong>
-                            </div>
-                        </div>
-                    </section>
-
-                    <section className="participant-summary-grid" aria-label="Ringkasan kegiatan magang">
-                        <Link to="/riwayat" className="participant-summary-card">
-                            <div className="participant-summary-card-top">
-                                <span>Presensi Kehadiran</span>
-                                <span className="participant-summary-icon is-blue" aria-hidden="true">🗓️</span>
-                            </div>
-                            <strong className="participant-summary-value">
-                                {loading ? "…" : <>{presentCount}<small> / {attendance.length} hari</small></>}
-                            </strong>
-                            <div className="participant-summary-footer">
-                                Tingkat Kehadiran: <b>{attendanceRate}%</b>
-                                <span>•</span>
-                                Hari ini: <b>{todayAttendance?.status || "Belum absen"}</b>
-                            </div>
-                        </Link>
-
-                        <Link to="/tugas" className="participant-summary-card">
-                            <div className="participant-summary-card-top">
-                                <span>Tugas Magang</span>
-                                <span className="participant-summary-icon is-amber" aria-hidden="true">📋</span>
-                            </div>
-                            <strong className="participant-summary-value">
-                                {loading ? "…" : <>{submittedTasks}<small> / {tasks.length} tugas</small></>}
-                            </strong>
-                            <div className="participant-summary-footer">
-                                {loading ? "Memuat progres tugas..." : tasks.length - submittedTasks > 0
-                                    ? <b className="participant-warning">{tasks.length - submittedTasks} tugas belum diserahkan</b>
-                                    : "Semua tugas sudah diserahkan"}
-                            </div>
-                        </Link>
-
-                        <Link to="/laporan" className="participant-summary-card">
-                            <div className="participant-summary-card-top">
-                                <span>Laporan Magang</span>
-                                <span className="participant-summary-icon is-purple" aria-hidden="true">📁</span>
-                            </div>
-                            <strong className="participant-summary-value participant-report-value">
-                                {loading ? "…" : latestReport?.status_laporan || "Belum Ada"}
-                            </strong>
-                            <div className="participant-summary-footer">
-                                {latestReport?.judul_laporan || "Silakan unggah laporan akhir magang"}
-                            </div>
-                        </Link>
-                    </section>
-
-                    <section className="participant-letter-card">
-                        <div className="participant-letter-icon" aria-hidden="true">✉️</div>
-                        <div className="participant-letter-content">
-                            <span>Surat Balasan</span>
-                            <strong>{letterAvailable ? "Tersedia Resmi" : "Belum Tersedia"}</strong>
-                            <p>{letterAvailable ? `Surat balasan untuk ${periodName} dapat diunduh.` : "Surat balasan belum diunggah oleh admin."}</p>
-                            {downloadMessage && <small role="status">{downloadMessage}</small>}
                         </div>
                         <button
                             type="button"
+                            className="pd-btn-download"
                             onClick={handleDownloadReplyLetter}
                             disabled={!letterAvailable || downloadingLetter}
                         >
+                            <Download size={15} />
                             {downloadingLetter ? "Mengunduh..." : "Unduh Surat Balasan"}
                         </button>
                     </section>
 
-                    <section className="participant-dashboard-lower">
-                        <div className="participant-recent-tasks-card">
-                            <div className="participant-lower-card-heading">
-                                <h2><span aria-hidden="true">📋</span> Tugas Magang Terkini</h2>
-                                <Link to="/tugas">Buka Semua ({tasks.length}) →</Link>
-                            </div>
-                            {loading ? (
-                                <p className="participant-empty-state">Memuat daftar tugas...</p>
-                            ) : recentTasks.length > 0 ? (
-                                <div className="participant-recent-task-list">
-                                    {recentTasks.map((task) => {
-                                        const submitted = Array.isArray(task.submisi) && task.submisi.length > 0;
-                                        return (
-                                            <Link to="/tugas" className="participant-recent-task" key={task.id}>
-                                                <div>
-                                                    <strong>{task.judul}</strong>
-                                                    <span>⏰ Batas: {formatTaskDeadline(task.deadline)}</span>
-                                                </div>
-                                                <span className={`participant-task-badge${submitted ? " is-submitted" : ""}`}>
-                                                    {submitted ? "✓ Sudah Dikumpul" : "Kerjakan →"}
-                                                </span>
-                                            </Link>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <p className="participant-empty-state">Belum ada tugas magang.</p>
-                            )}
-                        </div>
-
-                        <div className="participant-dashboard-side">
-                            <section className="participant-today-card">
-                                <div className="participant-lower-card-heading">
-                                    <h2>Presensi Hari Ini</h2>
-                                    <span className={`participant-today-badge${todayAttendance ? " is-present" : ""}`}>
-                                        {todayAttendance?.status || "Belum Hadir"}
-                                    </span>
-                                </div>
-                                <div className="participant-time-grid">
-                                    <div>
-                                        <span>Jam Masuk</span>
-                                        <strong>{todayAttendance?.jam_masuk || "--:--"}</strong>
-                                    </div>
-                                    <div>
-                                        <span>Jam Pulang</span>
-                                        <strong>{todayAttendance?.jam_pulang || "--:--"}</strong>
-                                    </div>
-                                </div>
-                                <p className="participant-working-hours">Jam kerja: <strong>08.00 – 17.00 WIB</strong> (Senin - Minggu)</p>
-                                <Link to="/absensi" className="participant-attendance-link">Buka Ruang Presensi →</Link>
-                            </section>
-
-                            <section className="participant-shortcuts-card">
-                                <h2>Pintasan Menu</h2>
-                                <div className="participant-shortcut-grid">
-                                    <Link to="/tugas"><span aria-hidden="true">📋</span> Tugas Magang</Link>
-                                    <Link to="/laporan"><span aria-hidden="true">📁</span> Laporan Akhir</Link>
-                                    <Link to="/riwayat"><span aria-hidden="true">🗓️</span> Rekap Absensi</Link>
-                                    <button type="button" onClick={handleDownloadReplyLetter} disabled={!letterAvailable || downloadingLetter}>
-                                        <span aria-hidden="true">✉️</span>
-                                        {downloadingLetter ? "Mengunduh..." : "Surat Balasan"}
-                                    </button>
-                                </div>
-                            </section>
-                        </div>
-                    </section>
-
                     {failedSections.length > 0 && (
-                        <p className="participant-dashboard-notice" role="status">
+                        <p className="participant-dashboard-notice" role="status" style={{ marginTop: "20px" }}>
                             Sebagian ringkasan belum dapat dimuat ({failedSections.join(", ")}). Muat ulang halaman atau coba lagi nanti.
                         </p>
                     )}
@@ -339,15 +410,27 @@ function Dashboard() {
     });
 
     useEffect(() => {
+        const handleProfileUpdated = (event) => {
+            if (event.detail?.user) {
+                setUser(event.detail.user);
+            }
+        };
+        window.addEventListener("user-profile-updated", handleProfileUpdated);
+        return () => window.removeEventListener("user-profile-updated", handleProfileUpdated);
+    }, []);
+
+    useEffect(() => {
         let cancelled = false;
-        if (user || !localStorage.getItem("token")) return undefined;
+        if (!localStorage.getItem("token")) return undefined;
 
         api.get("/me")
             .then((response) => {
                 if (cancelled) return;
-                const currentUser = response.data?.data?.user || response.data?.data || response.data;
-                localStorage.setItem("user", JSON.stringify(currentUser));
-                setUser(currentUser);
+                const freshUser = response.data?.data?.user || response.data?.data || response.data;
+                if (freshUser) {
+                    localStorage.setItem("user", JSON.stringify(freshUser));
+                    setUser(freshUser);
+                }
             })
             .catch((error) => {
                 console.error("Gagal memuat profil dashboard:", error);
@@ -355,7 +438,7 @@ function Dashboard() {
         return () => {
             cancelled = true;
         };
-    }, [user]);
+    }, []);
 
     const role = normalizeRole(user?.role);
     const isParticipant = role === "pemagang";
@@ -372,21 +455,12 @@ function Dashboard() {
             { to: "/tugas", icon: "📋", title: "Tugas Magang", description: "Kelola tugas dan evaluasi submisi." },
             { to: "/riwayat", icon: "📅", title: "Absensi & Riwayat", description: "Pantau rekapitulasi data kehadiran." },
         ]
-        : role === "pembimbing"
-            ? [
-                { to: "/riwayat", icon: "📅", title: "Absensi Magang", description: "Pantau kehadiran peserta dan validasi izin." },
-                { to: "/periode", icon: "🗓️", title: "Periode Magang", description: "Lihat periode peserta magang." },
-                { to: "/pembimbing/jadwal-absensi", icon: "🕒", title: "Jadwal Absensi", description: "Atur jam masuk dan jam pulang." },
-                { to: "/tugas", icon: "📋", title: "Tugas Magang", description: "Periksa dan nilai submisi tugas." },
-                { to: "/laporan", icon: "📁", title: "Laporan Magang", description: "Tinjau laporan peserta magang." },
-                { to: "/master-penilaian", icon: "⚙️", title: "Master Penilaian", description: "Kelola kriteria dan komponen penilaian." },
-                { to: "/laporan/penilaian", icon: "⭐", title: "Tabel Penilaian", description: "Input dan kelola nilai akhir peserta." },
-            ]
-            : [
-                { to: "/absensi", icon: "📅", title: "Absensi Hari Ini", description: "Catat kehadiran magang." },
-                { to: "/tugas", icon: "📋", title: "Tugas Magang", description: "Lihat tugas dan status pengumpulan." },
-                { to: "/laporan", icon: "📁", title: "Laporan Magang", description: "Lihat dan kelola laporan magang." },
-            ];
+        : [
+            { to: "/riwayat", icon: "📅", title: "Absensi Magang", description: "Pantau kehadiran peserta." },
+            { to: "/periode", icon: "🗓️", title: "Periode Magang", description: "Lihat periode peserta magang." },
+            { to: "/tugas", icon: "📋", title: "Tugas Magang", description: "Periksa dan nilai submisi tugas." },
+            { to: "/laporan", icon: "📁", title: "Laporan Magang", description: "Tinjau laporan peserta." },
+        ];
 
     return (
         <div className="layout">

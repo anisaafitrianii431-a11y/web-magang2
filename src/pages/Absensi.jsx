@@ -5,6 +5,14 @@ import "leaflet/dist/leaflet.css";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import api from "../services/api";
+import { API_BASE_URL } from "../config/api";
+
+function getPhotoUrl(photo) {
+    if (!photo) return null;
+    if (/^https?:\/\//i.test(photo) || String(photo).startsWith("data:") || String(photo).startsWith("blob:")) return photo;
+    const path = String(photo).replace(/^\/+/, "").replace(/^storage\//, "");
+    return `${API_BASE_URL.replace(/\/api\/?$/, "")}/storage/${path}`;
+}
 
 function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
     const R = 6371000; // in meters
@@ -22,7 +30,19 @@ function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
 
 function Absensi() {
     const navigate = useNavigate();
+    const [currentUser, setCurrentUser] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem("user") || "null");
+        } catch {
+            return null;
+        }
+    });
+    const [photoError, setPhotoError] = useState(false);
     const [participant, setParticipant] = useState(null);
+
+    useEffect(() => {
+        setPhotoError(false);
+    }, [currentUser?.foto, participant?.foto]);
     const [data, setData] = useState(null);
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
@@ -33,6 +53,16 @@ function Absensi() {
     const [checkoutTime, setCheckoutTime] = useState("17:00");
     const [attendanceStatus, setAttendanceStatus] = useState("Hadir");
     const [keterangan, setKeterangan] = useState("");
+
+    useEffect(() => {
+        const handleProfileUpdated = (event) => {
+            if (event.detail?.user) {
+                setCurrentUser(event.detail.user);
+            }
+        };
+        window.addEventListener("user-profile-updated", handleProfileUpdated);
+        return () => window.removeEventListener("user-profile-updated", handleProfileUpdated);
+    }, []);
 
     // Kebijakan absensi daring / Zoom
     const [policy, setPolicy] = useState({
@@ -179,6 +209,9 @@ function Absensi() {
                 }
 
                 if (cancelled) return;
+                if (user) {
+                    setCurrentUser(user);
+                }
                 setParticipant(profile);
 
                 if (!profile) {
@@ -564,17 +597,23 @@ function Absensi() {
         (attendanceStatus === "Hadir" && locationStatus.hasOffices && (!locationStatus.isWithinRadius || locationLoading || !!locationError)) ||
         (isZoom && policy.require_zoom_proof && !zoomFile);
 
+    const photoUrl = getPhotoUrl(currentUser?.foto || participant?.foto);
+
     return (
-        <div className="layout">
+        <div className="layout" style={{ background: "#f8fafc", minHeight: "100vh" }}>
             <Sidebar />
             <div className="content">
                 <Navbar />
-                <main className="main">
+                <main className="main participant-page-container">
+                    {/* Header Halaman */}
                     <div className="page-heading">
                         <div>
-                            <p className="eyebrow">PORTAL PESERTA</p>
+                            <div className="eyebrow">
+                                <span style={{ display: "inline-block", width: "7px", height: "7px", borderRadius: "50%", background: "#6366f1", marginRight: "6px" }}></span>
+                                PRESENSI KEHADIRAN
+                            </div>
                             <h1>Absensi Harian</h1>
-                            <p className="subtitle">Catat jam masuk dan jam pulang sesuai jadwal operasional kantor atau kegiatan Zoom.</p>
+                            <p className="subtitle">Catat jam masuk dan jam pulang sesuai jadwal operasional kantor atau kegiatan daring Zoom.</p>
                         </div>
                         <div className="live-clock">
                             <strong>{clock.toLocaleTimeString("id-ID")}</strong>
@@ -582,291 +621,222 @@ function Absensi() {
                         </div>
                     </div>
 
-                    <section className="attendance-box">
-                        <div className="attendance-profile-box">
+                    {/* Ringkasan Profil & Status Hari Ini */}
+                    <div className="attendance-top-summary">
+                        <div className="attendance-user-strip">
+                            <div className="attendance-avatar-circle">
+                                {photoUrl && !photoError ? (
+                                    <img
+                                        src={photoUrl}
+                                        alt="Foto Profil"
+                                        onError={(e) => {
+                                            const relativeUrl = `/storage/${String(currentUser?.foto || participant?.foto || "").replace(/^\/+/, "").replace(/^storage\//, "")}`;
+                                            if (e.currentTarget.dataset.triedRelative !== "true" && e.currentTarget.src !== window.location.origin + relativeUrl) {
+                                                e.currentTarget.dataset.triedRelative = "true";
+                                                e.currentTarget.src = relativeUrl;
+                                            } else {
+                                                setPhotoError(true);
+                                            }
+                                        }}
+                                    />
+                                ) : (
+                                    <span>{String(participant?.participant_name || currentUser?.name || currentUser?.nama || "P").trim().charAt(0).toUpperCase()}</span>
+                                )}
+                            </div>
                             <div>
-                                <p className="eyebrow">AKUN PESERTA</p>
-                                <h2>{profileLoading ? "Memuat profil..." : participant?.participant_name || "Akun belum terhubung"}</h2>
-                                {participant?.participant_code && <p className="subtitle">NPM: {participant.participant_code}</p>}
+                                <span className="attendance-meta-label">AKUN PESERTA MAGANG</span>
+                                <h2 className="attendance-user-name">
+                                    {profileLoading ? "Memuat profil..." : participant?.participant_name || "Akun belum terhubung"}
+                                </h2>
+                                {participant?.participant_code && (
+                                    <span className="attendance-meta-npm">NPM: {participant.participant_code}</span>
+                                )}
                             </div>
                         </div>
-
-                        {!profileLoading && !participant ? (
-                            <div className="alert-card error" style={{ marginTop: "16px" }}>
-                                <p><strong>Akun Anda belum terhubung dengan data magang.</strong></p>
-                                <p>Silakan keluar dan masuk kembali memakai NPM yang valid atau selesaikan pendaftaran magang terlebih dahulu.</p>
+                        <div className="attendance-status-pill-box">
+                            <span className="attendance-meta-label" style={{ textAlign: "right" }}>STATUS HARI INI</span>
+                            <div>
+                                <span className={`attendance-badge-lg ${
+                                    data?.status === "Hadir" || data?.approval_status === "approved"
+                                        ? "badge-success"
+                                        : data?.status === "Alpa" || data?.approval_status === "rejected"
+                                        ? "badge-danger"
+                                        : "badge-neutral"
+                                }`}>
+                                    <span style={{
+                                        display: "inline-block",
+                                        width: "8px",
+                                        height: "8px",
+                                        borderRadius: "50%",
+                                        background: data?.status === "Hadir" || data?.approval_status === "approved" ? "#22c55e" : data?.status === "Alpa" || data?.approval_status === "rejected" ? "#ef4444" : "#94a3b8"
+                                    }}></span>
+                                    {displayedStatus}
+                                </span>
                             </div>
-                        ) : (
-                            <>
-                                <div className="attendance-status-box">
-                                    <div>
-                                        <p className="eyebrow">STATUS HARI INI</p>
-                                        <h2 className={data?.status === "Hadir" || data?.approval_status === "approved" ? "hadir" : data?.status === "Alpa" || data?.approval_status === "rejected" ? "alpa-status" : "muted-status"}>{displayedStatus}</h2>
-                                        {data?.keterangan && <p style={{ marginTop: "5px", fontSize: "14px", color: data?.status === "Alpa" ? "#ef4444" : "#666" }}>Catatan: {data.keterangan}</p>}
-                                    </div>
-                                </div>
+                            {data?.keterangan && (
+                                <small style={{ display: "block", marginTop: "4px", fontSize: "12px", color: "#64748b" }}>
+                                    Catatan: {data.keterangan}
+                                </small>
+                            )}
+                        </div>
+                    </div>
 
-                                <label className="attendance-status-select">
-                                    Status kehadiran
-                                    <select 
-                                        value={attendanceStatus} 
-                                        onChange={(event) => setAttendanceStatus(event.target.value)} 
-                                        disabled={loading || !!data?.id}
-                                    >
-                                        <option value="Hadir">Hadir (Wajib di Area Kantor)</option>
-                                        {policy.allow_zoom && <option value="Zoom">Hadir Daring (Zoom)</option>}
-                                        <option value="Izin">Izin (perlu persetujuan pembimbing)</option>
-                                        <option value="Sakit">Sakit</option>
-                                    </select>
-                                    {attendanceStatus === "Izin" && !data && (
-                                        <small className="attendance-hint">
-                                            Status izin baru tercatat setelah disetujui pembimbing. Permohonan izin dapat diajukan tanpa batasan lokasi kantor.
-                                        </small>
-                                    )}
-                                </label>
+                    {!profileLoading && !participant ? (
+                        <div className="alert-card error" style={{ marginBottom: "20px" }}>
+                            <p><strong>Akun Anda belum terhubung dengan data magang.</strong></p>
+                            <p>Silakan keluar dan masuk kembali memakai NPM yang valid atau selesaikan pendaftaran magang terlebih dahulu.</p>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    localStorage.removeItem("token");
+                                    localStorage.removeItem("user");
+                                    navigate("/login");
+                                }}
+                                style={{
+                                    marginTop: "12px",
+                                    border: "none",
+                                    background: "#4f46e5",
+                                    color: "#fff",
+                                    padding: "8px 16px",
+                                    borderRadius: "8px",
+                                    cursor: "pointer",
+                                    fontWeight: "600",
+                                    fontSize: "13px",
+                                }}
+                            >
+                                Keluar dan masuk memakai NPM/NIM pribadi
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="attendance-grid-layout">
+                            {/* KOLOM KIRI: Form Pilihan Status & Kartu Jam */}
+                            <div className="attendance-left-col">
+                                <div className="attendance-card-neat">
+                                    <h3 className="attendance-card-title">
+                                        <span style={{ fontSize: "16px" }}>📝</span>
+                                        <span>Status & Keterangan Kehadiran</span>
+                                    </h3>
 
-                                {/* Form Khusus Mode Zoom: Upload Bukti & Agenda */}
-                                {attendanceStatus === "Zoom" && !data && (
-                                    <div
-                                        style={{
-                                            marginTop: "16px",
-                                            padding: "16px 18px",
-                                            background: "#f5f3ff",
-                                            border: "1px dashed #818cf8",
-                                            borderRadius: "10px",
-                                        }}
-                                    >
-                                        <label style={{ display: "block", fontWeight: "700", fontSize: "13.5px", color: "#312e81", marginBottom: "4px" }}>
-                                            📸 Unggah Bukti Screenshot Layar Zoom Meeting {policy.require_zoom_proof && <span style={{ color: "#ef4444" }}>*</span>}
+                                    <div style={{ marginBottom: "14px" }}>
+                                        <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
+                                            Pilih Status Kehadiran
                                         </label>
-                                        <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#6366f1" }}>
-                                            Lampirkan tangkapan layar saat Anda berada di room rapat Zoom (terlihat nama/wajah dan jam).
-                                        </p>
-
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={handleFileChange}
-                                            disabled={loading || !!data}
-                                            style={{
-                                                display: "block",
-                                                width: "100%",
-                                                fontSize: "13px",
-                                                color: "#334155",
-                                                cursor: "pointer",
-                                            }}
-                                            required={policy.require_zoom_proof}
-                                        />
-
-                                        {zoomPreview && (
-                                            <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "12px" }}>
-                                                <img
-                                                    src={zoomPreview}
-                                                    alt="Preview Bukti Zoom"
-                                                    style={{ width: "90px", height: "60px", objectFit: "cover", borderRadius: "6px", border: "1px solid #cbd5e1" }}
-                                                />
-                                                <span style={{ fontSize: "12px", color: "#065f46", fontWeight: "600" }}>
-                                                    ✓ Berkas terpilih: {zoomFile?.name}
-                                                </span>
-                                            </div>
-                                        )}
-
-                                        <div style={{ marginTop: "14px" }}>
-                                            <label style={{ display: "block", fontWeight: "600", fontSize: "13px", color: "#334155", marginBottom: "4px" }}>
-                                                Agenda / Topik Pertemuan Zoom:
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={keterangan}
-                                                onChange={(e) => setKeterangan(e.target.value)}
-                                                placeholder="Contoh: Rapat koordinasi mingguan bersama pembimbing"
-                                                disabled={loading || !!data}
-                                                style={{
-                                                    width: "100%",
-                                                    padding: "8px 12px",
-                                                    borderRadius: "6px",
-                                                    border: "1px solid #cbd5e1",
-                                                    fontSize: "13px",
-                                                    boxSizing: "border-box",
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {attendanceStatus !== "Hadir" && attendanceStatus !== "Zoom" && (
-                                    <label className="attendance-status-select">
-                                        Keterangan / Alasan
-                                        <textarea 
-                                            value={keterangan} 
-                                            onChange={(e) => setKeterangan(e.target.value)} 
-                                            placeholder={`Masukkan alasan kenapa Anda ${attendanceStatus.toLowerCase()}...`}
+                                        <select 
+                                            className="filter-select"
+                                            style={{ width: "100%", height: "42px" }}
+                                            value={attendanceStatus} 
+                                            onChange={(event) => setAttendanceStatus(event.target.value)} 
                                             disabled={loading || !!data?.id}
-                                            className="attendance-reason"
-                                            required
-                                        ></textarea>
-                                    </label>
-                                )}
-
-                                {/* WIDGET CEK LOKASI GPS (GEOFENCE) */}
-                                <div
-                                    style={{
-                                        marginTop: "20px",
-                                        padding: "16px",
-                                        borderRadius: "10px",
-                                        border: "1px solid #e2e8f0",
-                                        background: "#f8fafc",
-                                    }}
-                                >
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                            <span style={{ fontSize: "16px" }}>📍</span>
-                                            <strong style={{ fontSize: "13.5px", color: "#1e293b" }}>
-                                                Verifikasi Lokasi Absensi
-                                            </strong>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={detectLocation}
-                                            disabled={locationLoading}
-                                            style={{
-                                                background: "#ffffff",
-                                                border: "1px solid #cbd5e1",
-                                                borderRadius: "6px",
-                                                padding: "5px 10px",
-                                                fontSize: "12px",
-                                                fontWeight: "600",
-                                                color: "#475569",
-                                                cursor: locationLoading ? "wait" : "pointer",
-                                                display: "inline-flex",
-                                                alignItems: "center",
-                                                gap: "4px",
-                                            }}
                                         >
-                                            <span>{locationLoading ? "⏳" : "🔄"}</span>
-                                            <span>{locationLoading ? "Mendeteksi..." : "Perbarui Lokasi GPS"}</span>
-                                        </button>
+                                            <option value="Hadir">🏢 Hadir (Wajib di Area Kantor / WFO)</option>
+                                            {policy.allow_zoom && <option value="Zoom">📹 Hadir Daring (Zoom / WFH)</option>}
+                                            <option value="Izin">✉️ Izin (Perlu Persetujuan Pembimbing)</option>
+                                            <option value="Sakit">🏥 Sakit</option>
+                                            <option value="Alpa">❌ Alpa</option>
+                                        </select>
+                                        {attendanceStatus === "Izin" && !data && (
+                                            <p style={{ margin: "8px 0 0", fontSize: "12px", color: "#6366f1", lineHeight: "1.4" }}>
+                                                ℹ️ Status izin baru tercatat setelah disetujui pembimbing. Permohonan izin dapat diajukan tanpa batasan lokasi kantor.
+                                            </p>
+                                        )}
                                     </div>
 
-                                    {locationLoading && (
-                                        <div style={{ padding: "12px", textAlign: "center", color: "#64748b", fontSize: "13px" }}>
-                                            📡 Mendeteksi koordinat GPS perangkat Anda...
-                                        </div>
-                                    )}
-
-                                    {!locationLoading && locationError && (
+                                    {/* Form Khusus Mode Zoom: Upload Bukti & Agenda */}
+                                    {attendanceStatus === "Zoom" && !data && (
                                         <div
                                             style={{
-                                                padding: "12px 14px",
-                                                background: "#fef2f2",
-                                                border: "1px solid #fecaca",
-                                                borderRadius: "8px",
-                                                color: "#991b1b",
-                                                fontSize: "13px",
-                                                lineHeight: "1.5",
+                                                marginTop: "16px",
+                                                padding: "16px",
+                                                background: "#f5f3ff",
+                                                border: "1px dashed #818cf8",
+                                                borderRadius: "12px",
                                             }}
                                         >
-                                            <strong>⚠️ Lokasi GPS Belum Terdeteksi:</strong> {locationError}
-                                        </div>
-                                    )}
+                                            <label style={{ display: "block", fontWeight: "700", fontSize: "13px", color: "#312e81", marginBottom: "4px" }}>
+                                                📸 Unggah Bukti Screenshot Layar Zoom {policy.require_zoom_proof && <span style={{ color: "#ef4444" }}>*</span>}
+                                            </label>
+                                            <p style={{ margin: "0 0 10px", fontSize: "12px", color: "#6366f1" }}>
+                                                Lampirkan tangkapan layar saat berada di room rapat Zoom (terlihat nama/wajah dan jam).
+                                            </p>
 
-                                    {!locationLoading && !locationError && locationStatus.hasOffices && (
-                                        <div>
-                                            {attendanceStatus === "Zoom" ? (
-                                                <div
-                                                    style={{
-                                                        padding: "12px 14px",
-                                                        borderRadius: "8px",
-                                                        background: "#e0e7ff",
-                                                        border: "1px solid #c7d2fe",
-                                                        color: "#3730a3",
-                                                        fontSize: "13px",
-                                                        lineHeight: "1.5",
-                                                        marginBottom: "12px",
-                                                    }}
-                                                >
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "700", marginBottom: "4px" }}>
-                                                        <span>📹</span>
-                                                        <span>Mode Daring (Zoom / WFH): Bebas Batas Radius Kantor</span>
-                                                    </div>
-                                                    <div>
-                                                        Anda diperbolehkan absen dari jarak jauh (posisi Anda saat ini: <strong>±{locationStatus.distance ?? "-"} meter</strong> dari kantor). Koordinat GPS tetap dicatat untuk transparansi data kehadiran.
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div
-                                                    style={{
-                                                        padding: "12px 14px",
-                                                        borderRadius: "8px",
-                                                        background: locationStatus.isWithinRadius ? "#ecfdf5" : "#fef2f2",
-                                                        border: `1px solid ${locationStatus.isWithinRadius ? "#a7f3d0" : "#fecaca"}`,
-                                                        color: locationStatus.isWithinRadius ? "#065f46" : "#991b1b",
-                                                        fontSize: "13px",
-                                                        lineHeight: "1.5",
-                                                        marginBottom: "12px",
-                                                    }}
-                                                >
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "700", marginBottom: "4px" }}>
-                                                        <span>{locationStatus.isWithinRadius ? "✓" : "⛔"}</span>
-                                                        <span>
-                                                            {locationStatus.isWithinRadius
-                                                                ? "Lokasi Sah: Anda Berada di Area Kantor"
-                                                                : "Lokasi Tidak Sah: Anda di Luar Radius Kantor"}
-                                                        </span>
-                                                    </div>
-                                                    <div>
-                                                        {locationStatus.isWithinRadius ? (
-                                                            <span>
-                                                                Jarak Anda saat ini <strong>±{locationStatus.distance} meter</strong> dari{" "}
-                                                                <strong>{locationStatus.closestOffice?.nama_lokasi}</strong> (Batas toleransi:{" "}
-                                                                {locationStatus.closestOffice?.radius_meter} meter). Anda dapat melakukan absensi.
-                                                            </span>
-                                                        ) : (
-                                                            <span>
-                                                                Jarak Anda saat ini <strong>±{locationStatus.distance} meter</strong> dari kantor{" "}
-                                                                <strong>{locationStatus.closestOffice?.nama_lokasi}</strong>. Batas maksimal radius adalah{" "}
-                                                                <strong>{locationStatus.closestOffice?.radius_meter} meter</strong>. Silakan mendekat ke area kantor untuk absen Hadir WFO, atau pilih mode <strong>Hadir Daring (Zoom)</strong> jika sedang rapat daring.
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleFileChange}
+                                                disabled={loading || !!data}
+                                                style={{
+                                                    display: "block",
+                                                    width: "100%",
+                                                    fontSize: "13px",
+                                                    color: "#334155",
+                                                    cursor: "pointer",
+                                                }}
+                                                required={policy.require_zoom_proof}
+                                            />
 
-                                            {/* Mini Map Preview */}
-                                            {userCoords && (
-                                                <div>
-                                                    <div
-                                                        ref={mapContainerRef}
-                                                        id="user-location-map"
-                                                        style={{
-                                                            width: "100%",
-                                                            height: "190px",
-                                                            borderRadius: "8px",
-                                                            border: "1px solid #cbd5e1",
-                                                            zIndex: 1,
-                                                        }}
+                                            {zoomPreview && (
+                                                <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "12px" }}>
+                                                    <img
+                                                        src={zoomPreview}
+                                                        alt="Preview Bukti Zoom"
+                                                        style={{ width: "90px", height: "60px", objectFit: "cover", borderRadius: "6px", border: "1px solid #cbd5e1" }}
                                                     />
-                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "6px", fontSize: "11px", color: "#64748b" }}>
-                                                        <span>🔵 Pin Biru: Posisi Anda &nbsp;|&nbsp; 🏢 Pin Ungu: Kantor ({locationStatus.closestOffice?.radius_meter}m radius)</span>
-                                                        <span>Akurasi GPS: ±{userCoords.accuracy}m</span>
-                                                    </div>
+                                                    <span style={{ fontSize: "12px", color: "#065f46", fontWeight: "600" }}>
+                                                        ✓ Berkas terpilih: {zoomFile?.name}
+                                                    </span>
                                                 </div>
                                             )}
+
+                                            <div style={{ marginTop: "14px" }}>
+                                                <label style={{ display: "block", fontWeight: "600", fontSize: "12.5px", color: "#334155", marginBottom: "4px" }}>
+                                                    Agenda / Topik Pertemuan Zoom:
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    className="input-neat"
+                                                    value={keterangan}
+                                                    onChange={(e) => setKeterangan(e.target.value)}
+                                                    placeholder="Contoh: Rapat koordinasi mingguan bersama pembimbing"
+                                                    disabled={loading || !!data}
+                                                    style={{ width: "100%" }}
+                                                />
+                                            </div>
                                         </div>
                                     )}
 
-                                    {!locationLoading && !locationError && !locationStatus.hasOffices && (
-                                        <div style={{ padding: "10px", color: "#475569", fontSize: "13px" }}>
-                                            ℹ️ Tidak ada pembatasan radius lokasi kantor yang aktif saat ini.
+                                    {/* Form Alasan Izin / Sakit */}
+                                    {attendanceStatus !== "Hadir" && attendanceStatus !== "Zoom" && (
+                                        <div style={{ marginTop: "14px" }}>
+                                            <label style={{ display: "block", fontSize: "12.5px", fontWeight: "600", color: "#475569", marginBottom: "6px" }}>
+                                                Keterangan / Alasan {attendanceStatus}
+                                            </label>
+                                            <textarea 
+                                                value={keterangan} 
+                                                onChange={(e) => setKeterangan(e.target.value)} 
+                                                placeholder={`Masukkan alasan kenapa Anda ${attendanceStatus.toLowerCase()}...`}
+                                                disabled={loading || !!data?.id}
+                                                className="input-neat"
+                                                style={{
+                                                    width: "100%",
+                                                    minHeight: "80px",
+                                                    padding: "10px 14px",
+                                                    resize: "vertical",
+                                                    boxSizing: "border-box",
+                                                    fontFamily: "inherit"
+                                                }}
+                                                required
+                                            ></textarea>
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="time-container attendance-time-container">
-                                    <div className="time-box">
-                                        <span>JAM MASUK</span>
-                                        <strong>{data?.jam_masuk || "--:--"}</strong>
-                                        <small className="time-note">
+                                {/* Kartu Jam Masuk & Jam Pulang */}
+                                <div className="time-cards-neat-grid">
+                                    {/* JAM MASUK */}
+                                    <div className="time-card-box">
+                                        <span className="time-card-label">JAM MASUK</span>
+                                        <strong className="time-card-big">{data?.jam_masuk || "--:--"}</strong>
+                                        <small className="time-card-note">
                                             {data?.status === "Alpa"
                                                 ? "Ditandai Alpa otomatis (tidak hadir seharian)"
                                                 : data?.approval_status === "pending"
@@ -890,12 +860,7 @@ function Absensi() {
                                             type="button"
                                             onClick={() => submitAttendance("in")}
                                             disabled={loading || !!data?.id || (isZoom && policy.require_zoom_proof && !zoomFile) || (attendanceStatus === "Hadir" && (beforeCheckInTime || (locationStatus.hasOffices && !locationStatus.isWithinRadius)))}
-                                            className={attendanceStatus === "Hadir" && (beforeCheckInTime || (locationStatus.hasOffices && !locationStatus.isWithinRadius)) && !data?.id ? "btn-secondary" : "btn-attendance-in"}
-                                            style={
-                                                attendanceStatus === "Hadir" && locationStatus.hasOffices && !locationStatus.isWithinRadius && !data
-                                                    ? { background: "#cbd5e1", color: "#64748b", cursor: "not-allowed" }
-                                                    : {}
-                                            }
+                                            className="btn-checkin-action"
                                         >
                                             {data?.approval_status === "pending"
                                                 ? "Menunggu persetujuan"
@@ -914,15 +879,16 @@ function Absensi() {
                                                     ? "Belum Buka (08:00)"
                                                     : locationStatus.hasOffices && !locationStatus.isWithinRadius
                                                     ? "Di Luar Area Kantor"
-                                                    : "Absen masuk"
+                                                    : "Absen Masuk"
                                                 : `Kirim Status ${attendanceStatus}`}
                                         </button>
                                     </div>
 
-                                    <div className="time-box checkout">
-                                        <span>JAM PULANG</span>
-                                        <strong>{data?.jam_pulang || "--:--"}</strong>
-                                        <small className="time-note">
+                                    {/* JAM PULANG */}
+                                    <div className="time-card-box">
+                                        <span className="time-card-label">JAM PULANG</span>
+                                        <strong className="time-card-big">{data?.jam_pulang || "--:--"}</strong>
+                                        <small className="time-card-note">
                                             {data?.status === "Alpa"
                                                 ? "Ditandai Alpa otomatis (tidak hadir seharian)"
                                                 : data?.jam_pulang
@@ -933,6 +899,7 @@ function Absensi() {
                                                 ? `Absen pulang telah dibuka (mulai pukul ${checkoutTime})`
                                                 : "Aktif setelah absen masuk"}
                                         </small>
+
                                         <button
                                             type="button"
                                             onClick={() => submitAttendance("out")}
@@ -944,90 +911,209 @@ function Absensi() {
                                                 data?.status === "Alpa" ||
                                                 (!isZoomAttendance && data?.status === "Hadir" && locationStatus.hasOffices && !locationStatus.isWithinRadius)
                                             }
-                                            className={data?.jam_pulang || beforeCheckoutTime || data?.status === "Alpa" ? "btn-secondary" : "btn-success"}
-                                            style={
-                                                (beforeCheckoutTime || data?.status === "Alpa") && !data?.jam_pulang
-                                                    ? { opacity: 0.6, cursor: "not-allowed", background: "#e2e8f0", color: "#64748b" }
-                                                    : {}
-                                            }
+                                            className="btn-checkout-action"
                                         >
-                                            {data?.status === "Alpa" ? "Tidak hadir (Alpa)" : data?.jam_pulang ? "Sudah tercatat" : "Absen pulang"}
+                                            {data?.status === "Alpa" ? "Tidak hadir (Alpa)" : data?.jam_pulang ? "Sudah tercatat" : "Absen Pulang"}
                                         </button>
                                     </div>
                                 </div>
-                            </>
-                        )}
-                        {error && (
-                            <div
-                                className="message error"
-                                role="alert"
-                                style={{
-                                    marginTop: "20px",
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                    flexWrap: "wrap",
-                                    gap: "12px",
-                                }}
-                            >
-                                <span>{error}</span>
-                                {error.toLowerCase().includes("surat balasan") && (
-                                    <button
-                                        type="button"
-                                        onClick={handleDownloadReplyLetter}
-                                        disabled={downloadingLetter}
-                                        style={{
-                                            background: "#16a34a",
-                                            color: "#ffffff",
-                                            padding: "8px 16px",
-                                            border: "none",
-                                            borderRadius: "6px",
-                                            fontWeight: "600",
-                                            cursor: downloadingLetter ? "wait" : "pointer",
-                                            fontSize: "13px",
-                                            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                                            whiteSpace: "nowrap",
-                                        }}
-                                    >
-                                        {downloadingLetter ? "Mengunduh..." : "📥 Unduh Surat Balasan Sekarang"}
-                                    </button>
-                                )}
                             </div>
-                        )}
-                        {!profileLoading && !participant && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    localStorage.removeItem("token");
-                                    localStorage.removeItem("user");
-                                    navigate("/login");
-                                }}
-                                style={{
-                                    marginTop: "12px",
-                                    border: "none",
-                                    background: "#4f46e5",
-                                    color: "#fff",
-                                    padding: "10px 14px",
-                                    borderRadius: "8px",
-                                    cursor: "pointer",
-                                    fontWeight: "600",
-                                }}
-                            >
-                                Keluar dan masuk memakai NPM/NIM pribadi
-                            </button>
-                        )}
 
-                        {message && !error && (
-                            <div className="message" role="status" style={{ marginTop: "20px" }}>
-                                {message}
+                            {/* KOLOM KANAN: Verifikasi GPS & Interactive Map */}
+                            <div className="attendance-right-col">
+                                <div className="attendance-card-neat">
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
+                                        <h3 className="attendance-card-title" style={{ margin: 0 }}>
+                                            <span style={{ fontSize: "16px" }}>📍</span>
+                                            <span>Verifikasi Lokasi GPS</span>
+                                        </h3>
+                                        <button
+                                            type="button"
+                                            onClick={detectLocation}
+                                            disabled={locationLoading}
+                                            style={{
+                                                background: "#f8fafc",
+                                                border: "1px solid #cbd5e1",
+                                                borderRadius: "8px",
+                                                padding: "6px 12px",
+                                                fontSize: "12px",
+                                                fontWeight: "650",
+                                                color: "#475569",
+                                                cursor: locationLoading ? "wait" : "pointer",
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                gap: "6px",
+                                                transition: "all 0.2s ease"
+                                            }}
+                                        >
+                                            <span>{locationLoading ? "⏳" : "🔄"}</span>
+                                            <span>{locationLoading ? "Mendeteksi..." : "Perbarui GPS"}</span>
+                                        </button>
+                                    </div>
+
+                                    {locationLoading && (
+                                        <div style={{ padding: "16px", textAlign: "center", color: "#64748b", fontSize: "13px", background: "#f8fafc", borderRadius: "10px", marginBottom: "14px" }}>
+                                            📡 Mendeteksi koordinat GPS perangkat Anda...
+                                        </div>
+                                    )}
+
+                                    {!locationLoading && locationError && (
+                                        <div
+                                            style={{
+                                                padding: "12px 14px",
+                                                background: "#fef2f2",
+                                                border: "1px solid #fecaca",
+                                                borderRadius: "10px",
+                                                color: "#991b1b",
+                                                fontSize: "13px",
+                                                lineHeight: "1.5",
+                                                marginBottom: "14px",
+                                            }}
+                                        >
+                                            <strong>⚠️ Lokasi GPS Belum Terdeteksi:</strong> {locationError}
+                                        </div>
+                                    )}
+
+                                    {!locationLoading && !locationError && locationStatus.hasOffices && (
+                                        <div style={{ marginBottom: "14px" }}>
+                                            {attendanceStatus === "Zoom" ? (
+                                                <div
+                                                    style={{
+                                                        padding: "12px 14px",
+                                                        borderRadius: "10px",
+                                                        background: "#e0e7ff",
+                                                        border: "1px solid #c7d2fe",
+                                                        color: "#3730a3",
+                                                        fontSize: "12.5px",
+                                                        lineHeight: "1.5",
+                                                    }}
+                                                >
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: "750", marginBottom: "4px" }}>
+                                                        <span>📹</span>
+                                                        <span>Mode Daring (Zoom / WFH): Bebas Radius Kantor</span>
+                                                    </div>
+                                                    <div>
+                                                        Bebas absen jarak jauh (Posisi saat ini: <strong>±{locationStatus.distance ?? "-"} meter</strong> dari kantor). Koordinat GPS tetap dicatat untuk transparansi data kehadiran.
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div
+                                                    style={{
+                                                        padding: "12px 14px",
+                                                        borderRadius: "10px",
+                                                        background: locationStatus.isWithinRadius ? "#ecfdf5" : "#fef2f2",
+                                                        border: `1px solid ${locationStatus.isWithinRadius ? "#a7f3d0" : "#fecaca"}`,
+                                                        color: locationStatus.isWithinRadius ? "#065f46" : "#991b1b",
+                                                        fontSize: "12.5px",
+                                                        lineHeight: "1.5",
+                                                    }}
+                                                >
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: "750", marginBottom: "4px" }}>
+                                                        <span>{locationStatus.isWithinRadius ? "✓" : "⛔"}</span>
+                                                        <span>
+                                                            {locationStatus.isWithinRadius
+                                                                ? "Lokasi Sah: Anda Berada di Area Kantor"
+                                                                : "Lokasi Tidak Sah: Anda di Luar Radius Kantor"}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        {locationStatus.isWithinRadius ? (
+                                                            <span>
+                                                                Jarak saat ini <strong>±{locationStatus.distance} m</strong> dari{" "}
+                                                                <strong>{locationStatus.closestOffice?.nama_lokasi}</strong> (Radius:{" "}
+                                                                {locationStatus.closestOffice?.radius_meter}m). Anda dapat melakukan absensi.
+                                                            </span>
+                                                        ) : (
+                                                            <span>
+                                                                Jarak Anda <strong>±{locationStatus.distance} m</strong> dari kantor{" "}
+                                                                <strong>{locationStatus.closestOffice?.nama_lokasi}</strong> (Maks:{" "}
+                                                                {locationStatus.closestOffice?.radius_meter}m). Silakan mendekat ke kantor untuk WFO, atau pilih mode <strong>Zoom</strong> jika rapat daring.
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {!locationLoading && !locationError && !locationStatus.hasOffices && (
+                                        <div style={{ padding: "12px", color: "#475569", fontSize: "13px", background: "#f8fafc", borderRadius: "10px", marginBottom: "14px" }}>
+                                            ℹ️ Tidak ada pembatasan radius lokasi kantor yang aktif saat ini.
+                                        </div>
+                                    )}
+
+                                    {/* Leaflet Map Preview */}
+                                    <div style={{ position: "relative" }}>
+                                        <div
+                                            ref={mapContainerRef}
+                                            id="user-location-map"
+                                            style={{
+                                                width: "100%",
+                                                height: "230px",
+                                                borderRadius: "12px",
+                                                border: "1px solid #e2e8f0",
+                                                zIndex: 1,
+                                                overflow: "hidden"
+                                            }}
+                                        />
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", fontSize: "11px", color: "#64748b" }}>
+                                            <span>🔵 Posisi Anda &nbsp;|&nbsp; 🏢 Kantor ({locationStatus.closestOffice?.radius_meter || 100}m radius)</span>
+                                            {userCoords && <span>Akurasi: ±{userCoords.accuracy}m</span>}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        )}
-                    </section>
+                        </div>
+                    )}
+
+                    {error && (
+                        <div
+                            className="message error"
+                            role="alert"
+                            style={{
+                                marginTop: "20px",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                flexWrap: "wrap",
+                                gap: "12px",
+                            }}
+                        >
+                            <span>{error}</span>
+                            {error.toLowerCase().includes("surat balasan") && (
+                                <button
+                                    type="button"
+                                    onClick={handleDownloadReplyLetter}
+                                    disabled={downloadingLetter}
+                                    style={{
+                                        background: "#16a34a",
+                                        color: "#ffffff",
+                                        padding: "8px 16px",
+                                        border: "none",
+                                        borderRadius: "6px",
+                                        fontWeight: "600",
+                                        cursor: downloadingLetter ? "wait" : "pointer",
+                                        fontSize: "13px",
+                                        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    {downloadingLetter ? "Mengunduh..." : "📥 Unduh Surat Balasan Sekarang"}
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {message && !error && (
+                        <div className="message" role="status" style={{ marginTop: "20px" }}>
+                            {message}
+                        </div>
+                    )}
 
                     {participant && (
-                        <div className="history-link">
-                            <span>Perlu melihat kehadiran sebelumnya?</span>
-                            <Link to="/riwayat">Buka riwayat absensi →</Link>
+                        <div className="history-link" style={{ marginTop: "24px", textAlign: "center" }}>
+                            <span style={{ color: "#64748b", fontSize: "13.5px" }}>Perlu melihat riwayat kehadiran sebelumnya? </span>
+                            <Link to="/riwayat" style={{ color: "#6366f1", fontWeight: "700", textDecoration: "none" }}>Buka Riwayat Absensi →</Link>
                         </div>
                     )}
                 </main>

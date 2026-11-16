@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import api from "../services/api";
-import { getNationalHoliday } from "../utils/holidays";
 
 function Riwayat() {
     const [data, setData] = useState([]);
@@ -209,14 +208,11 @@ function Riwayat() {
         const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
         const monthYearLabel = new Date(year, monthIndex, 1).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 
-        // Hitung jumlah hari kerja (Senin - Jumat dan bukan hari libur nasional) dalam bulan yang dipilih
         let hariKerjaCount = 0;
         for (let d = 1; d <= daysInMonth; d++) {
             const dateObj = new Date(year, monthIndex, d);
             const dayOfWeek = dateObj.getDay();
-            const dateKey = `${yearStr}-${monthStr}-${String(d).padStart(2, "0")}`;
-            const holiday = getNationalHoliday(dateKey);
-            if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holiday) {
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
                 hariKerjaCount++;
             }
         }
@@ -332,14 +328,9 @@ function Riwayat() {
                     const dateKey = `${yearStr}-${monthStr}-${String(day).padStart(2, "0")}`;
                     const record = recordsByDate.get(dateKey);
                     const weekend = date.getDay() === 0 || date.getDay() === 6;
-                    const nationalHoliday = getNationalHoliday(dateKey);
                     const rawStatus = String(record?.status || "").trim().toLowerCase();
                     let status = "-";
-                    let notes = nationalHoliday
-                        ? `Libur Nasional (${nationalHoliday})`
-                        : weekend
-                            ? "Libur Akhir Pekan"
-                            : "-";
+                    let notes = weekend ? "Libur Akhir Pekan" : "-";
 
                     if (record) {
                         if (record.approval_status === "rejected" || rawStatus === "alpa" || rawStatus === "tidak hadir") {
@@ -356,11 +347,10 @@ function Riwayat() {
 
                         const details = [
                             record.keterangan,
-                            nationalHoliday ? `Libur Nasional: ${nationalHoliday}` : "",
                             record.jam_masuk ? `Masuk: ${record.jam_masuk}` : "",
                             record.jam_pulang ? `Pulang: ${record.jam_pulang}` : "",
                         ].filter(Boolean);
-                        notes = details.length ? details.join(" | ") : (nationalHoliday ? `Libur Nasional (${nationalHoliday})` : "-");
+                        notes = details.length ? details.join(" | ") : "-";
                     }
 
                     return {
@@ -369,8 +359,6 @@ function Riwayat() {
                         dateLabel: `${String(day).padStart(2, "0")}/${monthStr}/${year}`,
                         status,
                         notes,
-                        isHoliday: Boolean(nationalHoliday),
-                        isWeekend: weekend,
                     };
                 });
 
@@ -492,27 +480,14 @@ function Riwayat() {
                     }
                     let x = left;
                     const values = [String(index + 1), row.dateLabel, row.dayLabel, row.status, row.notes];
-                    const isRedDay = row.isHoliday || row.isWeekend;
                     values.forEach((value, columnIndex) => {
-                        if (row.isHoliday) {
-                            doc.setFillColor(254, 242, 242);
-                        } else if (row.isWeekend) {
-                            doc.setFillColor(248, 250, 252);
-                        } else {
-                            const rowShade = index % 2 ? 250 : 255;
-                            doc.setFillColor(rowShade, rowShade, rowShade);
-                        }
+                        const rowShade = index % 2 ? 248 : 255;
+                        doc.setFillColor(rowShade, rowShade, rowShade);
                         doc.setDrawColor(...border);
                         doc.rect(x, tableY, columnWidths[columnIndex], rowHeight, "FD");
-                        doc.setFont("helvetica", isRedDay ? "bold" : "normal");
+                        doc.setFont("helvetica", "normal");
                         doc.setFontSize(columnIndex === 4 ? 6 : 6.2);
-                        if (row.isHoliday) {
-                            doc.setTextColor(220, 38, 38);
-                        } else if (row.isWeekend) {
-                            doc.setTextColor(185, 28, 28);
-                        } else {
-                            doc.setTextColor(0);
-                        }
+                        doc.setTextColor(0);
                         doc.text(value, x + (columnIndex === 4 ? 2 : columnWidths[columnIndex] / 2), tableY + rowHeight / 2 + 1, {
                             align: columnIndex === 4 ? "left" : "center",
                             maxWidth: columnWidths[columnIndex] - 3,
@@ -723,14 +698,17 @@ function Riwayat() {
     };
 
     return (
-        <div className="layout">
+        <div className="layout" style={{ background: "#f8fafc", minHeight: "100vh" }}>
             <Sidebar />
             <div className="content">
                 <Navbar />
-                <main className="main">
+                <main className="main participant-page-container">
                     <div className="page-heading">
                         <div>
-                            <p className="eyebrow">{role === "admin" ? "PORTAL ADMINISTRATOR" : role === "pembimbing" ? "PORTAL PEMBIMBING" : "ARSIP KEHADIRAN"}</p>
+                            <div className="eyebrow">
+                                <span style={{ display: "inline-block", width: "7px", height: "7px", borderRadius: "50%", background: "#6366f1", marginRight: "6px" }}></span>
+                                {role === "admin" ? "PORTAL ADMINISTRATOR" : role === "pembimbing" ? "PORTAL PEMBIMBING" : "ARSIP KEHADIRAN"}
+                            </div>
                             <h1>{role === "admin" ? "Kelola Data Absensi" : "Absensi Magang"}</h1>
                             <p className="subtitle">{role === "admin" ? "Kelola, pantau, dan verifikasi seluruh rekapan data absensi WFO & Daring (Zoom)." : role === "pembimbing" ? "Rekap kehadiran peserta magang (WFO & Daring Zoom)." : "Riwayat absensi ini hanya dapat dilihat oleh akun Anda."}</p>
                         </div>
@@ -793,9 +771,25 @@ function Riwayat() {
                     )}
 
                     {role !== "admin" && role !== "pembimbing" && (
-                        <div className="attendance-card" style={{ marginBottom: "20px" }}>
-                            <p className="eyebrow">RIWAYAT PRIBADI</p>
-                            <strong>Total absen masuk: {data.filter((item) => item.jam_masuk).length} kali</strong>
+                        <div className="attendance-top-summary">
+                            <div className="attendance-user-strip">
+                                <div className="attendance-avatar-circle" style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)" }}>
+                                    ✓
+                                </div>
+                                <div>
+                                    <span className="attendance-meta-label">RINGKASAN KEHADIRAN ANDA</span>
+                                    <h3 className="attendance-user-name">
+                                        Total Masuk: {data.filter((item) => item.jam_masuk).length} Hari
+                                    </h3>
+                                    <span className="attendance-meta-npm">Presensi aktif tercatat pada sistem</span>
+                                </div>
+                            </div>
+                            <div className="attendance-status-pill-box">
+                                <span className="attendance-badge-lg badge-success">
+                                    <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", background: "#22c55e" }}></span>
+                                    Presensi Aktif
+                                </span>
+                            </div>
                         </div>
                     )}
 
@@ -918,14 +912,11 @@ function Riwayat() {
                                             displayedData.map((item, index) => {
                                                 const isPendingLeave = item.approval_status === "pending";
                                                 const isZoom = String(item.keterangan || "").includes("[ZOOM");
-                                                const holidayName = getNationalHoliday(item.tanggal);
-                                                const baseKeterangan = String(item.keterangan || "")
+                                                const cleanKeterangan = String(item.keterangan || "")
                                                     .replace("[ZOOM / DARING]", "")
                                                     .replace("[ZOOM]", "")
                                                     .trim();
-                                                const cleanKeterangan = baseKeterangan
-                                                    ? (holidayName ? `${baseKeterangan} (Libur: ${holidayName})` : baseKeterangan)
-                                                    : (holidayName ? `Libur Nasional (${holidayName})` : "");
+
                                                 return (
                                                     <tr key={item.id}>
                                                         <td>{index + 1}</td>

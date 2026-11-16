@@ -66,11 +66,11 @@ export default function LaporanMagang() {
   if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Memuat data laporan...</div>;
 
   return (
-    <div className="layout">
+    <div className="layout" style={{ background: "#f8fafc", minHeight: "100vh" }}>
       <Sidebar />
       <div className="content">
         <Navbar />
-        <main className="main">
+        <main className="main participant-page-container">
           <LaporanMagangPage
         laporanList={laporanList}
         currentRole={currentRole}

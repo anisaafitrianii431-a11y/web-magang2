@@ -12,7 +12,12 @@ function Navbar() {
 
     const role = String(currentUser?.role || "peserta").toLowerCase();
     const isParticipant = role !== "admin" && role !== "pembimbing";
-    const isParticipantDashboard = isParticipant && location.pathname === "/dashboard";
+
+    if (isParticipant) {
+        return null;
+    }
+
+    const isParticipantDashboard = location.pathname === "/dashboard";
     const reportPageTitles = {
         "/laporan": "Laporan Magang",
         "/laporan/penilaian": "Tabel Penilaian",

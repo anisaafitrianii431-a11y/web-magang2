@@ -44,7 +44,7 @@ function HomeRedirect() {
     const role = normalizeRole(user.role);
     if (role === "admin") return <Navigate to="/riwayat" replace />;
     if (role === "pembimbing") return <Navigate to="/pembimbing" replace />;
-    return <Navigate to="/absensi" replace />;
+    return <Navigate to="/dashboard" replace />;
 }
 
 function App() {

@@ -83,20 +83,22 @@ export default function RegisterPage() {
       >
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
           <div
+            aria-hidden="true"
             style={{
-              width: '60px',
-              height: '60px',
-              background: '#3b82f6',
-              borderRadius: '12px',
+              width: '72px',
+              height: '72px',
+              background: '#ffffff',
+              borderRadius: '16px',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              fontSize: '30px',
               margin: '0 auto 15px',
-              boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.5)',
+              padding: '6px',
+              boxShadow: '0 8px 20px -4px rgba(0, 0, 0, 0.12)',
+              border: '1px solid #e2e8f0',
             }}
           >
-            <GraduationCap size={30} color="#fff" strokeWidth={1.8} />
+            <img src="/logo.png" alt="Logo PAM-TECHNO" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
           <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#0f172a', margin: '0 0 5px' }}>
             Buat Akun Baru

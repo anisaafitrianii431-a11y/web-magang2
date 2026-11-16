@@ -80,14 +80,7 @@ export default function FormPendaftaran() {
             alamat: user.alamat || current.alamat,
           }));
         }
-        const periodes = periodeRes.data?.data || [];
-        setListPeriode(periodes);
-        if (periodes.length > 0) {
-          setFormData((current) => ({
-            ...current,
-            periode_id: current.periode_id || String(periodes[0].id),
-          }));
-        }
+        setListPeriode(periodeRes.data?.data || []);
         if (pendaftaranRes.data?.data) {
           const reg = pendaftaranRes.data.data;
           setMyRegistration(reg);
@@ -95,6 +88,7 @@ export default function FormPendaftaran() {
             setLoggedInUser(reg.user);
           }
           setIsSubmitted(true);
+          // Peserta yang sudah diterima tetap dapat mengakses halaman ini untuk mengunduh ulang surat balasan kapan saja
         }
       } catch (error) {
         console.error('Error fetching data', error);
@@ -237,8 +231,8 @@ export default function FormPendaftaran() {
         <div style={{ maxWidth: '1040px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '40px', height: '40px', background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', borderRadius: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)' }}>
-              <GraduationCap size={22} color="#ffffff" />
+            <div style={{ width: '40px', height: '40px', background: '#ffffff', borderRadius: '10px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', overflow: 'hidden', padding: '2px' }}>
+              <img src="/logo.png" alt="Logo PAM-TECHNO" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
             <div>
               <div style={{ fontSize: '16px', fontWeight: '700', letterSpacing: '-0.2px', color: '#f8fafc' }}>
@@ -253,8 +247,24 @@ export default function FormPendaftaran() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255, 255, 255, 0.06)', padding: '6px 14px', borderRadius: '30px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-              <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
-                {displayName.charAt(0).toUpperCase()}
+              <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', overflow: 'hidden' }}>
+                {loggedInUser?.foto ? (
+                  <img 
+                    src={loggedInUser.foto.startsWith('data:') || /^https?:\/\//i.test(loggedInUser.foto) ? loggedInUser.foto : `http://127.0.0.1:8000/storage/${String(loggedInUser.foto).replace(/^\/+/, '').replace(/^storage\//, '')}`}
+                    alt="Foto Profil"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      const fallback = `/storage/${String(loggedInUser?.foto || '').replace(/^\/+/, '').replace(/^storage\//, '')}`;
+                      if (e.currentTarget.src !== fallback && !fallback.endsWith('/')) {
+                        e.currentTarget.src = fallback;
+                      } else {
+                        e.currentTarget.style.display = 'none';
+                      }
+                    }}
+                  />
+                ) : (
+                  displayName.charAt(0).toUpperCase()
+                )}
               </div>
               <span style={{ fontSize: '13px', fontWeight: '500', color: '#f1f5f9' }}>
                 {displayName}
@@ -604,20 +614,14 @@ export default function FormPendaftaran() {
                     >
                       <option value="" disabled>-- Pilih Periode Magang Tersedia --</option>
                       {listPeriode.map(p => {
-                        const formatDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
-                        const label = p.nama_periode || p.nama || (p.tanggal_mulai && p.tanggal_selesai ? `${formatDate(p.tanggal_mulai)} s.d. ${formatDate(p.tanggal_selesai)}` : `Periode #${p.id}`);
+                        const formatDate = (d) => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
                         return (
                           <option key={p.id} value={p.id}>
-                            {label}
+                            {p.nama ? `${p.nama} : ` : ''}{formatDate(p.tanggal_mulai)} s.d. {formatDate(p.tanggal_selesai)}
                           </option>
                         );
                       })}
                     </select>
-                    {listPeriode.length === 0 && (
-                      <span style={{ display: 'block', fontSize: '11px', color: '#ef4444', marginTop: '5px' }}>
-                        *Belum ada data periode magang aktif di sistem. Silakan hubungi admin.
-                      </span>
-                    )}
                   </div>
 
                 </div>

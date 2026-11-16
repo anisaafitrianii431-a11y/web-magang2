@@ -455,38 +455,53 @@ function Tugas() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="layout" style={{ background: "#f8fafc", minHeight: "100vh" }}>
       {/* SIDEBAR */}
       <Sidebar onLogout={handleLogout} />
 
       {/* MAIN CONTENT AREA */}
-      <div className="main-wrapper">
+      <div className="content">
         {/* TOPBAR */}
-        <TopNavbar user={user} isConnected={isBackendConnected} />
+        {!isPeserta && <TopNavbar user={user} isConnected={isBackendConnected} />}
 
         {/* CONTENT BODY */}
-        <main className="content-body">
-          {/* Welcome Alert Banner */}
-          <div className="welcome-alert-banner">
-            <div className="check-icon-circle">✓</div>
-            <span>Selamat datang kembali, <strong>{user.name}</strong>!</span>
-          </div>
-
+        <main className="main participant-page-container">
           {/* Page Heading & Subtitle */}
-          <div className="page-title-section">
-            <h1 className="page-title-heading">Data Tugas Magang</h1>
-            <p className="page-title-desc">
-              {isPeserta
-                ? 'Lihat daftar tugas magang dan kumpulkan berkas laporan Anda sebelum deadline.'
-                : isAdmin
-                ? 'Kelola tugas magang: buat, ubah, dan hapus tugas serta pantau status pengumpulan peserta.'
-                : 'Kelola tugas magang, unduh berkas submisi peserta, serta berikan penilaian dan feedback.'}
-            </p>
+          <div className="page-heading">
+            <div>
+              <div className="eyebrow">
+                <span style={{ display: "inline-block", width: "7px", height: "7px", borderRadius: "50%", background: "#6366f1", marginRight: "6px" }}></span>
+                PENUGASAN MAGANG
+              </div>
+              <h1>Data Tugas Magang</h1>
+              <p className="subtitle">
+                {isPeserta
+                  ? 'Lihat daftar tugas magang dan kumpulkan berkas laporan Anda sebelum deadline.'
+                  : isAdmin
+                  ? 'Kelola tugas magang: buat, ubah, dan hapus tugas serta pantau status pengumpulan peserta.'
+                  : 'Kelola tugas magang, unduh berkas submisi peserta, serta berikan penilaian dan feedback.'}
+              </p>
+            </div>
+
+            {/* USE CASE 1 (Hanya Pembimbing): Buat Tugas */}
+            {isPembimbing && (
+              <button className="btn-primary" onClick={handleOpenCreateTugas}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                <span>Buat Tugas Baru</span>
+              </button>
+            )}
           </div>
 
           {/* Search & Filter Bar */}
           <div className="filter-card">
             <div className="search-input-wrapper">
+              <svg className="search-icon-inside" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
               <input
                 type="text"
                 className="search-input"
@@ -501,7 +516,7 @@ function Tugas() {
               value={filterKategori}
               onChange={(e) => setFilterKategori(e.target.value)}
             >
-              <option value="">-- Semua Kategori --</option>
+              <option value="">Semua Kategori</option>
               <option value="Individu">Individu</option>
               <option value="Kelompok">Kelompok</option>
             </select>
@@ -511,30 +526,19 @@ function Tugas() {
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
-              <option value="">-- Semua Status --</option>
+              <option value="">Semua Status</option>
               <option value="Disetujui">Disetujui / Selesai</option>
               <option value="Menunggu">Menunggu Review</option>
               <option value="Belum Dikerjakan">Belum Dikerjakan</option>
             </select>
 
-            <button className="btn-search" onClick={() => {}}>
+            <button className="btn-search" onClick={() => {}} title="Terapkan Pencarian">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
               <span>Cari</span>
             </button>
-
-            {/* USE CASE 1 (Hanya Pembimbing): Buat Tugas */}
-            {isPembimbing && (
-              <button className="btn-create-task" onClick={handleOpenCreateTugas}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                <span>Buat Tugas Baru</span>
-              </button>
-            )}
           </div>
 
           {/* Main Data Table Card */}
@@ -550,26 +554,37 @@ function Tugas() {
               <table className="enterprise-table task-table">
                 <thead>
                   <tr>
-                    <th style={{ width: '40px' }}>#</th>
-                    <th>{isPeserta ? 'JUDUL TUGAS & PESERTA' : 'JUDUL TUGAS'}</th>
-                    <th>KATEGORI</th>
-                    <th>{isPeserta ? 'TANGGAL SUBMIT / DEADLINE' : 'BATAS WAKTU (DEADLINE)'}</th>
-                    <th>{isPeserta ? 'STATUS TUGAS' : 'STATUS SUBMISI'}</th>
-                    <th style={{ textAlign: 'right' }}>AKSI</th>
+                    <th style={{ width: '50px', textAlign: 'center' }}>#</th>
+                    <th style={{ minWidth: '240px' }}>{isPeserta ? 'JUDUL TUGAS & PESERTA' : 'JUDUL TUGAS'}</th>
+                    <th style={{ width: '130px' }}>KATEGORI</th>
+                    <th style={{ width: '190px', whiteSpace: 'nowrap' }}>{isPeserta ? 'TANGGAL SUBMIT / DEADLINE' : 'BATAS WAKTU (DEADLINE)'}</th>
+                    <th style={{ width: '180px' }}>{isPeserta ? 'STATUS TUGAS' : 'STATUS SUBMISI'}</th>
+                    <th style={{ width: '140px', textAlign: 'right' }}>AKSI</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="6" className="table-empty-state">
+                      <td colSpan="6" style={{ textAlign: 'center', padding: '48px 20px', color: '#64748b' }}>
                         <div>Memuat data tugas magang...</div>
                       </td>
                     </tr>
                   ) : filteredData.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="table-empty-state">
-                        <div className="table-empty-icon">📁</div>
-                        <div>{taskLoadError || 'Tidak ada tugas magang yang tersedia.'}</div>
+                      <td colSpan="6" style={{ padding: 0 }}>
+                        <div className="empty-state-modern">
+                          <div className="empty-state-icon-circle">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                              <polyline points="14 2 14 8 20 8"></polyline>
+                              <line x1="16" y1="13" x2="8" y2="13"></line>
+                              <line x1="16" y1="17" x2="8" y2="17"></line>
+                              <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                          </div>
+                          <h4>Belum Ada Tugas Magang</h4>
+                          <p>{taskLoadError || 'Tugas magang yang diberikan oleh pembimbing akan muncul di daftar ini.'}</p>
+                        </div>
                       </td>
                     </tr>
                   ) : (

@@ -6,8 +6,8 @@ function Footer() {
     <footer className="main-footer">
       <div className="footer-container">
         <div className="footer-brand">
-          <div className="brand-logo">
-            <GraduationCap size={20} color="#ffffff" />
+          <div className="brand-logo" style={{ background: '#ffffff', padding: '2px', overflow: 'hidden' }}>
+            <img src="/logo.png" alt="Logo PAM-TECHNO" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </div>
           <span>Portal Magang & Alumni Peserta</span>
         </div>

@@ -1,0 +1,870 @@
+/* ==========================================================================
+   LANDING THEME SYNC (RAPI, MODERN & KONSISTEN)
+   Menyelaraskan Absensi, Tugas, Riwayat, dan Laporan dengan Landing Page & Dashboard
+   ========================================================================== */
+
+/* ── 1. Global Reset & Container Konsisten ─────────────────────── */
+body, 
+.layout, 
+.app-shell, 
+.content, 
+.main, 
+.content-body, 
+.report-module {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  color: #0f172a;
+  background-color: #f8fafc;
+}
+
+.participant-page-container,
+.report-module .report-main,
+.report-module .main,
+.report-main {
+  width: 100% !important;
+  max-width: 1180px !important;
+  margin: 0 auto !important;
+  padding: 32px 24px 60px !important;
+  box-sizing: border-box !important;
+}
+
+/* ── 2. Unified Header Section (Persis Landing Page & Dashboard) ─ */
+.page-heading,
+.report-module .page-header {
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: space-between !important;
+  gap: 20px !important;
+  margin-bottom: 26px !important;
+  flex-wrap: wrap !important;
+}
+
+.page-title-section {
+  display: block !important;
+  margin-bottom: 26px !important;
+}
+
+.eyebrow,
+.section-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 5px 14px !important;
+  background: rgba(99, 102, 241, 0.1) !important;
+  border: 1px solid rgba(99, 102, 241, 0.22) !important;
+  border-radius: 9999px !important;
+  color: #6366f1 !important;
+  font-size: 11px !important;
+  font-weight: 750 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  margin-bottom: 8px !important;
+  width: fit-content !important;
+}
+
+.page-heading h1,
+.page-title-heading,
+.report-module .page-title {
+  font-size: clamp(24px, 2.5vw, 30px) !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  letter-spacing: -0.025em !important;
+  margin: 0 0 6px 0 !important;
+  line-height: 1.25 !important;
+}
+
+.page-heading .subtitle,
+.page-title-desc,
+.report-module .page-description {
+  color: #64748b !important;
+  font-size: 13.5px !important;
+  line-height: 1.5 !important;
+  margin: 0 !important;
+}
+
+/* Jam Live Widget */
+.live-clock {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  padding: 12px 20px !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04) !important;
+  text-align: right !important;
+  flex-shrink: 0 !important;
+}
+
+.live-clock strong {
+  display: block !important;
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  color: #1e1b4b !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.15 !important;
+}
+
+.live-clock span {
+  font-size: 12px !important;
+  color: #64748b !important;
+  font-weight: 550 !important;
+}
+
+/* ── 3. Welcome Alert Banner ──────────────────────────────────── */
+.welcome-alert-banner,
+.report-module .alert-welcome {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%) !important;
+  border: 1px solid #bbf7d0 !important;
+  border-radius: 16px !important;
+  padding: 14px 20px !important;
+  color: #14532d !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  margin-bottom: 24px !important;
+  box-shadow: 0 3px 12px rgba(34, 197, 94, 0.08) !important;
+}
+
+.check-icon-circle,
+.report-module .alert-icon {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 50% !important;
+  background: #22c55e !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 2px 6px rgba(34, 197, 94, 0.35) !important;
+}
+
+/* ── 4. Absensi Modern Grid & Cards Layout ────────────────────── */
+.attendance-top-summary {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 20px 26px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04);
+}
+
+.attendance-user-strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.attendance-avatar-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 18px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.attendance-avatar-circle:hover {
+  transform: scale(1.05);
+}
+
+.attendance-avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attendance-meta-label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 750;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.attendance-user-name {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.attendance-meta-npm {
+  display: inline-block;
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6366f1;
+}
+
+.attendance-status-pill-box {
+  text-align: right;
+}
+
+.attendance-badge-lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.attendance-badge-lg.badge-success {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.attendance-badge-lg.badge-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.attendance-badge-lg.badge-neutral {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.attendance-grid-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 24px;
+  align-items: start;
+  margin-bottom: 24px;
+}
+
+.attendance-card-neat {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 22px 24px;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04);
+  margin-bottom: 20px;
+}
+
+.attendance-card-title {
+  font-size: 15px;
+  font-weight: 750;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.time-cards-neat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.time-card-box {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.time-card-box:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.time-card-label {
+  font-size: 11px;
+  font-weight: 750;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.time-card-big {
+  font-size: 34px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 6px 0 10px;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.time-card-note {
+  font-size: 11.5px;
+  color: #64748b;
+  min-height: 32px;
+  line-height: 1.4;
+  margin-bottom: 14px;
+}
+
+/* Tombol Masuk / Pulang Gradien */
+.btn-checkin-action {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  padding: 12px 16px;
+  font-weight: 750;
+  font-size: 13.5px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-checkin-action:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+}
+
+.btn-checkout-action {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+  padding: 12px 16px;
+  font-weight: 750;
+  font-size: 13.5px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-checkout-action:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.45);
+}
+
+.btn-checkin-action:disabled,
+.btn-checkout-action:disabled {
+  background: #e2e8f0 !important;
+  color: #94a3b8 !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+/* ── 5. Form Controls & Filter Cards (Sleek Horizontal Toolbar) ── */
+.filter-card,
+.report-module .filter-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  padding: 14px 18px !important;
+  margin-bottom: 24px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-wrap: nowrap !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.03) !important;
+}
+
+.search-input-wrapper {
+  flex: 1 1 280px !important;
+  position: relative !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.search-icon-inside {
+  position: absolute !important;
+  left: 14px !important;
+  pointer-events: none !important;
+  color: #94a3b8 !important;
+  z-index: 2 !important;
+}
+
+.search-input {
+  width: 100% !important;
+  height: 42px !important;
+  margin: 0 !important;
+  padding: 0 14px 0 40px !important;
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  color: #1e293b !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
+}
+
+.search-input:focus {
+  background: #ffffff !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+.filter-select {
+  width: auto !important;
+  min-width: 175px !important;
+  max-width: 220px !important;
+  height: 42px !important;
+  margin: 0 !important;
+  display: inline-block !important;
+  padding: 0 32px 0 14px !important;
+  background-color: #f8fafc !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+  background-size: 14px !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #334155 !important;
+  cursor: pointer !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
+}
+
+.filter-select:focus {
+  background-color: #ffffff !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+.input-neat {
+  height: 42px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  background: #f8fafc !important;
+  color: #1e293b !important;
+  padding: 0 14px !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  outline: none !important;
+  transition: all 0.2s ease !important;
+  box-sizing: border-box !important;
+}
+
+.input-neat:focus {
+  border-color: #6366f1 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+/* Tombol Aksi Primer & Cari */
+.btn-primary,
+.btn-search,
+.btn-create-task,
+.report-module .btn-primary {
+  height: 42px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 13.5px !important;
+  padding: 0 20px !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.28) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.btn-primary:hover,
+.btn-search:hover,
+.btn-create-task:hover,
+.report-module .btn-primary:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.38) !important;
+}
+
+/* ── 6. Table Cards & Enterprise Tables (Rounded 18px) ────────── */
+.table-card,
+.report-module .table-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04) !important;
+  margin-bottom: 24px !important;
+  padding: 0 !important;
+}
+
+.table-card-header,
+.table-toolbar {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 18px 24px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  background: #ffffff !important;
+}
+
+.table-card-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-weight: 800 !important;
+  font-size: 15px !important;
+  color: #0f172a !important;
+  letter-spacing: -0.01em !important;
+}
+
+.table-responsive {
+  width: 100% !important;
+  overflow-x: auto !important;
+}
+
+table,
+.enterprise-table,
+.custom-table,
+.task-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  table-layout: auto !important;
+}
+
+table thead th,
+.enterprise-table thead th,
+.custom-table thead th,
+.task-table thead th {
+  background: #f8fafc !important;
+  color: #475569 !important;
+  font-size: 11.5px !important;
+  font-weight: 750 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding: 14px 18px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  border-top: none !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+table tbody td,
+.enterprise-table tbody td,
+.custom-table tbody td,
+.task-table tbody td {
+  padding: 15px 18px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  font-size: 13.5px !important;
+  color: #1e293b !important;
+  vertical-align: middle !important;
+}
+
+table tbody tr:hover,
+.enterprise-table tbody tr:hover,
+.custom-table tbody tr:hover,
+.task-table tbody tr:hover {
+  background: #f8fafc !important;
+}
+
+table tbody tr:last-child td,
+.enterprise-table tbody tr:last-child td,
+.custom-table tbody tr:last-child td,
+.task-table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* Kolom Proporsional untuk Data Tugas & Laporan */
+.task-table th:nth-child(1), .task-table td:nth-child(1),
+.custom-table th:nth-child(1), .custom-table td:nth-child(1) { width: 50px !important; text-align: center !important; }
+
+.task-table th:nth-child(2), .task-table td:nth-child(2),
+.custom-table th:nth-child(2), .custom-table td:nth-child(2) { width: auto !important; min-width: 250px !important; }
+
+.task-table th:nth-child(3), .task-table td:nth-child(3),
+.custom-table th:nth-child(3), .custom-table td:nth-child(3) { width: 130px !important; }
+
+.task-table th:nth-child(4), .task-table td:nth-child(4),
+.custom-table th:nth-child(4), .custom-table td:nth-child(4) { width: 170px !important; white-space: nowrap !important; }
+
+.task-table th:nth-child(5), .task-table td:nth-child(5),
+.custom-table th:nth-child(5), .custom-table td:nth-child(5) { width: 160px !important; }
+
+.task-table th:nth-child(6), .task-table td:nth-child(6),
+.custom-table th:nth-child(6), .custom-table td:nth-child(6) { width: 160px !important; text-align: right !important; }
+
+.report-module .custom-table,
+.custom-table {
+  min-width: 100% !important;
+  width: 100% !important;
+  table-layout: auto !important;
+}
+
+/* Komponen Sel Tabel */
+.col-title-wrap {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+}
+
+.item-main-title {
+  font-weight: 750 !important;
+  font-size: 14px !important;
+  color: #0f172a !important;
+  line-height: 1.35 !important;
+}
+
+.item-subtitle {
+  font-size: 12px !important;
+  color: #64748b !important;
+}
+
+.badge-category {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 4px 12px !important;
+  border-radius: 9999px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.date-cell {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+
+.date-main {
+  font-weight: 650 !important;
+  color: #0f172a !important;
+  font-size: 13px !important;
+}
+
+.date-sub {
+  font-size: 11.5px !important;
+  color: #64748b !important;
+}
+
+.table-action-group {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+.action-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px 14px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  text-decoration: none !important;
+}
+
+.action-btn:hover {
+  background: #f8fafc !important;
+  border-color: #94a3b8 !important;
+}
+
+.action-btn-danger,
+.btn-action-delete {
+  color: #dc2626 !important;
+  border-color: #fecaca !important;
+  background-color: #fff5f5 !important;
+}
+
+.action-btn-danger:hover,
+.btn-action-delete:hover {
+  background-color: #fee2e2 !important;
+  border-color: #f87171 !important;
+  color: #b91c1c !important;
+}
+
+.action-btn.btn-submit-action {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25) !important;
+}
+
+.action-btn.btn-submit-action:hover {
+  filter: brightness(1.08) !important;
+}
+
+/* Empty State Modern */
+.empty-state-modern {
+  padding: 56px 24px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+.empty-state-icon-circle {
+  width: 58px !important;
+  height: 58px !important;
+  border-radius: 50% !important;
+  background: rgba(99, 102, 241, 0.1) !important;
+  color: #6366f1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 14px !important;
+}
+
+.empty-state-modern h4 {
+  margin: 0 0 6px 0 !important;
+  font-size: 16px !important;
+  font-weight: 750 !important;
+  color: #0f172a !important;
+}
+
+.empty-state-modern p {
+  margin: 0 !important;
+  font-size: 13px !important;
+  color: #64748b !important;
+  max-width: 380px !important;
+  line-height: 1.5 !important;
+}
+
+/* ── 7. Status Badges & Pills ─────────────────────────────────── */
+.badge-status,
+.status-badge,
+.participant-task-badge,
+.grade-a, .grade-b, .grade-c,
+.status-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 5px 12px !important;
+  border-radius: 9999px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+}
+
+.status-badge.approved,
+.participant-task-badge.is-submitted,
+.hadir {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+}
+
+.status-badge.pending,
+.participant-task-badge {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+}
+
+.status-badge.late,
+.status-badge.unsubmitted,
+.alpa-status {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+}
+
+/* Badges Khusus Laporan Magang */
+.badge-review {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border: 1px solid #bfdbfe !important;
+}
+
+.badge-revisi {
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #fecaca !important;
+}
+
+.badge-disetujui {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border: 1px solid #a7f3d0 !important;
+}
+
+.badge-draft {
+  background: #f8fafc !important;
+  color: #64748b !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+/* ── 8. Responsiveness ────────────────────────────────────────── */
+@media (max-width: 960px) {
+  .attendance-grid-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .participant-page-container {
+    padding: 20px 16px 40px !important;
+  }
+
+  .page-heading,
+  .page-title-section,
+  .report-module .page-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+  }
+
+  .live-clock {
+    text-align: left !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .time-cards-neat-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .attendance-top-summary {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .attendance-status-pill-box {
+    text-align: left !important;
+  }
+}

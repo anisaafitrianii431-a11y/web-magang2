@@ -97,8 +97,8 @@ function LandingPage({ initialAuthTab }) {
               <div className="auth-banner">
                 <div>
                   <div className="banner-brand">
-                    <div className="brand-icon">
-                      <Zap size={22} color="#ffffff" />
+                    <div className="brand-icon" style={{ background: "#ffffff", padding: "3px", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <img src="/logo.png" alt="Logo PAM-TECHNO" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                     </div>
                     <span>PORTAL MAGANG & ALUMNI</span>
                   </div>

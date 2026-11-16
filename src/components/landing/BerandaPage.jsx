@@ -55,15 +55,16 @@ function BerandaPage({ token, user, onOpenAuth, activeSection, setActiveSection,
           <span>Program Magang & Praktik Kerja Lapangan (PKL)</span>
         </div>
 
-        <h1 className="hero-title">
-          {berandaData?.profil_kantor?.nama_perusahaan || 'Portal Alumni Magang'} <br />
-          <span className="text-gradient">Wadah Pengalaman & Pengembangan Karir</span>
-        </h1>
+        <div className="hero-brand-showcase">
+          <div className="hero-logo-halo"></div>
+          <div className="hero-logo-frame">
+            <img src="/logo.png" alt="Logo PAM-TECHNO" className="hero-logo-img" />
+          </div>
+        </div>
 
-        <p className="hero-description">
-          {berandaData?.profil_kantor?.deskripsi_singkat ||
-            'Platform resmi informasi program magang, direktori alumni peserta, cerita pengalaman kerja lapangan, serta wadah ulasan peserta.'}
-        </p>
+        <h1 className="hero-title">
+          {berandaData?.profil_kantor?.nama_perusahaan || 'Portal Alumni Magang'}
+        </h1>
 
         <div className="hero-actions">
           <button

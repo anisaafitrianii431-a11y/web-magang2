@@ -25,11 +25,11 @@ function Navbar({ activeSection, setActiveSection, user, token, onOpenAuth, onLo
       <div className="nav-container">
         <div className="nav-brand" onClick={() => scrollToSection('beranda')} style={{ cursor: 'pointer' }}>
           <div className="brand-logo">
-            <GraduationCap size={22} color="#ffffff" />
+            <img src="/logo.png" alt="Logo PAM-TECHNO" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '50%' }} />
           </div>
           <div className="brand-text">
-            <span className="brand-title">PORTAL MAGANG</span>
-            <span className="brand-sub">& ALUMNI</span>
+            <span className="brand-title">PAM-TECHNO</span>
+            <span className="brand-sub">PORTAL MAGANG</span>
           </div>
         </div>
 
@@ -84,8 +84,26 @@ function Navbar({ activeSection, setActiveSection, user, token, onOpenAuth, onLo
                 className="btn-user-profile"
                 onClick={() => setActiveSection('auth')}
               >
-                <div className="nav-avatar">
-                  {user?.name ? user.name.charAt(0).toUpperCase() : <UserCheck size={16} />}
+                <div className="nav-avatar" style={{ overflow: 'hidden' }}>
+                  {user?.foto ? (
+                    <img 
+                      src={user.foto.startsWith('data:') || /^https?:\/\//i.test(user.foto) ? user.foto : `http://127.0.0.1:8000/storage/${String(user.foto).replace(/^\/+/, '').replace(/^storage\//, '')}`} 
+                      alt="Avatar" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                      onError={(e) => {
+                        const fallback = `/storage/${String(user?.foto || '').replace(/^\/+/, '').replace(/^storage\//, '')}`;
+                        if (e.currentTarget.src !== fallback && !fallback.endsWith('/')) {
+                          e.currentTarget.src = fallback;
+                        } else {
+                          e.currentTarget.style.display = 'none';
+                        }
+                      }}
+                    />
+                  ) : user?.name ? (
+                    user.name.charAt(0).toUpperCase()
+                  ) : (
+                    <UserCheck size={16} />
+                  )}
                 </div>
                 <span className="nav-username">{user?.name || 'Akun Saya'}</span>
               </button>
