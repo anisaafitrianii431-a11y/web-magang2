@@ -58,17 +58,17 @@ function LoginForm({ onSuccess, noticeMessage = '', initialEmail = '' }) {
       )}
 
       <div className="form-group">
-        <label htmlFor="login-email">Alamat Email Peserta</label>
+        <label htmlFor="login-email">Email atau Kode Peserta</label>
         <div className="input-wrapper">
           <Mail className="input-icon" size={18} />
           <input
             id="login-email"
-            type="email"
+            type="text"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="contoh@email.com"
+            placeholder="nama@email.com atau kode peserta"
             required
-            autoComplete="off"
+            autoComplete="username"
           />
         </div>
       </div>

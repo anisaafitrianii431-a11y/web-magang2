@@ -9,6 +9,7 @@ import RekapitulasiPage from './RekapitulasiPage';
 import UploadLaporanModal from '../components/UploadLaporanModal';
 import RevisiModal from '../components/RevisiModal';
 import DetailModal from '../components/DetailModal';
+import FinalisasiLaporanModal from '../components/FinalisasiLaporanModal';
 import '../App.css';
 
 const laporanEndpoint = '/v1/laporan-magang';
@@ -37,6 +38,8 @@ function LaporanModule() {
   const [selectedLaporan, setSelectedLaporan] = useState(null);
   const [isRevisiOpen, setIsRevisiOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isFinalizationOpen, setIsFinalizationOpen] = useState(false);
+  const [finalizationError, setFinalizationError] = useState('');
   const [apiError, setApiError] = useState('');
   const [revisiError, setRevisiError] = useState('');
   const [assessmentError, setAssessmentError] = useState('');
@@ -161,6 +164,24 @@ function LaporanModule() {
     }
   };
 
+  const handleSaveFinalPdf = async (file) => {
+    setIsSaving(true);
+    setFinalizationError('');
+
+    try {
+      await api.post(`${laporanEndpoint}/${selectedLaporan.id_laporan}/final-pdf`, file, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      await fetchLaporan();
+      return true;
+    } catch (error) {
+      setFinalizationError(getApiError(error, 'PDF final gagal disimpan.'));
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleDelete = async (idLaporan) => {
     if (!window.confirm('Hapus laporan ini secara permanen? Laporan juga akan hilang dari daftar pembimbing.')) return;
     setApiError('');
@@ -204,6 +225,11 @@ function LaporanModule() {
                 setSelectedLaporan(laporan);
                 setIsDetailOpen(true);
               }}
+              onOpenFinalize={(laporan) => {
+                setSelectedLaporan(laporan);
+                setFinalizationError('');
+                setIsFinalizationOpen(true);
+              }}
               onDelete={handleDelete}
             />
           ) : activeView === 'penilaian' ? (
@@ -245,6 +271,16 @@ function LaporanModule() {
           onSubmitStatus={handleSubmitStatus}
           isSavingStatus={isSaving}
           statusError={statusError}
+        />
+      )}
+      {isFinalizationOpen && selectedLaporan && (
+        <FinalisasiLaporanModal
+          key={selectedLaporan.id_laporan}
+          laporan={selectedLaporan}
+          onClose={() => setIsFinalizationOpen(false)}
+          onSave={handleSaveFinalPdf}
+          isSaving={isSaving}
+          submitError={finalizationError}
         />
       )}
     </div>

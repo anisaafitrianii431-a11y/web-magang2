@@ -1,11 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../services/api';
 import StatusBadge from './StatusBadge';
 
 export default function DetailModal({ isOpen, onClose, laporan, canModerate = false, showStatus = true, onSubmitStatus, isSavingStatus = false, statusError = '' }) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
   const [downloadError, setDownloadError] = useState('');
   const [selectedStatus, setSelectedStatus] = useState(laporan?.status_laporan || 'Menunggu Review');
+
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
   if (!isOpen || !laporan) return null;
 
@@ -20,7 +26,9 @@ export default function DetailModal({ isOpen, onClose, laporan, canModerate = fa
       const fileUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = fileUrl;
-      link.download = laporan.file_laporan_pdf?.split('/').pop() || `laporan-${laporan.id_laporan}.pdf`;
+      link.download = laporan.file_pdf_final?.split('/').pop()
+        || laporan.file_laporan_pdf?.split('/').pop()
+        || `laporan-${laporan.id_laporan}.pdf`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -29,6 +37,22 @@ export default function DetailModal({ isOpen, onClose, laporan, canModerate = fa
       setDownloadError(error.response?.data?.message || 'PDF laporan gagal diunduh.');
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const handlePreviewFinal = async () => {
+    setIsPreviewing(true);
+    setDownloadError('');
+
+    try {
+      const response = await api.get(`/v1/laporan-magang/${laporan.id_laporan}/download`, {
+        responseType: 'blob',
+      });
+      setPreviewUrl(URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' })));
+    } catch (error) {
+      setDownloadError(error.response?.data?.message || 'PDF final gagal dimuat.');
+    } finally {
+      setIsPreviewing(false);
     }
   };
 
@@ -57,6 +81,28 @@ export default function DetailModal({ isOpen, onClose, laporan, canModerate = fa
               Diunggah oleh: <b>{laporan.nama_peserta || 'Peserta Magang'}</b> • Submit: {laporan.tgl_submit}
             </div>
           </div>
+
+          {laporan.file_pdf_final && (
+            <div className="form-group">
+              <label className="form-label">PDF Final Bertanda Tangan</label>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button type="button" className="btn-secondary" onClick={handlePreviewFinal} disabled={isPreviewing}>
+                  {isPreviewing ? 'Memuat...' : 'Pratinjau PDF Final'}
+                </button>
+                <button type="button" className="btn-primary" onClick={handleDownload} disabled={isDownloading}>
+                  {isDownloading ? 'Mengunduh...' : 'Unduh PDF Final'}
+                </button>
+              </div>
+              {previewUrl && (
+                <iframe
+                  title="Pratinjau PDF final laporan"
+                  src={previewUrl}
+                  style={{ width: '100%', height: '480px', border: '1px solid #cbd5e1', borderRadius: '8px', marginTop: '0.75rem' }}
+                />
+              )}
+              {downloadError && <p role="alert" style={{ color: '#b91c1c', marginTop: '0.5rem' }}>{downloadError}</p>}
+            </div>
+          )}
 
           {laporan.link_google_doc ? (
             <div className="form-group">

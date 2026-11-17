@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../landing.css';
 import Navbar from '../components/landing/Navbar';
@@ -20,19 +20,6 @@ function LandingPage({ initialAuthTab }) {
   const [loginNotice, setLoginNotice] = useState('');
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [user, setUser] = useState(getStoredUser);
-
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = getStoredUser();
-    if (storedToken) setToken(storedToken);
-    if (storedUser) setUser(storedUser);
-  }, []);
-
-  useEffect(() => {
-    if (token && activeSection === 'auth') {
-      setActiveSection('beranda');
-    }
-  }, [token, activeSection]);
 
   const handleAuthSuccess = () => {
     const freshToken = localStorage.getItem('token');
@@ -127,7 +114,9 @@ function LandingPage({ initialAuthTab }) {
                     </h2>
                     <p className="auth-subtitle">
                       {activeTab === 'login'
-                        ? 'Masukkan email dan kata sandi Anda untuk melanjutkan'
+                        ? token
+                          ? 'Masuk dengan akun lain untuk mengganti akun yang sedang aktif.'
+                          : 'Masukkan email/kode peserta dan kata sandi Anda untuk melanjutkan'
                         : 'Isi formulir pendaftaran akun magang di bawah ini'}
                     </p>
                   </div>

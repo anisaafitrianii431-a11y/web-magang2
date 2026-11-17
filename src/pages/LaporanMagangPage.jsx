@@ -15,6 +15,7 @@ export default function LaporanMagangPage({
   onOpenUpload, 
   onOpenRevisi, 
   onOpenDetail, 
+  onOpenFinalize,
   onDelete 
 }) {
   return (
@@ -115,6 +116,12 @@ export default function LaporanMagangPage({
                         </svg>
                         Detail
                       </button>
+
+                      {currentRole === 'pembimbing' && item.status_laporan === 'Selesai' && (
+                        <button className="btn-action btn-action-detail" onClick={() => onOpenFinalize(item)}>
+                          {item.file_pdf_final ? 'Perbarui PDF Final' : 'Tanda Tangan & Stempel'}
+                        </button>
+                      )}
 
                       {/* UC-04 Mengunggah Revisi Button (Anak Magang) */}
                       {currentRole === 'anak_magang' && item.status_laporan === 'Revisi' && (
