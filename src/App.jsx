@@ -1,0 +1,96 @@
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import AdminLayout from "./pages/admin/AdminLayout";
+import DaftarPemagang from "./components/DaftarPemagang";
+import KelolaLokasi from "./components/KelolaLokasi";
+import KelolaPembimbing from "./components/KelolaPembimbing";
+import KelolaPeriode from "./components/KelolaPeriode";
+import LandingPageManagement from "./pages/admin/LandingPageManagement";
+import LandingPage from "./pages/LandingPage";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Absensi from "./pages/Absensi";
+import Dashboard from "./pages/Dashboard";
+import LaporanModule from "./pages/LaporanModule";
+import MasterPenilaian from "./pages/MasterPenilaian";
+import Periode from "./pages/Periode";
+import Peserta from "./pages/Peserta";
+import FormPendaftaran from "./pages/pemagang/FromPendaftaran";
+import Riwayat from "./pages/Riwayat";
+import SuratBalasan from "./pages/SuratBalasan";
+import Tugas from "./pages/Tugas";
+import PengaturanAbsensi from "./pages/PengaturanAbsensi";
+import EditProfil from "./pages/EditProfil";
+import { getRoleHome, getStoredUser, normalizeRole } from "./utils/auth";
+
+function ProtectedRoute({ children, allowedRole }) {
+    const user = getStoredUser();
+    const role = normalizeRole(user?.role);
+    const allowedRoles = Array.isArray(allowedRole) ? allowedRole : [allowedRole];
+
+    if (!user) {
+        return <Navigate to="/login" replace />;
+    }
+
+    if (allowedRole && !allowedRoles.map(normalizeRole).includes(role)) {
+        return <Navigate to={getRoleHome(role)} replace />;
+    }
+
+    return children;
+}
+
+function App() {
+    return (
+        <BrowserRouter>
+            <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/beranda" element={<LandingPage />} />
+                <Route path="/landing" element={<LandingPage />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+
+                <Route path="/dashboard" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><Dashboard /></ProtectedRoute>} />
+                <Route path="/tugas" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><Tugas /></ProtectedRoute>} />
+                <Route path="/absensi" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><Absensi /></ProtectedRoute>} />
+                <Route path="/peserta" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Peserta /></ProtectedRoute>} />
+                <Route path="/periode" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Periode /></ProtectedRoute>} />
+                <Route path="/riwayat" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><Riwayat /></ProtectedRoute>} />
+                <Route path="/akun-peserta" element={<ProtectedRoute allowedRole="admin"><Navigate to="/riwayat" replace /></ProtectedRoute>} />
+                <Route path="/kelola-pembimbing" element={<ProtectedRoute allowedRole="admin"><Navigate to="/admin/pembimbing" replace /></ProtectedRoute>} />
+                <Route path="/pembimbing" element={<ProtectedRoute allowedRole="pembimbing"><Dashboard /></ProtectedRoute>} />
+                <Route path="/pembimbing/dashboard" element={<ProtectedRoute allowedRole="pembimbing"><Dashboard /></ProtectedRoute>} />
+                <Route path="/pembimbing/jadwal-absensi" element={<ProtectedRoute allowedRole="pembimbing"><PengaturanAbsensi /></ProtectedRoute>} />
+                <Route path="/pemagang/daftar" element={<ProtectedRoute allowedRole="pemagang"><FormPendaftaran /></ProtectedRoute>} />
+                <Route path="/surat-balasan" element={<ProtectedRoute allowedRole="pemagang"><SuratBalasan /></ProtectedRoute>} />
+                <Route path="/profil" element={<ProtectedRoute><EditProfil /></ProtectedRoute>} />
+                <Route path="/edit-profil" element={<Navigate to="/profil" replace />} />
+                <Route path="/profile" element={<Navigate to="/profil" replace />} />
+
+                <Route path="/laporan" element={<ProtectedRoute><LaporanModule /></ProtectedRoute>} />
+                <Route path="/laporan/penilaian" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><LaporanModule /></ProtectedRoute>} />
+                <Route path="/master-penilaian" element={<ProtectedRoute allowedRole="pembimbing"><MasterPenilaian /></ProtectedRoute>} />
+                <Route path="/laporan/rekapitulasi" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><LaporanModule /></ProtectedRoute>} />
+                <Route path="/laporan-magang" element={<ProtectedRoute><Navigate to="/laporan" replace /></ProtectedRoute>} />
+                <Route path="/rekapitulasi" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Navigate to="/laporan/rekapitulasi" replace /></ProtectedRoute>} />
+                <Route path="/penilaian" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Navigate to="/laporan/penilaian" replace /></ProtectedRoute>} />
+                <Route path="/laporan-app" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Navigate to="/laporan/penilaian" replace /></ProtectedRoute>} />
+
+                <Route
+                    path="/admin"
+                    element={<ProtectedRoute allowedRole="admin"><AdminLayout /></ProtectedRoute>}
+                >
+                    <Route index element={<Navigate to="/admin/pendaftaran" replace />} />
+                    <Route path="pendaftaran" element={<DaftarPemagang />} />
+                    <Route path="periode" element={<KelolaPeriode />} />
+                    <Route path="pembimbing" element={<KelolaPembimbing />} />
+                    <Route path="lokasi" element={<KelolaLokasi />} />
+                    <Route path="landing-page" element={<LandingPageManagement />} />
+                    <Route path="*" element={<Navigate to="/admin/pendaftaran" replace />} />
+                </Route>
+
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+        </BrowserRouter>
+    );
+}
+
+export default App;
