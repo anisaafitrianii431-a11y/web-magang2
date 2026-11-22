@@ -170,7 +170,13 @@ function Riwayat() {
                     if (registration?.status === "Pemagang Aktif") {
                         profile = {
                             participant_name: user?.name || user?.nama || "Peserta Magang",
-                            participant_code: null,
+                            participant_code:
+                                registration?.nim
+                                || registration?.nim_user
+                                || registration?.participant_code
+                                || user?.nim
+                                || user?.npm
+                                || null,
                             institution: registration.asal_instansi,
                         };
                     }
@@ -428,7 +434,7 @@ function Riwayat() {
                 return null;
             }
         })();
-        const supervisorName = currentUser?.name || currentUser?.nama || "Ibrahim";
+        const supervisorName = currentUser?.name || currentUser?.nama || "Ibrahim Saputra, S.Kom";
 
         const isParticipantRole = role !== "admin" && role !== "pembimbing";
         const targetList = isParticipantRole

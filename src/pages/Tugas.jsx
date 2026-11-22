@@ -1160,10 +1160,40 @@ function Tugas() {
           : null;
 
         return (
-          <div className="modal-overlay" onClick={() => setModalDetail(null)}>
-            <div className="modal-dialog modal-detail-tugas" style={{ maxWidth: '620px', borderRadius: '18px', overflow: 'hidden' }} onClick={(e) => e.stopPropagation()}>
+          <div
+            className="modal-overlay"
+            onClick={() => setModalDetail(null)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 99999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+              overflowY: 'auto'
+            }}
+          >
+            <div
+              className="modal-dialog modal-detail-tugas"
+              style={{
+                maxWidth: '620px',
+                width: '100%',
+                maxHeight: '90vh',
+                borderRadius: '18px',
+                background: '#ffffff',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
+                margin: 'auto'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
               {/* Header */}
-              <div className="modal-header" style={{ padding: '18px 24px', background: '#ffffff', borderBottom: '1px solid #f1f5f9' }}>
+              <div className="modal-header" style={{ padding: '18px 24px', background: '#ffffff', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{
                     width: 42,
@@ -1213,7 +1243,19 @@ function Tugas() {
               </div>
 
               {/* Body */}
-              <div className="modal-body" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px', background: '#f8fafc' }}>
+              <div
+                className="modal-body"
+                style={{
+                  padding: '24px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '18px',
+                  background: '#f8fafc',
+                  overflowY: 'auto',
+                  flex: 1,
+                  maxHeight: 'calc(90vh - 140px)'
+                }}
+              >
                 {/* Judul & Kategori & Deadline Card */}
                 <div style={{ background: '#ffffff', padding: '18px 20px', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
@@ -1521,7 +1563,7 @@ function Tugas() {
               </div>
 
               {/* Footer */}
-              <div className="modal-footer" style={{ padding: '14px 24px', background: '#ffffff', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px' }}>
+              <div className="modal-footer" style={{ padding: '14px 24px', background: '#ffffff', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
                 <button
                   type="button"
                   className="btn-secondary"
@@ -1798,14 +1840,48 @@ function Tugas() {
         const isKelompok = modalSubmit.kategori === 'Kelompok';
 
         return (
-          <div className="modal-overlay" onClick={() => setModalSubmit(null)}>
+          <div
+            className="modal-overlay"
+            onClick={() => setModalSubmit(null)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 99999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+              overflowY: 'auto'
+            }}
+          >
             <div
               className="modal-dialog"
-              style={{ maxWidth: '600px', borderRadius: '18px', overflow: 'hidden' }}
+              style={{
+                maxWidth: '600px',
+                width: '100%',
+                maxHeight: '90vh',
+                borderRadius: '18px',
+                background: '#ffffff',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
+                margin: 'auto'
+              }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="modal-header" style={{ padding: '18px 24px', background: '#ffffff', borderBottom: '1px solid #f1f5f9' }}>
+              <div
+                className="modal-header"
+                style={{
+                  padding: '18px 24px',
+                  background: '#ffffff',
+                  borderBottom: '1px solid #f1f5f9',
+                  flexShrink: 0
+                }}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div
                     style={{
@@ -1859,8 +1935,28 @@ function Tugas() {
               </div>
 
               {/* Form */}
-              <form onSubmit={handleKumpulTugas}>
-                <div className="modal-body" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px', background: '#f8fafc' }}>
+              <form
+                onSubmit={handleKumpulTugas}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden',
+                  flex: 1
+                }}
+              >
+                <div
+                  className="modal-body"
+                  style={{
+                    padding: '24px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '18px',
+                    background: '#f8fafc',
+                    overflowY: 'auto',
+                    flex: 1,
+                    maxHeight: 'calc(90vh - 145px)'
+                  }}
+                >
                   {/* Task Info Card */}
                   <div
                     style={{
@@ -2137,7 +2233,8 @@ function Tugas() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'flex-end',
-                    gap: '12px'
+                    gap: '12px',
+                    flexShrink: 0
                   }}
                 >
                   <button

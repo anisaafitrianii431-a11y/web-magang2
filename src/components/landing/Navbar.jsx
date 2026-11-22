@@ -1,4 +1,5 @@
 import { GraduationCap, LogIn, UserCheck, LogOut, Home, Building2, Users, Activity, MessageSquare } from 'lucide-react';
+import { API_BASE_URL } from '../../config/api';
 
 function Navbar({ activeSection, setActiveSection, user, token, onOpenAuth, onLogout, onGoToDashboard }) {
   const scrollToSection = (sectionId) => {
@@ -83,17 +84,18 @@ function Navbar({ activeSection, setActiveSection, user, token, onOpenAuth, onLo
                 type="button"
                 className="btn-user-profile"
                 onClick={onGoToDashboard || (() => setActiveSection('auth'))}
-                title="Buka Dashboard"
+                title="Kembali ke Dashboard Peserta"
               >
                 <div className="nav-avatar" style={{ overflow: 'hidden' }}>
                   {user?.foto ? (
                     <img 
-                      src={user.foto.startsWith('data:') || /^https?:\/\//i.test(user.foto) ? user.foto : `http://127.0.0.1:8000/storage/${String(user.foto).replace(/^\/+/, '').replace(/^storage\//, '')}`} 
+                      src={user.foto.startsWith('data:') || /^https?:\/\//i.test(user.foto) ? user.foto : `${(API_BASE_URL || 'http://127.0.0.1:8000/api').replace(/\/api\/?$/, '')}/storage/${String(user.foto).replace(/^\/+/, '').replace(/^storage\//, '')}`} 
                       alt="Avatar" 
                       style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
                       onError={(e) => {
                         const fallback = `/storage/${String(user?.foto || '').replace(/^\/+/, '').replace(/^storage\//, '')}`;
-                        if (e.currentTarget.src !== fallback && !fallback.endsWith('/')) {
+                        if (e.currentTarget.dataset.triedRelative !== 'true' && e.currentTarget.src !== window.location.origin + fallback) {
+                          e.currentTarget.dataset.triedRelative = 'true';
                           e.currentTarget.src = fallback;
                         } else {
                           e.currentTarget.style.display = 'none';
@@ -101,12 +103,15 @@ function Navbar({ activeSection, setActiveSection, user, token, onOpenAuth, onLo
                       }}
                     />
                   ) : (user?.name || user?.nama) ? (
-                    (user.name || user.nama).charAt(0).toUpperCase()
+                    (user.name || user.nama).trim().charAt(0).toUpperCase()
                   ) : (
                     <UserCheck size={16} />
                   )}
                 </div>
-                <span className="nav-username">{user?.name || user?.nama || 'Dashboard'}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', lineHeight: 1.2 }}>
+                  <span className="nav-username">{user?.name || user?.nama || 'Peserta'}</span>
+                  <span style={{ fontSize: '10.5px', color: '#818cf8', fontWeight: 600 }}>Ke Dashboard →</span>
+                </div>
               </button>
               <button type="button" className="btn-icon-logout" onClick={onLogout} title="Keluar">
                 <LogOut size={16} />

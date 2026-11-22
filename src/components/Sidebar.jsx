@@ -68,6 +68,7 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
             { to: "/admin/periode", label: "Kelola Periode", icon: CalendarRange },
             { to: "/admin/pembimbing", label: "Kelola Pembimbing", icon: UserCheck },
             { to: "/admin/lokasi", label: "Lokasi Absensi", icon: MapPin },
+            { to: "/admin/akun-peserta", label: "Kelola Akun Peserta", icon: Users },
             { to: "/riwayat", label: "Absensi Magang", icon: CalendarDays },
             { to: "/tugas", label: "Tugas Magang", icon: CheckSquare },
             { to: "/laporan", label: "Laporan Magang", icon: FolderCheck },

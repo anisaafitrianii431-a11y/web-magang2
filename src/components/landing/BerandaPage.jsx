@@ -4,9 +4,9 @@ import AlumniList from './AlumniList';
 import AktivitasPage from './AktivitasPage';
 import ListKomentar from './ListKomentar';
 import FormKomentar from './FormKomentar';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, LayoutDashboard } from 'lucide-react';
 
-function BerandaPage({ token, user, onOpenAuth, activeSection, setActiveSection, onSelectAktivitas }) {
+function BerandaPage({ token, user, onOpenAuth, activeSection, setActiveSection, onSelectAktivitas, onGoToDashboard }) {
   const [berandaData, setBerandaData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshKomentar, setRefreshKomentar] = useState(0);
@@ -67,9 +67,38 @@ function BerandaPage({ token, user, onOpenAuth, activeSection, setActiveSection,
         </h1>
 
         <div className="hero-actions">
+          {token ? (
+            <button
+              type="button"
+              className="btn btn-primary btn-hero"
+              onClick={onGoToDashboard}
+              style={{
+                background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: '0 4px 16px rgba(79, 70, 229, 0.4)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <LayoutDashboard size={18} />
+              <span>Buka Dashboard ({user?.name ? user.name.split(' ')[0] : 'Peserta'})</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary btn-hero"
+              onClick={onOpenAuth}
+            >
+              <span>Daftar / Masuk Magang</span>
+              <ArrowRight size={20} />
+            </button>
+          )}
+
           <button
             type="button"
-            className="btn btn-primary btn-hero"
+            className="btn btn-secondary btn-hero"
             onClick={() => scrollToElement('alumni-magang')}
           >
             <span>Lihat Alumni Magang</span>

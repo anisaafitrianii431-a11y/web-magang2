@@ -11,6 +11,8 @@ import {
     CheckSquare,
     UserCheck,
     BookOpen,
+    Globe,
+    ArrowUpRight,
 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
@@ -260,22 +262,38 @@ function ParticipantDashboard({ user }) {
                             </div>
 
                             <div className="pd-hero-sidebar">
-                                <div className="pd-info-box">
-                                    <span className="pd-info-label">
-                                        <Calendar size={13} /> Periode Magang
-                                    </span>
-                                    <span className="pd-info-val">
-                                        {formatPeriodDate(period?.tanggal_mulai)} – {formatPeriodDate(period?.tanggal_selesai)}
-                                    </span>
+                                <div className="pd-hero-sidebar-row">
+                                    <div className="pd-info-box">
+                                        <span className="pd-info-label">
+                                            <Calendar size={13} /> Periode Magang
+                                        </span>
+                                        <span className="pd-info-val">
+                                            {formatPeriodDate(period?.tanggal_mulai)} – {formatPeriodDate(period?.tanggal_selesai)}
+                                        </span>
+                                    </div>
+                                    <div className="pd-info-box">
+                                        <span className="pd-info-label">
+                                            <UserCheck size={13} /> Pembimbing
+                                        </span>
+                                        <span className="pd-info-val">
+                                            {supervisor?.nama || supervisor?.name || "Belum Ditentukan"}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="pd-info-box">
-                                    <span className="pd-info-label">
-                                        <UserCheck size={13} /> Pembimbing
-                                    </span>
-                                    <span className="pd-info-val">
-                                        {supervisor?.nama || supervisor?.name || "Belum Ditentukan"}
-                                    </span>
-                                </div>
+                                <Link
+                                    to="/"
+                                    className="pd-hero-landing-btn"
+                                    title="Kunjungi Landing Page Utama (Portal Publik)"
+                                >
+                                    <div className="pd-hero-landing-btn-icon">
+                                        <Globe size={18} />
+                                    </div>
+                                    <div className="pd-hero-landing-btn-body">
+                                        <span className="pd-hero-landing-btn-label">Halaman Utama</span>
+                                        <span className="pd-hero-landing-btn-title">Landing Page</span>
+                                    </div>
+                                    <ArrowUpRight size={16} className="pd-hero-landing-btn-arrow" />
+                                </Link>
                             </div>
                         </div>
                     </section>

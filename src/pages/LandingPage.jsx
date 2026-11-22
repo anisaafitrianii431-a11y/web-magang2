@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../landing.css';
 import Navbar from '../components/landing/Navbar';
@@ -10,6 +10,7 @@ import Footer from '../components/landing/Footer';
 import WhatsAppButton from '../components/landing/WhatsAppButton';
 import { LogIn, UserPlus, Zap, ArrowLeft } from 'lucide-react';
 import { getRoleHome, getStoredUser } from '../utils/auth';
+import api from '../services/api';
 
 function LandingPage({ initialAuthTab }) {
   const navigate = useNavigate();
@@ -20,6 +21,37 @@ function LandingPage({ initialAuthTab }) {
   const [loginNotice, setLoginNotice] = useState('');
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [user, setUser] = useState(getStoredUser);
+
+  useEffect(() => {
+    const syncAuth = () => {
+      const storedToken = localStorage.getItem('token') || '';
+      const storedUser = getStoredUser();
+      setToken(storedToken);
+      setUser(storedUser);
+
+      if (storedToken && (!storedUser || !storedUser.name)) {
+        api.get('/me')
+          .then((res) => {
+            const freshUser = res.data?.data?.user || res.data?.data || res.data;
+            if (freshUser) {
+              localStorage.setItem('user', JSON.stringify(freshUser));
+              setUser(freshUser);
+            }
+          })
+          .catch((err) => {
+            console.warn('Gagal memverifikasi pengguna:', err);
+          });
+      }
+    };
+
+    syncAuth();
+    window.addEventListener('storage', syncAuth);
+    window.addEventListener('user-profile-updated', syncAuth);
+    return () => {
+      window.removeEventListener('storage', syncAuth);
+      window.removeEventListener('user-profile-updated', syncAuth);
+    };
+  }, []);
 
   const handleAuthSuccess = () => {
     const freshToken = localStorage.getItem('token');
@@ -179,6 +211,7 @@ function LandingPage({ initialAuthTab }) {
             activeSection={activeSection}
             setActiveSection={setActiveSection}
             onSelectAktivitas={handleSelectAktivitas}
+            onGoToDashboard={handleGoToDashboard}
           />
         )}
       </main>

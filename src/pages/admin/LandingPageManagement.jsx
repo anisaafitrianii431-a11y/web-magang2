@@ -169,6 +169,7 @@ function LandingPageManagement() {
         try {
             if (formType === "profil") {
                 await api.put("/admin/landing-page/profil", form);
+                window.dispatchEvent(new CustomEvent("company-profile-updated", { detail: form }));
             } else if (formType === "alumni") {
                 const path = editingId
                     ? `/admin/landing-page/alumni/${editingId}`

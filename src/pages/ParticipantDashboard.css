@@ -194,6 +194,12 @@
 
 .pd-hero-sidebar {
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pd-hero-sidebar-row {
+  display: flex;
   gap: 14px;
   flex-wrap: wrap;
 }
@@ -204,6 +210,7 @@
   border-radius: 14px;
   padding: 12px 18px;
   min-width: 170px;
+  flex: 1;
 }
 
 .pd-info-label {
@@ -227,6 +234,92 @@
   font-size: 13px;
   font-weight: 700;
   line-height: 1.4;
+}
+
+.pd-hero-landing-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.28) 0%, rgba(37, 99, 235, 0.22) 100%);
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  border-radius: 14px;
+  padding: 11px 18px;
+  width: 100%;
+  box-sizing: border-box;
+  color: #ffffff;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.25);
+}
+
+.pd-hero-landing-btn:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.4);
+  color: #ffffff;
+}
+
+.pd-hero-landing-btn:active {
+  transform: translateY(0);
+}
+
+.pd-hero-landing-btn-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #38bdf8;
+  flex-shrink: 0;
+  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.pd-hero-landing-btn:hover .pd-hero-landing-btn-icon {
+  transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.pd-hero-landing-btn-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.pd-hero-landing-btn-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #94a3b8;
+  transition: color 0.2s ease;
+}
+
+.pd-hero-landing-btn:hover .pd-hero-landing-btn-label {
+  color: #e0e7ff;
+}
+
+.pd-hero-landing-btn-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+}
+
+.pd-hero-landing-btn-arrow {
+  color: #94a3b8;
+  transition: transform 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.pd-hero-landing-btn:hover .pd-hero-landing-btn-arrow {
+  transform: translate(2px, -2px);
+  color: #ffffff;
 }
 
 /* ── 2. Stat Cards Grid ───────────────────────────────────────── */
@@ -283,9 +376,20 @@
   flex-shrink: 0;
 }
 
-.pd-stat-icon-wrap.blue   { background: #eff6ff; color: #2563eb; }
-.pd-stat-icon-wrap.amber  { background: #fef3c7; color: #d97706; }
-.pd-stat-icon-wrap.purple { background: #f3e8ff; color: #7c3aed; }
+.pd-stat-icon-wrap.blue {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.pd-stat-icon-wrap.amber {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.pd-stat-icon-wrap.purple {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
 
 .pd-stat-main-num {
   font-size: 30px;
@@ -317,9 +421,17 @@
   transition: width 0.5s ease;
 }
 
-.pd-stat-progress-fill.blue   { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
-.pd-stat-progress-fill.amber  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-.pd-stat-progress-fill.purple { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+.pd-stat-progress-fill.blue {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+
+.pd-stat-progress-fill.amber {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.pd-stat-progress-fill.purple {
+  background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+}
 
 .pd-stat-footer {
   display: flex;
@@ -340,9 +452,20 @@
   font-weight: 700;
 }
 
-.pd-stat-badge.green { background: #dcfce7; color: #15803d; }
-.pd-stat-badge.amber { background: #fef3c7; color: #b45309; }
-.pd-stat-badge.gray  { background: #f1f5f9; color: #64748b; }
+.pd-stat-badge.green {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.pd-stat-badge.amber {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.pd-stat-badge.gray {
+  background: #f1f5f9;
+  color: #64748b;
+}
 
 /* ── 3. Surat Balasan Banner ──────────────────────────────────── */
 .pd-letter-banner {
@@ -692,16 +815,32 @@
   flex-shrink: 0;
 }
 
-.pd-shortcut-icon.blue   { background: #eff6ff; color: #2563eb; }
-.pd-shortcut-icon.amber  { background: #fef3c7; color: #d97706; }
-.pd-shortcut-icon.purple { background: #f3e8ff; color: #7c3aed; }
-.pd-shortcut-icon.green  { background: #dcfce7; color: #15803d; }
+.pd-shortcut-icon.blue {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.pd-shortcut-icon.amber {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.pd-shortcut-icon.purple {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+.pd-shortcut-icon.green {
+  background: #dcfce7;
+  color: #15803d;
+}
 
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 960px) {
   .pd-stats-grid {
     grid-template-columns: 1fr;
   }
+
   .pd-split-layout {
     grid-template-columns: 1fr;
   }
@@ -711,28 +850,39 @@
   .pd-hero-card {
     padding: 22px 20px;
   }
+
   .pd-hero-main {
     flex-direction: column;
     align-items: flex-start;
     gap: 14px;
   }
+
   .pd-hero-sidebar {
     width: 100%;
     flex-direction: column;
   }
+
+  .pd-hero-sidebar-row {
+    width: 100%;
+    flex-direction: column;
+    gap: 10px;
+  }
+
   .pd-info-box {
     width: 100%;
   }
+
   .pd-letter-banner {
     flex-direction: column;
     align-items: flex-start;
   }
+
   .pd-btn-download {
     width: 100%;
     justify-content: center;
   }
+
   .pd-shortcuts-grid {
     grid-template-columns: 1fr;
   }
 }
-

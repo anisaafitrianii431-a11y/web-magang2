@@ -4,6 +4,7 @@ import DaftarPemagang from "./components/DaftarPemagang";
 import KelolaLokasi from "./components/KelolaLokasi";
 import KelolaPembimbing from "./components/KelolaPembimbing";
 import KelolaPeriode from "./components/KelolaPeriode";
+import KelolaAkunPeserta from "./pages/KelolaAkunPeserta";
 import LandingPageManagement from "./pages/admin/LandingPageManagement";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
@@ -54,7 +55,7 @@ function App() {
                 <Route path="/peserta" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Peserta /></ProtectedRoute>} />
                 <Route path="/periode" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Periode /></ProtectedRoute>} />
                 <Route path="/riwayat" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><Riwayat /></ProtectedRoute>} />
-                <Route path="/akun-peserta" element={<ProtectedRoute allowedRole="admin"><Navigate to="/riwayat" replace /></ProtectedRoute>} />
+                <Route path="/akun-peserta" element={<ProtectedRoute allowedRole="admin"><Navigate to="/admin/akun-peserta" replace /></ProtectedRoute>} />
                 <Route path="/kelola-pembimbing" element={<ProtectedRoute allowedRole="admin"><Navigate to="/admin/pembimbing" replace /></ProtectedRoute>} />
                 <Route path="/pembimbing" element={<ProtectedRoute allowedRole="pembimbing"><Dashboard /></ProtectedRoute>} />
                 <Route path="/pembimbing/dashboard" element={<ProtectedRoute allowedRole="pembimbing"><Dashboard /></ProtectedRoute>} />
@@ -83,6 +84,7 @@ function App() {
                     <Route path="periode" element={<KelolaPeriode />} />
                     <Route path="pembimbing" element={<KelolaPembimbing />} />
                     <Route path="lokasi" element={<KelolaLokasi />} />
+                    <Route path="akun-peserta" element={<KelolaAkunPeserta />} />
                     <Route path="landing-page" element={<LandingPageManagement />} />
                     <Route path="*" element={<Navigate to="/admin/pendaftaran" replace />} />
                 </Route>
