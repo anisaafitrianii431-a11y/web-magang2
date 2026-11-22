@@ -46,7 +46,14 @@ function ListKomentar({ refreshTrigger }) {
                     <User size={16} />
                   </div>
                   <div>
-                    <span className="user-name">{item.user?.name || item.nama_pengguna || 'Pengguna App'}</span>
+                    <span className="user-name">
+                      {item.user?.name
+                        || (item.nama_pengguna && item.nama_pengguna !== 'Pengguna App' ? item.nama_pengguna : null)
+                        || item.user?.email
+                        || item.email
+                        || item.nama_pengguna
+                        || 'Pengguna App'}
+                    </span>
                     <span className="review-date">
                       {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID') : 'Terbaru'}
                     </span>

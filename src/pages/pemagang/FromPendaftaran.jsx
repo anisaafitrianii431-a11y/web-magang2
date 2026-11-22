@@ -21,7 +21,6 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
-  AlertCircle,
   LogOut,
   ArrowRight,
   ShieldCheck,
@@ -32,10 +31,8 @@ import {
   Check,
   Send,
   MessageCircle,
-  ExternalLink,
   Eye,
   Info,
-  HelpCircle,
   FileCheck,
   RefreshCw
 } from 'lucide-react';
@@ -48,7 +45,7 @@ export default function FormPendaftaran() {
   const [isOpeningLetter, setIsOpeningLetter] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loggedInUser, setLoggedInUser] = useState(() => getStoredUser() || {});
-  const [waNotification, setWaNotification] = useState(null);
+  const [adminWhatsAppLink, setAdminWhatsAppLink] = useState('');
   
   const [formData, setFormData] = useState({ 
     nim: loggedInUser.nim || '',
@@ -69,8 +66,13 @@ export default function FormPendaftaran() {
   // State kompresi berkas persyaratan
   const [compressingPhoto, setCompressingPhoto] = useState(false);
   const [photoCompressionInfo, setPhotoCompressionInfo] = useState(null);
+  const [photoCompressionError, setPhotoCompressionError] = useState('');
   const [compressingPdf, setCompressingPdf] = useState(false);
   const [pdfCompressionInfo, setPdfCompressionInfo] = useState(null);
+  const [pdfCompressionError, setPdfCompressionError] = useState('');
+  const [maxFileSizeMb, setMaxFileSizeMb] = useState(null);
+  const [photoTargetSizeKb, setPhotoTargetSizeKb] = useState(null);
+  const [compressionSettingsError, setCompressionSettingsError] = useState('');
 
   // Helper untuk resolve URL file dari backend/storage
   const getAssetUrl = (path) => {
@@ -103,13 +105,35 @@ export default function FormPendaftaran() {
       return;
     }
 
+    if (!photoTargetSizeKb) {
+      setPhotoCompressionError('Target kompresi pas foto gagal dimuat. Muat ulang halaman atau hubungi admin.');
+      e.target.value = '';
+      return;
+    }
+
+    setPhotoCompressionError('');
+    setPhotoCompressionInfo(null);
+    setFormData((prev) => ({ ...prev, pas_foto: null }));
+    if (photoPreviewUrl.current) {
+      URL.revokeObjectURL(photoPreviewUrl.current);
+      photoPreviewUrl.current = null;
+    }
+    setPhotoPreview(null);
     setCompressingPhoto(true);
     try {
       const result = await compressImageToTarget(file, {
-        targetSizeKb: 100,
+        targetSizeKb: photoTargetSizeKb,
         maxWidth: 600,
         maxHeight: 800
       });
+
+      if (result.file.size > photoTargetSizeKb * 1024) {
+        setPhotoCompressionError(
+          `Hasil kompresi ${formatFileSize(result.file.size)} masih melebihi target ${photoTargetSizeKb} KB. Coba pilih foto lain.`
+        );
+        e.target.value = '';
+        return;
+      }
 
       if (photoPreviewUrl.current) URL.revokeObjectURL(photoPreviewUrl.current);
       photoPreviewUrl.current = URL.createObjectURL(result.file);
@@ -118,16 +142,8 @@ export default function FormPendaftaran() {
       setPhotoCompressionInfo(result);
     } catch (err) {
       console.error('Gagal mengompresi foto:', err);
-      if (photoPreviewUrl.current) URL.revokeObjectURL(photoPreviewUrl.current);
-      photoPreviewUrl.current = URL.createObjectURL(file);
-      setPhotoPreview(photoPreviewUrl.current);
-      setFormData(prev => ({ ...prev, pas_foto: file }));
-      setPhotoCompressionInfo({
-        originalSizeFormatted: formatFileSize(file.size),
-        compressedSizeFormatted: formatFileSize(file.size),
-        isUnderTarget: file.size <= 100 * 1024,
-        savedPercent: 0
-      });
+      setPhotoCompressionError('Foto gagal diproses otomatis. Coba pilih file JPG atau PNG lain.');
+      e.target.value = '';
     } finally {
       setCompressingPhoto(false);
     }
@@ -137,6 +153,15 @@ export default function FormPendaftaran() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!maxFileSizeMb) {
+      setPdfCompressionError('Batas ukuran berkas gagal dimuat. Muat ulang halaman atau hubungi admin.');
+      e.target.value = '';
+      return;
+    }
+
+    setPdfCompressionError('');
+    setPdfCompressionInfo(null);
+    setFormData((prev) => ({ ...prev, file_surat_pengantar: null }));
     setCompressingPdf(true);
     try {
       const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -148,9 +173,17 @@ export default function FormPendaftaran() {
       } else if (isImage) {
         result = await convertScanImageToCompressedPdf(file, 100);
       } else {
-        alert('Format surat pengantar harus berupa file PDF atau scan dokumen JPG/PNG.');
+        setPdfCompressionError('Pilih berkas PDF atau scan surat berformat JPG/PNG.');
         e.target.value = '';
-        setCompressingPdf(false);
+        return;
+      }
+
+      const maxFileSizeBytes = maxFileSizeMb * 1024 * 1024;
+      if (result.file.size > maxFileSizeBytes) {
+        setPdfCompressionError(
+          `Ukuran surat setelah dikompresi masih ${formatFileSize(result.file.size)}. Batas dari admin adalah ${maxFileSizeMb} MB.`
+        );
+        e.target.value = '';
         return;
       }
 
@@ -158,13 +191,8 @@ export default function FormPendaftaran() {
       setPdfCompressionInfo(result);
     } catch (err) {
       console.error('Gagal mengompresi dokumen:', err);
-      setFormData(prev => ({ ...prev, file_surat_pengantar: file }));
-      setPdfCompressionInfo({
-        originalSizeFormatted: formatFileSize(file.size),
-        compressedSizeFormatted: formatFileSize(file.size),
-        isUnderTarget: file.size <= 100 * 1024,
-        savedPercent: 0
-      });
+      setPdfCompressionError('Dokumen gagal diproses otomatis. Coba pilih file lain atau simpan ulang sebagai PDF.');
+      e.target.value = '';
     } finally {
       setCompressingPdf(false);
     }
@@ -212,6 +240,42 @@ export default function FormPendaftaran() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    api.get('/pengaturan-kompresi')
+      .then((response) => {
+        const configuredMax = response.data?.data?.max_file_size_mb;
+        const configuredPhotoTarget = response.data?.data?.photo_target_size_kb;
+        if (
+          !Number.isInteger(configuredMax)
+          || configuredMax < 1
+          || configuredMax > 10
+          || !Number.isInteger(configuredPhotoTarget)
+          || configuredPhotoTarget < 50
+          || configuredPhotoTarget > 1024
+        ) {
+          throw new Error('Nilai batas ukuran dari server tidak valid.');
+        }
+        if (!cancelled) {
+          setMaxFileSizeMb(configuredMax);
+          setPhotoTargetSizeKb(configuredPhotoTarget);
+          setCompressionSettingsError('');
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setCompressionSettingsError(
+            error.response?.data?.message || error.message || 'Batas ukuran surat gagal dimuat.'
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -222,6 +286,31 @@ export default function FormPendaftaran() {
 
     if (compressingPhoto || compressingPdf) {
       alert('Sedang mengompresi berkas persyaratan, mohon tunggu sebentar sampai selesai.');
+      return;
+    }
+
+    if (maxFileSizeMb === null || photoTargetSizeKb === null) {
+      alert('Pengaturan kompresi berkas belum berhasil dimuat. Muat ulang halaman sebelum mengirim pendaftaran.');
+      return;
+    }
+
+    if (!formData.file_surat_pengantar) {
+      alert('Pilih surat pengantar terlebih dahulu.');
+      return;
+    }
+
+    if (formData.file_surat_pengantar.size > maxFileSizeMb * 1024 * 1024) {
+      alert(`Ukuran surat pengantar melebihi batas maksimum ${maxFileSizeMb} MB.`);
+      return;
+    }
+
+    if (!formData.pas_foto) {
+      alert('Pilih pas foto formal terlebih dahulu.');
+      return;
+    }
+
+    if (formData.pas_foto.size > photoTargetSizeKb * 1024) {
+      alert(`Ukuran pas foto melebihi target maksimum ${photoTargetSizeKb} KB.`);
       return;
     }
 
@@ -247,6 +336,9 @@ export default function FormPendaftaran() {
           'Content-Type': 'multipart/form-data',
         }
       });
+      if (response.data.email_notification?.sent === false && response.data.email_notification?.message) {
+        alert(response.data.email_notification.message);
+      }
       const updatedUser = response.data.data?.user;
       if (updatedUser) {
         setLoggedInUser(updatedUser);
@@ -254,10 +346,7 @@ export default function FormPendaftaran() {
       }
       setMyRegistration(response.data.data);
       setIsSubmitted(true);
-      const waInfo = response.data.whatsapp_notification;
-      if (waInfo) {
-        setWaNotification(waInfo);
-      }
+      setAdminWhatsAppLink(response.data.admin_whatsapp_notification?.url || '');
     } catch (error) {
       alert(error.response?.data?.message || 'Gagal mengirim pendaftaran. Periksa kembali kelengkapan formulir Anda.');
     } finally {
@@ -857,7 +946,7 @@ export default function FormPendaftaran() {
                           <div>
                             <div style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>Pengajuan Berhasil Dikirimkan</div>
                             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                              Diterima pada {formatDate(myRegistration.created_at || Date.now())}
+                              Diterima pada {formatDate(myRegistration.created_at || myRegistration.tanggal_daftar)}
                             </div>
                           </div>
                         </div>
@@ -904,6 +993,17 @@ export default function FormPendaftaran() {
                           <div style={{ fontSize: '12px', color: '#64748b' }}>
                             {regUser.no_hp || '-'}
                           </div>
+                          {adminWhatsAppLink && (
+                            <a
+                              href={adminWhatsAppLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '6px', color: '#15803d', fontSize: '12px', fontWeight: '700' }}
+                            >
+                              <MessageCircle size={14} />
+                              Beri tahu admin lewat WhatsApp
+                            </a>
+                          )}
                         </div>
                       </div>
                       
@@ -1390,7 +1490,7 @@ export default function FormPendaftaran() {
                         type="file" 
                         accept=".pdf,image/jpeg,image/png,.jpg,.jpeg,.png"
                         onChange={handleDocumentUpload}
-                        disabled={compressingPdf}
+                        disabled={compressingPdf || maxFileSizeMb === null}
                         style={{ opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: compressingPdf ? 'wait' : 'pointer' }}
                         required={!formData.file_surat_pengantar}
                       />
@@ -1417,6 +1517,13 @@ export default function FormPendaftaran() {
                             ? '✓ Dokumen siap dikirimkan'
                             : 'Klik atau seret file PDF surat pengantar (Bisa file PDF atau foto scan)'}
                       </p>
+                      <p style={{ margin: '0 0 6px', fontSize: '11px', color: compressionSettingsError ? '#b91c1c' : '#64748b' }} role={compressionSettingsError ? 'alert' : undefined}>
+                        {compressionSettingsError
+                          ? `Batas ukuran gagal dimuat: ${compressionSettingsError}`
+                          : maxFileSizeMb === null
+                            ? 'Memuat batas ukuran berkas...'
+                            : `Target kompresi 100 KB · Maksimal ukuran setelah kompresi ${maxFileSizeMb} MB`}
+                      </p>
 
                       {/* Info kompresi dokumen */}
                       {pdfCompressionInfo && !compressingPdf && (
@@ -1427,19 +1534,27 @@ export default function FormPendaftaran() {
                           gap: '6px',
                           padding: '4px 10px',
                           borderRadius: '8px',
-                          background: '#dcfce7',
-                          border: '1px solid #86efac',
+                          background: pdfCompressionInfo.isUnderTarget ? '#dcfce7' : '#fffbeb',
+                          border: `1px solid ${pdfCompressionInfo.isUnderTarget ? '#86efac' : '#fcd34d'}`,
                           fontSize: '11px',
                           fontWeight: '600',
-                          color: '#15803d'
+                          color: pdfCompressionInfo.isUnderTarget ? '#15803d' : '#92400e'
                         }}>
                           <span>
                             {pdfCompressionInfo.originalSizeFormatted !== pdfCompressionInfo.compressedSizeFormatted
                               ? `${pdfCompressionInfo.originalSizeFormatted} ➔ ${pdfCompressionInfo.compressedSizeFormatted}`
                               : `Ukuran: ${pdfCompressionInfo.compressedSizeFormatted}`}
                             {pdfCompressionInfo.savedPercent > 0 && ` (-${pdfCompressionInfo.savedPercent}%)`}
+                            {pdfCompressionInfo.isUnderTarget
+                              ? ' · Optimal'
+                              : ' · Sudah dioptimalkan, ukuran masih di atas target 100 KB'}
                           </span>
                         </div>
+                      )}
+                      {pdfCompressionError && (
+                        <p role="alert" style={{ margin: '8px 0 0', color: '#b91c1c', fontSize: '12px', fontWeight: '600' }}>
+                          {pdfCompressionError}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -1463,12 +1578,16 @@ export default function FormPendaftaran() {
                           type="file" 
                           accept="image/jpeg,image/png,image/jpg"
                           onChange={handlePhotoUpload}
-                          disabled={compressingPhoto}
+                          disabled={compressingPhoto || photoTargetSizeKb === null}
                           required={!formData.pas_foto}
                           style={{ display: 'block', width: '100%', fontSize: '13px', color: '#475569', cursor: compressingPhoto ? 'wait' : 'pointer' }}
                         />
                         <span style={{ display: 'block', fontSize: '11px', color: '#64748b', marginTop: '6px', lineHeight: '1.4' }}>
-                          Format: JPG, JPEG, PNG. Foto akan otomatis dikompres.
+                          {compressionSettingsError
+                            ? `Target kompresi gagal dimuat: ${compressionSettingsError}`
+                            : photoTargetSizeKb === null
+                              ? 'Memuat target kompresi pas foto...'
+                              : `Format: JPG, JPEG, PNG. Foto otomatis dikompres maksimal ${photoTargetSizeKb} KB.`}
                         </span>
 
                         {compressingPhoto && (
@@ -1499,6 +1618,11 @@ export default function FormPendaftaran() {
                               {photoCompressionInfo.savedPercent > 0 && ` (-${photoCompressionInfo.savedPercent}%)`}
                             </span>
                           </div>
+                        )}
+                        {photoCompressionError && (
+                          <p role="alert" style={{ margin: '8px 0 0', color: '#b91c1c', fontSize: '11px', fontWeight: '600' }}>
+                            {photoCompressionError}
+                          </p>
                         )}
                       </div>
                     </div>

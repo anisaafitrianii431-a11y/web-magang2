@@ -774,6 +774,28 @@
   box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
 }
 
+/* ── Ulasan Peserta ──────────────────────────────────────────── */
+.pd-review-section {
+  margin-top: 32px;
+}
+
+.pd-review-heading {
+  margin-bottom: 20px;
+}
+
+.pd-review-heading h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.pd-review-heading p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
 /* ── Panel Pintasan Menu ─────────────────────────────────────── */
 .pd-shortcuts-grid {
   display: grid;

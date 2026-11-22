@@ -7,7 +7,6 @@ import DetailAktivitas from '../components/landing/DetailAktivitas';
 import LoginForm from '../components/landing/LoginForm';
 import RegisterForm from '../components/landing/RegisterForm';
 import Footer from '../components/landing/Footer';
-import WhatsAppButton from '../components/landing/WhatsAppButton';
 import { LogIn, UserPlus, Zap, ArrowLeft } from 'lucide-react';
 import { getRoleHome, getStoredUser } from '../utils/auth';
 import api from '../services/api';
@@ -218,7 +217,6 @@ function LandingPage({ initialAuthTab }) {
 
       {activeSection !== 'auth' && (
         <>
-          <WhatsAppButton />
           <Footer />
         </>
       )}

@@ -20,7 +20,6 @@ function WhatsAppButton() {
   const [companyName, setCompanyName] = useState('Portal Magang');
 
   useEffect(() => {
-    // Fetch Profil Perusahaan dari Database API (/beranda/profil)
     fetch(`${API_BASE_URL || 'http://127.0.0.1:8000/api'}/beranda/profil`, {
       headers: { 'Accept': 'application/json' }
     })
@@ -29,7 +28,6 @@ function WhatsAppButton() {
         const profil = resData.data;
         if (profil) {
           if (profil.nama_perusahaan) setCompanyName(profil.nama_perusahaan);
-          // Ambil secara murni nomor dari kolom telepon pada profil perusahaan
           if (profil.telepon) {
             setTelepon(profil.telepon);
           }

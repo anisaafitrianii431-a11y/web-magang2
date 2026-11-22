@@ -1,13 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, MessageCircle, Pencil, Trash2 } from 'lucide-react';
 import { API_BASE_URL } from '../config/api';
+import PengaturanKompresi from '../pages/admin/PengaturanKompresi';
 
 export default function DaftarPemagang() {
   const tanggalSelesaiRef = useRef(null);
   const [dataPendaftaran, setDataPendaftaran] = useState([]);
   const [listPeriode, setListPeriode] = useState([]);
   const [listPembimbing, setListPembimbing] = useState([]);
+  const [confirmDelete, setConfirmDelete] = useState(null); // item yg akan dihapus
+  const [deleting, setDeleting] = useState(false);
+  const [acceptanceNotice, setAcceptanceNotice] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -73,22 +77,54 @@ export default function DaftarPemagang() {
       payload.append('file_surat_balasan', formData.file_surat_balasan);
     }
 
+    const whatsappWindow = formData.status === 'Pemagang Aktif'
+      ? window.open('about:blank', '_blank')
+      : null;
+
     try {
-      await api.post(`/pendaftaran/${editingId}/status`, payload, {
+      const { data: result } = await api.post(`/pendaftaran/${editingId}/status`, payload, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
-      alert('Status pendaftaran berhasil diupdate');
+      if (formData.status === 'Pemagang Aktif') {
+        const emailStatus = result.email_notification?.sent
+          ? 'Email penerimaan terkirim.'
+          : result.email_notification?.already_sent
+            ? 'Email penerimaan sudah terkirim sebelumnya.'
+            : result.email_notification?.message || 'Email penerimaan belum terkirim.';
+        const whatsappUrl = result.whatsapp_notification?.url;
+        let whatsappStatus = result.whatsapp_notification?.message || 'Nomor WhatsApp peserta belum tersedia.';
+        if (whatsappUrl && whatsappWindow) {
+          whatsappWindow.opener = null;
+          whatsappWindow.location.href = whatsappUrl;
+          whatsappStatus = 'WhatsApp terbuka di tab baru. Pesan hanya terkirim setelah Anda menekan Kirim.';
+        } else if (whatsappUrl) {
+          whatsappStatus = 'Browser memblokir tab WhatsApp. Izinkan pop-up, lalu simpan perubahan kembali untuk membuka WhatsApp.';
+        } else if (whatsappWindow && !whatsappWindow.closed) {
+          whatsappWindow.close();
+        }
+        setAcceptanceNotice({
+          emailStatus,
+          whatsappStatus,
+        });
+      } else {
+        setAcceptanceNotice(null);
+        alert('Status pendaftaran berhasil diupdate.');
+      }
       setEditingId(null);
       fetchData(); // Refresh
     } catch (error) {
+      if (whatsappWindow && !whatsappWindow.closed) {
+        whatsappWindow.close();
+      }
       console.log(error.response?.data);
       alert(`Gagal mengupdate status pendaftaran: ${error.response?.data?.message || JSON.stringify(error.response?.data?.errors)}`);
     }
   };
 
   const handleEdit = (item) => {
+    setAcceptanceNotice(null);
     setEditingId(item.id);
     setFormData({
       nama_user: item.user?.nama || item.user?.name || '',
@@ -110,17 +146,36 @@ export default function DaftarPemagang() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = async () => {
-    alert('Fitur hapus belum tersedia di API');
+  const handleDelete = (item) => {
+    setConfirmDelete(item);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/pendaftaran/${confirmDelete.id}`);
+      setConfirmDelete(null);
+      fetchData();
+    } catch (error) {
+      alert(`Gagal menghapus data: ${error.response?.data?.message || 'Terjadi kesalahan, silakan coba lagi.'}`);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
+    <>
     <div style={{ fontFamily: "'Inter', 'Segoe UI', Arial, sans-serif" }}>
       {editingId === null && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
           <h2 style={{ margin: 0, color: '#0f172a', fontSize: '20px' }}>Data Pendaftaran & Pemagang</h2>
           <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: '14px' }}>Kelola informasi peserta, instansi mitra, serta status pemagang.</p>
         </div>
+      </div>}
+
+      {editingId === null && <div style={{ marginBottom: '22px' }}>
+        <PengaturanKompresi />
       </div>}
 
       {/* Form Pengelolaan Data (Hanya Muncul Saat Edit) */}
@@ -185,8 +240,8 @@ export default function DaftarPemagang() {
               <h4 style={{ margin: '0', fontSize: '14px', color: '#334155', borderBottom: '1px solid #cbd5e1', paddingBottom: '8px' }}>Tindakan Admin</h4>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>Upload Surat Balasan (.pdf) <span style={{ color: '#ef4444' }}>*</span></label>
-                <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#64748b' }}>Berikan surat balasan persetujuan/penolakan resmi kepada pemagang.</p>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>Upload Surat Penerimaan (.pdf) <span style={{ color: '#64748b' }}>(opsional)</span></label>
+                <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#64748b' }}>Surat penerimaan PAM TECHNO akan dibuat otomatis saat peserta diterima. Unggah PDF hanya jika ingin menggunakan surat pengganti.</p>
                 <div style={{ position: 'relative', width: '100%', padding: '15px', border: '1px dashed #cbd5e1', borderRadius: '6px', textAlign: 'center', background: 'white', cursor: 'pointer' }}>
                   <input
                     type="file"
@@ -310,6 +365,17 @@ export default function DaftarPemagang() {
         </div>
       )}
 
+      {editingId === null && acceptanceNotice && (
+        <div role="status" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '16px 18px', borderRadius: '10px', marginBottom: '20px' }}>
+          <strong>Status diterima dan surat penerimaan tersedia.</strong>
+          <div style={{ marginTop: '6px', fontSize: '13px' }}>{acceptanceNotice.emailStatus}</div>
+          <div style={{ marginTop: '6px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <MessageCircle size={15} />
+            {acceptanceNotice.whatsappStatus}
+          </div>
+        </div>
+      )}
+
       {/* Tabel Rekapitulasi Data Pendaftaran */}
       {editingId === null && <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
         <div style={{ padding: '15px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -360,19 +426,25 @@ export default function DaftarPemagang() {
                       {item.status}
                     </span>
                   </td>
-                  <td style={{ padding: '15px 20px', textAlign: 'right' }}>
+                  <td style={{ padding: '15px 20px', textAlign: 'right', whiteSpace: 'nowrap', minWidth: '150px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
                     <button
+                      type="button"
                       onClick={() => handleEdit(item)}
-                      style={{ background: 'white', color: '#0ea5e9', border: '1px solid #bae6fd', padding: '6px 12px', marginRight: '8px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '7px 11px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '700', whiteSpace: 'nowrap' }}
                     >
+                      <Pencil size={14} />
                       Edit
                     </button>
                     <button
-                      onClick={handleDelete}
-                      style={{ background: 'white', color: '#ef4444', border: '1px solid #fecaca', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                      type="button"
+                      onClick={() => handleDelete(item)}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3', padding: '7px 11px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '700', whiteSpace: 'nowrap' }}
                     >
+                      <Trash2 size={14} />
                       Hapus
                     </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -388,5 +460,90 @@ export default function DaftarPemagang() {
         </div>
       </div>}
     </div>
+
+      {/* Modal Konfirmasi Hapus */}
+      {confirmDelete && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(15,23,42,0.55)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(3px)',
+          padding: '20px',
+        }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '16px',
+            padding: '32px 28px',
+            maxWidth: '420px',
+            width: '100%',
+            boxShadow: '0 20px 60px rgba(15,23,42,0.18)',
+            textAlign: 'center',
+          }}>
+            {/* Ikon peringatan */}
+            <div style={{
+              width: '56px', height: '56px', borderRadius: '50%',
+              background: '#fee2e2', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', margin: '0 auto 18px', fontSize: '26px',
+            }}>
+              🗑️
+            </div>
+            <h3 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>
+              Hapus Pendaftaran?
+            </h3>
+            <p style={{ margin: '0 0 6px', fontSize: '14px', color: '#475569', lineHeight: '1.5' }}>
+              Anda akan menghapus data pendaftaran milik:
+            </p>
+            <p style={{ margin: '0 0 6px', fontSize: '15px', fontWeight: '700', color: '#1e293b' }}>
+              {confirmDelete.user?.nama || confirmDelete.user?.name || 'Peserta Magang'}
+            </p>
+            <p style={{ margin: '0 0 20px', fontSize: '12px', color: '#94a3b8' }}>
+              NIM: {confirmDelete.user?.nim || '-'} &nbsp;•&nbsp; {confirmDelete.asal_instansi || '-'}
+            </p>
+            <div style={{
+              background: '#fff7ed', border: '1px solid #fed7aa',
+              borderRadius: '8px', padding: '10px 14px', marginBottom: '24px',
+              textAlign: 'left',
+            }}>
+              <p style={{ margin: 0, fontSize: '12px', color: '#c2410c', fontWeight: '600' }}>
+                ⚠️ Tindakan ini tidak dapat dibatalkan. Semua file terkait (surat pengantar &amp; surat balasan) juga akan ikut dihapus.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(null)}
+                disabled={deleting}
+                style={{
+                  flex: 1, padding: '10px 20px',
+                  background: '#f8fafc', color: '#475569',
+                  border: '1px solid #e2e8f0', borderRadius: '8px',
+                  fontWeight: '600', fontSize: '14px', cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                style={{
+                  flex: 1, padding: '10px 20px',
+                  background: deleting ? '#fca5a5' : '#ef4444',
+                  color: '#fff',
+                  border: 'none', borderRadius: '8px',
+                  fontWeight: '700', fontSize: '14px',
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit',
+                  transition: 'background .15s',
+                }}
+              >
+                {deleting ? 'Menghapus…' : '🗑️ Ya, Hapus'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

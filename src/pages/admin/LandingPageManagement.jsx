@@ -46,7 +46,7 @@ const emptyProfile = {
     alamat: "",
     email: "",
     telepon: "",
-    website: "",
+    instagram: "",
 };
 
 const emptyAlumni = {
@@ -264,6 +264,7 @@ function LandingPageManagement() {
         aktivitas: data.aktivitas_magang.length,
         reviews: data.komentar_aplikasi.filter((item) => item.status === "published").length,
     };
+    const publicActivityCount = data.aktivitas_magang.filter((item) => item.status === "active").length;
 
     return (
         <section className="landing-admin">
@@ -287,7 +288,7 @@ function LandingPageManagement() {
                     </div>
                     <div className="landing-admin-stat">
                         <span className="landing-admin-stat-icon teal"><CalendarDays size={19} /></span>
-                        <div><strong>{counts.aktivitas}</strong><small>Aktivitas publik</small></div>
+                        <div><strong>{publicActivityCount}</strong><small>Aktivitas publik</small></div>
                     </div>
                     <div className="landing-admin-stat">
                         <span className="landing-admin-stat-icon amber"><MessageSquareText size={19} /></span>
@@ -344,7 +345,7 @@ function LandingPageManagement() {
                                     <ProfileField label="Alamat" value={profile.alamat} />
                                     <ProfileField label="Email" value={profile.email} />
                                     <ProfileField label="Telepon" value={profile.telepon} />
-                                    <ProfileField label="Website" value={profile.website} />
+                                    <ProfileField label="Instagram" value={profile.instagram} />
                                 </div>
                             ) : (
                                 <div className="landing-admin-empty">Profil perusahaan belum diatur. Lengkapi profil agar informasi tampil pada halaman publik.</div>
@@ -492,7 +493,7 @@ function LandingPageManagement() {
                                     <FormField label="Alamat" name="alamat" value={form.alamat} onChange={setForm} />
                                     <FormField label="Email" name="email" value={form.email} onChange={setForm} type="email" />
                                     <FormField label="Telepon" name="telepon" value={form.telepon} onChange={setForm} />
-                                    <FormField label="Website" name="website" value={form.website} onChange={setForm} type="url" />
+                                    <FormField label="Instagram" name="instagram" value={form.instagram} onChange={setForm} />
                                 </>
                             )}
                             {formType === "alumni" && (

@@ -1,5 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { Target, Compass, Mail, MapPin, Phone, Globe } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Target, Compass, Mail, MapPin, Phone, Camera } from 'lucide-react';
+
+const getInstagramUrl = (value) => {
+  const account = value?.trim();
+  if (!account) return '';
+
+  const match = account.match(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\/([^/?#]+)/i);
+  const handle = (match?.[1] || account).replace(/^@/, '');
+
+  return `https://www.instagram.com/${encodeURIComponent(handle)}/`;
+};
 
 function ProfilKantor() {
   const [profil, setProfil] = useState(null);
@@ -95,13 +105,13 @@ function ProfilKantor() {
             </div>
           </div>
         )}
-        {profil?.website && (
+        {profil?.instagram && (
           <div className="contact-item">
-            <Globe className="contact-icon" size={20} />
+            <Camera className="contact-icon" size={20} />
             <div>
-              <span className="contact-label">Website</span>
-              <a href={profil.website} target="_blank" rel="noreferrer" className="contact-link">
-                {profil.website}
+              <span className="contact-label">Instagram</span>
+              <a href={getInstagramUrl(profil.instagram)} target="_blank" rel="noreferrer" className="contact-link">
+                {profil.instagram}
               </a>
             </div>
           </div>
