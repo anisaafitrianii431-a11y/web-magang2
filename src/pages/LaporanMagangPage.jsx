@@ -365,7 +365,10 @@ export default function LaporanMagangPage({
                   const s = (item.status_laporan || '').toLowerCase();
                   const isApproved = s === 'disetujui' || s === 'selesai';
                   const isRevisi = s === 'revisi';
-                  const statusLabel = getNormalizedStatus(item.status_laporan);
+                  const statusLabel = item.status_laporan === 'Disetujui'
+                    ? 'Siap Dinilai'
+                    : getNormalizedStatus(item.status_laporan);
+                  const isFinalPdfStatusEnabled = ['disetujui', 'selesai'].includes(s);
 
                   return (
                     <tr key={item.id_laporan}>
@@ -445,15 +448,27 @@ export default function LaporanMagangPage({
                           </button>
 
                           {/* Tombol Khusus Pembimbing Finalisasi */}
-                          {currentRole === 'pembimbing' && isApproved && (
+                          {currentRole === 'pembimbing' && (
                             <button
                               type="button"
                               className="action-btn"
                               onClick={() => onOpenFinalize(item)}
+                              disabled={!isFinalPdfStatusEnabled}
+                              title={item.status_laporan === 'Disetujui'
+                                ? 'Buat atau perbarui PDF final sebelum laporan mendapat penilaian akhir.'
+                                : item.status_laporan === 'Selesai'
+                                  ? 'Perbarui PDF final laporan.'
+                                  : 'PDF final tersedia setelah laporan disetujui.'}
                               style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0' }}
                             >
                               <FileCheck size={13} />
-                              <span>{item.file_pdf_final ? 'PDF Final' : 'TTD & Stempel'}</span>
+                              <span>{item.status_laporan !== 'Selesai'
+                                ? item.status_laporan === 'Disetujui'
+                                  ? 'PDF Final (nilai dulu)'
+                                  : 'PDF Final (setelah Selesai)'
+                                : item.file_pdf_final
+                                  ? 'Perbarui PDF Final'
+                                  : 'Tanda Tangan & Stempel'}</span>
                             </button>
                           )}
 

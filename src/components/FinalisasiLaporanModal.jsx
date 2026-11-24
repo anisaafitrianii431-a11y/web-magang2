@@ -2,15 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 
 const endpoint = '/v1/laporan-magang';
-
-function isValidPlacement(placement) {
-  return placement.x >= 0
-    && placement.y >= 0
-    && placement.width > 0
-    && placement.height > 0
-    && placement.x + placement.width <= 100
-    && placement.y + placement.height <= 100;
-}
+const signaturePlacement = { x: 64, y: 6, width: 30, height: 18 };
 
 export default function FinalisasiLaporanModal({
   laporan,
@@ -21,38 +13,107 @@ export default function FinalisasiLaporanModal({
 }) {
   const [sourcePdf, setSourcePdf] = useState(null);
   const [signature, setSignature] = useState(null);
-  const [stamp, setStamp] = useState(null);
-  const [signaturePlacement, setSignaturePlacement] = useState({ x: 54, y: 8, width: 24, height: 8 });
-  const [stampPlacement, setStampPlacement] = useState({ x: 80, y: 8, width: 12, height: 12 });
+  const [pageCount, setPageCount] = useState(0);
+  const [assetsConfigured, setAssetsConfigured] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [generatedFile, setGeneratedFile] = useState(null);
   const [isLoadingSource, setIsLoadingSource] = useState(true);
+  const [isLoadingAssets, setIsLoadingAssets] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [sourceLabel, setSourceLabel] = useState('PDF yang diunggah');
   const [error, setError] = useState('');
   const googleDocAvailable = Boolean(
     laporan.link_google_doc || laporan.riwayat_revisi?.some((revision) => revision.link_google_doc)
   );
 
+  const setSourceDocument = async (bytes, label) => {
+    const { PDFDocument } = await import('pdf-lib');
+    const document = await PDFDocument.load(bytes);
+    const totalPages = document.getPageCount();
+    if (totalPages < 1) throw new Error('PDF laporan tidak memiliki halaman.');
+
+    setSourcePdf(bytes);
+    setPageCount(totalPages);
+    setSourceLabel(label);
+  };
+
   useEffect(() => {
     let active = true;
-    api.get(`${endpoint}/${laporan.id_laporan}/download?source=1`, { responseType: 'blob' })
-      .then(async (response) => {
-        const bytes = new Uint8Array(await response.data.arrayBuffer());
-        if (active) setSourcePdf(bytes);
-      })
-      .catch((requestError) => {
-        if (active) {
-          setError(requestError.response?.data?.message || 'PDF laporan sumber gagal dimuat.');
+    const loadAssets = async () => {
+      try {
+        const response = await api.get(`${endpoint}/pdf-assets`);
+        const configured = Boolean(response.data?.data?.configured);
+
+        if (configured) {
+          const signatureResponse = await api.get(`${endpoint}/pdf-assets/signature`, {
+            responseType: 'blob',
+          });
+          if (!active) return;
+
+          setSignature(new File(
+            [signatureResponse.data],
+            'signature',
+            { type: signatureResponse.data.type || 'image/png' }
+          ));
         }
-      })
-      .finally(() => {
+
+        if (active) setAssetsConfigured(configured);
+      } catch (requestError) {
+        if (active) {
+          setError(requestError.response?.data?.message || 'Foto tanda tangan gagal dimuat.');
+        }
+      } finally {
+        if (active) setIsLoadingAssets(false);
+      }
+    };
+
+    void loadAssets();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadSourcePdf = async () => {
+      try {
+        const useGoogleDoc = !laporan.file_laporan_pdf && googleDocAvailable;
+        const response = await api.get(
+          useGoogleDoc
+            ? `${endpoint}/${laporan.id_laporan}/google-doc-pdf`
+            : `${endpoint}/${laporan.id_laporan}/download?source=1`,
+          { responseType: 'blob' }
+        );
+        const bytes = new Uint8Array(await response.data.arrayBuffer());
+        if (active) {
+          await setSourceDocument(
+            bytes,
+            useGoogleDoc ? 'Google Docs/Drive versi terbaru' : 'PDF yang diunggah'
+          );
+        }
+      } catch (requestError) {
+        if (active) {
+          let responseData = requestError.response?.data;
+          if (responseData instanceof Blob) {
+            try {
+              responseData = JSON.parse(await responseData.text());
+            } catch {
+              responseData = null;
+            }
+          }
+          setError(responseData?.message || 'PDF laporan sumber gagal dimuat.');
+        }
+      } finally {
         if (active) setIsLoadingSource(false);
-      });
+      }
+    };
+
+    loadSourcePdf();
 
     return () => {
       active = false;
     };
-  }, [laporan.id_laporan]);
+  }, [laporan.file_laporan_pdf, laporan.id_laporan, googleDocAvailable]);
 
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -73,8 +134,7 @@ export default function FinalisasiLaporanModal({
         responseType: 'blob',
       });
       const bytes = new Uint8Array(await response.data.arrayBuffer());
-      setSourcePdf(bytes);
-      setSourceLabel('Google Docs/Drive versi terbaru');
+      await setSourceDocument(bytes, 'Google Docs/Drive versi terbaru');
     } catch (requestError) {
       const responseData = requestError.response?.data;
       const message = responseData instanceof Blob
@@ -86,96 +146,124 @@ export default function FinalisasiLaporanModal({
     }
   };
 
-  const updatePlacement = (setter, placement, field, value) => {
-    setter({ ...placement, [field]: Number(value) });
-    clearPreview();
-  };
-
-  const handlePreview = async () => {
-    setError('');
+  const generateFinalPdf = async () => {
     if (!sourcePdf) {
       setError('PDF laporan sumber belum siap.');
-      return;
+      return null;
     }
-    if (!signature || !stamp) {
-      setError('Unggah gambar tanda tangan dan stempel terlebih dahulu.');
-      return;
+    if (isLoadingAssets) {
+      setError('Pengaturan foto tanda tangan masih dimuat.');
+      return null;
     }
-    if (!isValidPlacement(signaturePlacement) || !isValidPlacement(stampPlacement)) {
-      setError('Posisi dan ukuran gambar harus berada dalam batas halaman (0–100%).');
-      return;
+    if (!signature) {
+      setError('Unggah foto tanda tangan yang sudah berada di atas stempel untuk mengaktifkan penggunaan otomatis.');
+      return null;
     }
 
     try {
       const { PDFDocument } = await import('pdf-lib');
       const document = await PDFDocument.load(sourcePdf);
       const pages = document.getPages();
-      const page = pages[pages.length - 1];
-      if (!page) throw new Error('PDF laporan tidak memiliki halaman.');
 
       const addImage = async (file, placement) => {
+        const page = pages[pages.length - 1];
+        if (!page) throw new Error('Halaman tujuan tanda tangan tidak valid.');
         const bytes = await file.arrayBuffer();
         const image = file.type === 'image/png'
           ? await document.embedPng(bytes)
           : file.type === 'image/jpeg' || file.type === 'image/jpg'
             ? await document.embedJpg(bytes)
             : null;
-        if (!image) throw new Error('Gunakan gambar PNG atau JPG untuk tanda tangan dan stempel.');
+        if (!image) throw new Error('Gunakan foto tanda tangan PNG atau JPG.');
 
         const { width, height } = page.getSize();
+        const imageSize = image.scaleToFit(
+          width * placement.width / 100,
+          height * placement.height / 100
+        );
         page.drawImage(image, {
           x: width * placement.x / 100,
           y: height * placement.y / 100,
-          width: width * placement.width / 100,
-          height: height * placement.height / 100,
+          ...imageSize,
         });
       };
 
       await addImage(signature, signaturePlacement);
-      await addImage(stamp, stampPlacement);
       const bytes = await document.save();
-      const file = new Blob([bytes], { type: 'application/pdf' });
-      setGeneratedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+      return new Blob([bytes], { type: 'application/pdf' });
     } catch (generationError) {
       setError(generationError.message || 'PDF final gagal dibuat. Pastikan PDF laporan tidak rusak atau terkunci.');
+      return null;
     }
   };
 
-  const handleSave = async () => {
-    if (!generatedFile) return;
-    const formData = new FormData();
-    formData.append('file', generatedFile, `laporan-final-${laporan.id_laporan}.pdf`);
-    const saved = await onSave(formData);
-    if (saved) onClose();
+  const handlePreview = async () => {
+    setError('');
+    setIsGenerating(true);
+    try {
+      const file = await generateFinalPdf();
+      if (!file) return;
+      setGeneratedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const renderPlacement = (label, placement, setter) => (
-    <fieldset style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '0.75rem', marginBottom: '1rem' }}>
-      <legend style={{ padding: '0 0.35rem', fontWeight: 700 }}>{label}</legend>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '0.6rem' }}>
-        {[
-          ['x', 'Kiri (%)'],
-          ['y', 'Bawah (%)'],
-          ['width', 'Lebar (%)'],
-          ['height', 'Tinggi (%)'],
-        ].map(([field, title]) => (
-          <label className="form-group" key={field} style={{ marginBottom: 0 }}>
-            <span className="form-label">{title}</span>
-            <input
-              className="form-control"
-              type="number"
-              min="0"
-              max="100"
-              step="1"
-              value={placement[field]}
-              onChange={(event) => updatePlacement(setter, placement, field, event.target.value)}
-            />
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  );
+  const handleDownload = () => {
+    if (!generatedFile) return;
+    const fileUrl = URL.createObjectURL(generatedFile);
+    const link = document.createElement('a');
+    link.href = fileUrl;
+    link.download = `laporan-final-${laporan.id_laporan}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(fileUrl), 30000);
+  };
+
+  const handleSave = async () => {
+    setError('');
+    setIsGenerating(true);
+    try {
+      if (!assetsConfigured) {
+        if (!signature) {
+          setError('Unggah foto tanda tangan yang sudah berada di atas stempel untuk mengaktifkan penggunaan otomatis.');
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('signature', signature);
+        try {
+          await api.post(`${endpoint}/pdf-assets`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          setAssetsConfigured(true);
+        } catch (requestError) {
+          const validationErrors = requestError.response?.data?.errors;
+          setError(validationErrors
+            ? Object.values(validationErrors).flat().join(' ')
+            : requestError.response?.data?.message || 'Foto tanda tangan gagal disimpan.');
+          return;
+        }
+      }
+
+      const file = generatedFile || await generateFinalPdf();
+      if (!file) return;
+
+      if (!generatedFile) {
+        setGeneratedFile(file);
+        setPreviewUrl(URL.createObjectURL(file));
+      }
+
+      const formData = new FormData();
+      formData.append('file', file, `laporan-final-${laporan.id_laporan}.pdf`);
+      const saved = await onSave(formData);
+      if (saved) onClose();
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   return (
     <div className="modal-overlay">
@@ -187,7 +275,7 @@ export default function FinalisasiLaporanModal({
 
         <div className="modal-body">
           <p style={{ color: '#475569', marginTop: 0 }}>
-            {laporan.judul_laporan} — tanda tangan dan stempel ditempatkan pada halaman terakhir. Posisi diukur dari kiri dan bawah halaman.
+            {laporan.judul_laporan} — foto tanda tangan yang sudah berada di atas stempel otomatis ditempatkan pada halaman terakhir.
           </p>
           <p style={{ color: '#475569', marginTop: '-0.5rem' }}>
             Sumber PDF: <strong>{sourceLabel}</strong>
@@ -208,44 +296,52 @@ export default function FinalisasiLaporanModal({
             </button>
           )}
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="signature-image">Gambar tanda tangan (PNG/JPG)</label>
-            <input
-              id="signature-image"
-              className="form-control"
-              type="file"
-              accept="image/png,image/jpeg"
-              onChange={(event) => {
-                setSignature(event.target.files?.[0] || null);
-                clearPreview();
-              }}
-            />
-          </div>
-          {renderPlacement('Posisi tanda tangan', signaturePlacement, setSignaturePlacement)}
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="stamp-image">Gambar stempel instansi (PNG/JPG)</label>
-            <input
-              id="stamp-image"
-              className="form-control"
-              type="file"
-              accept="image/png,image/jpeg"
-              onChange={(event) => {
-                setStamp(event.target.files?.[0] || null);
-                clearPreview();
-              }}
-            />
-          </div>
-          {renderPlacement('Posisi stempel', stampPlacement, setStampPlacement)}
+          {isLoadingAssets ? (
+            <p style={{ color: '#475569' }}>Memuat pengaturan foto tanda tangan...</p>
+          ) : assetsConfigured ? (
+            <p style={{ color: '#047857', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '0.75rem' }}>
+              Foto tanda tangan di atas stempel sudah tersimpan dan akan digunakan otomatis pada halaman terakhir
+              {pageCount ? ` (halaman ${pageCount})` : ''}.
+            </p>
+          ) : (
+            <>
+              <p style={{ color: '#475569' }}>
+                Unggah foto gabungan satu kali. Foto tersebut akan digunakan otomatis untuk laporan berikutnya.
+              </p>
+              <div className="form-group">
+                <label className="form-label" htmlFor="signature-image">Foto tanda tangan di atas stempel (PNG/JPG)</label>
+                <input
+                  id="signature-image"
+                  className="form-control"
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  onChange={(event) => {
+                    setSignature(event.target.files?.[0] || null);
+                    clearPreview();
+                  }}
+                />
+              </div>
+            </>
+          )}
 
           <button
             type="button"
             className="btn-secondary"
             onClick={handlePreview}
-            disabled={isLoadingSource || !sourcePdf || isSaving}
+            disabled={isLoadingSource || isLoadingAssets || !sourcePdf || isSaving || isGenerating}
           >
-            {isLoadingSource ? 'Memuat PDF sumber...' : 'Buat / Perbarui Pratinjau'}
+            {isLoadingSource ? 'Memuat PDF sumber...' : isGenerating ? 'Membuat PDF...' : 'Buat / Perbarui Pratinjau'}
           </button>
+          {generatedFile && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={handleDownload}
+              style={{ marginLeft: '0.5rem' }}
+            >
+              Unduh PDF Final
+            </button>
+          )}
 
           {previewUrl && (
             <div style={{ marginTop: '1rem' }}>
@@ -261,8 +357,8 @@ export default function FinalisasiLaporanModal({
 
         <div className="modal-footer">
           <button type="button" className="btn-secondary" onClick={onClose} disabled={isSaving}>Batal</button>
-          <button type="button" className="btn-primary" onClick={handleSave} disabled={!generatedFile || isSaving}>
-            {isSaving ? 'Menyimpan...' : 'Simpan PDF Final'}
+          <button type="button" className="btn-primary" onClick={handleSave} disabled={isLoadingSource || isLoadingAssets || !sourcePdf || isSaving || isGenerating}>
+            {isSaving ? 'Menyimpan...' : isGenerating ? 'Membuat PDF...' : 'Simpan PDF Final'}
           </button>
         </div>
       </div>

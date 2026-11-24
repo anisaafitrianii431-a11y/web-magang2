@@ -434,20 +434,43 @@ function Riwayat() {
                 return null;
             }
         })();
-        const supervisorName = currentUser?.name || currentUser?.nama || "Ibrahim Saputra, S.Kom";
+        const isParticipant = role !== "admin" && role !== "pembimbing";
+        const ownName = currentUser?.name || currentUser?.nama || "Peserta Magang";
+        const ownCode = currentUser?.participant_code
+            || currentUser?.nim
+            || currentUser?.npm
+            || (currentUser?.id ? `USER-${currentUser.id}` : "peserta");
+        const normalizedOwnName = ownName.trim().toLowerCase().replace(/\s+/g, " ");
+        const ownParticipant = participantsList.find((participant) => (
+            currentUser?.id
+            && participant.userId
+            && String(participant.userId) === String(currentUser.id)
+        )) || participantsList.find((participant) => (
+            participant.name.trim().toLowerCase() === normalizedOwnName
+        )) || {
+            code: ownCode,
+            userId: currentUser?.id,
+            name: ownName,
+            institution: currentUser?.instansi || currentUser?.institution || "Sekolah Tinggi Teknologi Payakumbuh",
+            codes: [ownCode],
+            names: [
+                normalizedOwnName,
+                normalizedOwnName.replace(/h/g, "").replace(/n+/g, "n"),
+            ],
+        };
+        const supervisorRecord = data.find((item) => item.pembimbing_name || item.supervisor_name);
+        const supervisorName = isParticipant
+            ? supervisorRecord?.pembimbing_name || supervisorRecord?.supervisor_name || "Belum ditentukan"
+            : currentUser?.name || currentUser?.nama || "Ibrahim";
 
-        const isParticipantRole = role !== "admin" && role !== "pembimbing";
-        const targetList = isParticipantRole
-            ? [{
-                code: currentUser?.participant_code || (currentUser?.id ? `USER-${currentUser.id}` : "me"),
-                userId: currentUser?.id,
-                name: currentUser?.name || currentUser?.nama || "Peserta Magang",
-                institution: currentUser?.instansi || currentUser?.institution || "Sekolah Tinggi Teknologi Payakumbuh"
-            }]
-            : selectedParticipant !== "all"
-                ? (participantsList.filter((p) => p.code === selectedParticipant).length > 0
-                    ? participantsList.filter((p) => p.code === selectedParticipant)
-                    : [{ code: selectedParticipant, name: "Peserta Magang", institution: "Sekolah Tinggi Teknologi Payakumbuh" }])
+        const exportParticipantCode = isParticipant ? ownParticipant.code : selectedParticipant;
+        const isIndividualExport = isParticipant || exportParticipantCode !== "all";
+        const targetList = isParticipant
+            ? [ownParticipant]
+            : exportParticipantCode !== "all"
+                ? (participantsList.filter((p) => p.code === exportParticipantCode).length > 0
+                    ? participantsList.filter((p) => p.code === exportParticipantCode)
+                    : [{ code: exportParticipantCode, name: "Peserta Magang", institution: "Sekolah Tinggi Teknologi Payakumbuh" }])
                 : participantsList;
 
         const institutionName = targetList.find((p) => p.institution && p.institution !== "........................................................")?.institution
@@ -513,7 +536,7 @@ function Riwayat() {
             };
         });
 
-        if (selectedParticipant !== "all" && targetList.length) {
+        if (isIndividualExport && targetList.length) {
             targetList.forEach((selectedPerson, personIndex) => {
                 if (personIndex > 0) doc.addPage();
                 const reportInstitutionName = selectedPerson.institution
@@ -909,7 +932,7 @@ function Riwayat() {
             }
         }
 
-        const filename = (selectedParticipant !== "all" || isParticipantRole)
+        const filename = isIndividualExport
             ? `laporan-rekap-absensi-${(targetList[0]?.name || "peserta").toLowerCase().replace(/\s+/g, "-")}-${activeMonth || "semua"}.pdf`
             : `laporan-rekap-absensi-bulanan-${activeMonth || "semua"}.pdf`;
         doc.save(filename);
@@ -1355,6 +1378,32 @@ function Riwayat() {
                             </div>
 
                             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                {role !== "pembimbing" && role !== "admin" && (
+                                    <button
+                                        type="button"
+                                        onClick={exportMonthlyPdf}
+                                        disabled={loading || !filteredData.length}
+                                        style={{
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: "6px",
+                                            padding: "7px 14px",
+                                            borderRadius: "8px",
+                                            background: "#2563eb",
+                                            border: "1.5px solid #2563eb",
+                                            color: "#ffffff",
+                                            fontSize: "12px",
+                                            fontWeight: 650,
+                                            cursor: loading || !filteredData.length ? "not-allowed" : "pointer",
+                                            opacity: loading || !filteredData.length ? 0.5 : 1,
+                                            transition: "all 0.15s ease"
+                                        }}
+                                        title="Unduh laporan absensi pribadi dalam PDF"
+                                    >
+                                        <Download size={13} />
+                                        <span>Unduh PDF Absensi Saya</span>
+                                    </button>
+                                )}
                                 <button
                                     type="button"
                                     onClick={loadData}

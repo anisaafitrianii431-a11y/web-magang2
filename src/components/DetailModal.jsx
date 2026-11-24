@@ -33,7 +33,7 @@ export default function DetailModal({ isOpen, onClose, laporan, canModerate = fa
       document.body.appendChild(link);
       link.click();
       link.remove();
-      URL.revokeObjectURL(fileUrl);
+      window.setTimeout(() => URL.revokeObjectURL(fileUrl), 30000);
     } catch (error) {
       setDownloadError(error.response?.data?.message || 'PDF laporan gagal diunduh.');
     } finally {

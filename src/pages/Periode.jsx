@@ -17,6 +17,13 @@ import {
     Search
 } from "lucide-react";
 
+const hasPeriodEnded = (date) => {
+    if (!date) return false;
+
+    const endOfPeriod = new Date(`${String(date).slice(0, 10)}T23:59:59`);
+    return !Number.isNaN(endOfPeriod.getTime()) && endOfPeriod < new Date();
+};
+
 function Periode() {
     // Data default dengan NIM riil peserta magang
     const defaultPeriodes = [
@@ -71,6 +78,9 @@ function Periode() {
     const [periodeSearch, setPeriodeSearch] = useState("");
     const [isPeriodeSearchOpen, setIsPeriodeSearchOpen] = useState(false);
     const [toastMessage, setToastMessage] = useState("");
+    const [scheduleTimes, setScheduleTimes] = useState(null);
+    const [scheduleLoading, setScheduleLoading] = useState(true);
+    const [scheduleError, setScheduleError] = useState("");
 
     // Muat data periode dan pendaftar magang riil secara otomatis dari API backend
     useEffect(() => {
@@ -159,7 +169,7 @@ function Periode() {
                             tanggalSelesai: p.tanggal_selesai,
                             waktuMulai: "08:00",
                             waktuSelesai: "17:00",
-                            status: new Date(p.tanggal_selesai) >= new Date() ? "Aktif" : "Selesai",
+                            status: hasPeriodEnded(p.tanggal_selesai) ? "Selesai" : "Aktif",
                             pembimbing: pendaftaransInPeriode.find(r => r.pembimbing?.name)?.pembimbing?.name || "Putra",
                             peserta: pesertaList
                         };
@@ -195,9 +205,56 @@ function Periode() {
     const role = (currentUser?.role || "peserta").toLowerCase();
     const isPembimbing = role === "pembimbing";
 
+    useEffect(() => {
+        if (role === "admin" || role === "administrator") {
+            setScheduleLoading(false);
+            return undefined;
+        }
+
+        let cancelled = false;
+        const endpoint = isPembimbing ? "/pembimbing/jadwal-absensi" : "/absensi/jadwal";
+        const handleScheduleUpdated = (event) => {
+            const { jamMasuk, jamPulang } = event.detail || {};
+            if (jamMasuk || jamPulang) {
+                setScheduleTimes((current) => ({
+                    jamMasuk: jamMasuk || current?.jamMasuk || "08:00",
+                    jamPulang: jamPulang || current?.jamPulang || "17:00",
+                }));
+                setScheduleError("");
+            }
+        };
+        window.addEventListener("attendance-schedule-updated", handleScheduleUpdated);
+
+        api.get(endpoint)
+            .then((response) => {
+                if (!cancelled) {
+                    setScheduleTimes({
+                        jamMasuk: response.data?.data?.jam_masuk || "08:00",
+                        jamPulang: response.data?.data?.jam_pulang || "17:00",
+                    });
+                    setScheduleError("");
+                }
+            })
+            .catch((requestError) => {
+                if (!cancelled) {
+                    setScheduleError(requestError.response?.data?.message || "Jadwal absensi gagal dimuat.");
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setScheduleLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+            window.removeEventListener("attendance-schedule-updated", handleScheduleUpdated);
+        };
+    }, [isPembimbing, role]);
+
     const activePeriode = periodes.find(p => p.id === selectedPeriodeId) || periodes[0];
+    const normalizedPeriodeSearch = periodeSearch.trim().toLocaleLowerCase("id-ID");
     const matchingPeriodes = periodes.filter((periode) =>
-        periode.nama.toLowerCase().includes(periodeSearch.trim().toLowerCase())
+        [periode.nama, periode.tanggalMulai, periode.tanggalSelesai]
+            .some((value) => String(value || "").toLocaleLowerCase("id-ID").includes(normalizedPeriodeSearch))
     );
 
     const showToast = (msg) => {
@@ -255,22 +312,43 @@ function Periode() {
         showToast("Data pembimbing & periode berhasil diperbarui ✨");
     };
 
-    const handleSaveAdd = (e) => {
+    const handleSaveAdd = async (e) => {
         e.preventDefault();
         const targetId = Number(addData.periodeId);
-        const nimVal = addData.nim || addData.npm;
-        setPeriodes(prev => prev.map(p => {
-            if (p.id === targetId) {
-                return {
-                    ...p,
-                    peserta: [...p.peserta, { nim: nimVal, npm: nimVal, nama: addData.nama }]
-                };
+        const nimVal = (addData.nim || addData.npm).trim();
+
+        try {
+            const response = await api.post("/magang", {
+                participant_code: nimVal,
+                participant_name: addData.nama.trim(),
+                periode_id: targetId,
+            });
+            const savedParticipant = response.data?.data;
+
+            if (!savedParticipant?.id) {
+                throw new Error("Respons penyimpanan peserta tidak valid.");
             }
-            return p;
-        }));
-        setIsAddModalOpen(false);
-        setAddData({ nim: "", npm: "", nama: "", periodeId: activePeriode.id });
-        showToast("Peserta baru berhasil ditambahkan 🎉");
+
+            setPeriodes(prev => prev.map(p => p.id === targetId
+                ? {
+                    ...p,
+                    peserta: [...(p.peserta || []), {
+                        id: savedParticipant.id,
+                        nim: savedParticipant.participant_code,
+                        npm: savedParticipant.participant_code,
+                        nama: savedParticipant.participant_name,
+                        status: savedParticipant.status,
+                        instansi: savedParticipant.institution || "",
+                    }],
+                }
+                : p
+            ));
+            setIsAddModalOpen(false);
+            setAddData({ nim: "", npm: "", nama: "", periodeId: activePeriode.id });
+            showToast("Peserta baru berhasil ditambahkan");
+        } catch (error) {
+            window.alert(error.response?.data?.message || error.message || "Gagal menyimpan peserta.");
+        }
     };
 
     const handleSaveEdit = (e) => {
@@ -480,8 +558,16 @@ function Periode() {
                                 <div className="periode-stat-content">
                                     <span className="periode-stat-label">Jam Operasional</span>
                                     <h3 className="periode-stat-value">
-                                        {activePeriode.waktuMulai || "08:00"} — {activePeriode.waktuSelesai || "17:00"} <span>WIB</span>
+                                        {scheduleTimes
+                                            ? `${scheduleTimes.jamMasuk} — ${scheduleTimes.jamPulang}`
+                                            : scheduleLoading
+                                                ? "Memuat jadwal..."
+                                                : scheduleError
+                                                    ? "Jadwal tidak tersedia"
+                                                    : `${activePeriode.waktuMulai || "08:00"} — ${activePeriode.waktuSelesai || "17:00"}`}
+                                        <span> WIB</span>
                                     </h3>
+                                    {scheduleError && <small role="alert" style={{ color: "#b91c1c" }}>{scheduleError}</small>}
                                 </div>
                             </div>
 
@@ -517,6 +603,7 @@ function Periode() {
                                         setIsPeriodeSearchOpen(true);
                                     }}
                                     onFocus={() => setIsPeriodeSearchOpen(true)}
+                                    onClick={() => setIsPeriodeSearchOpen(true)}
                                     onKeyDown={(event) => {
                                         if (event.key === "Escape") setIsPeriodeSearchOpen(false);
                                         if (event.key === "Enter" && matchingPeriodes.length) {
@@ -590,6 +677,14 @@ function Periode() {
                                         pesertaList.map((peserta, index) => {
                                             const theme = getAvatarTheme(peserta.nama);
                                             const initial = peserta.nama ? peserta.nama.charAt(0).toUpperCase() : "P";
+                                            const participantStatus = String(peserta.status || "").toLowerCase();
+                                            const isParticipantCompleted = activePeriode.status === "Selesai"
+                                                || ["alumni", "selesai", "selesai magang"].includes(participantStatus);
+                                            const statusLabel = isParticipantCompleted
+                                                ? "Selesai"
+                                                : participantStatus === "pemagang aktif"
+                                                    ? "Magang Aktif"
+                                                    : "Terdaftar";
                                             return (
                                                 <tr
                                                     key={peserta.nim || peserta.npm || index}
@@ -655,15 +750,15 @@ function Periode() {
                                                             display: "inline-flex",
                                                             alignItems: "center",
                                                             gap: "6px",
-                                                            background: "#ecfdf5",
-                                                            color: "#059669",
+                                                            background: isParticipantCompleted ? "#f1f5f9" : "#ecfdf5",
+                                                            color: isParticipantCompleted ? "#475569" : "#059669",
                                                             padding: "4px 10px",
                                                             borderRadius: "20px",
                                                             fontSize: "12px",
                                                             fontWeight: "600"
                                                         }}>
-                                                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981" }}></span>
-                                                            Terdaftar
+                                                            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: isParticipantCompleted ? "#64748b" : "#10b981" }}></span>
+                                                            {statusLabel}
                                                         </span>
                                                     </td>
 
@@ -1044,10 +1139,10 @@ function Periode() {
                                 <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "700", color: "#334155" }}>
                                     Nama Pembimbing Lapangan
                                 </label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     placeholder="Contoh: Siti Sarah, S.Kom., M.Kom"
-                                    value={editPeriodeForm.pembimbing} 
+                                    value={editPeriodeForm.pembimbing}
                                     onChange={(e) => setEditPeriodeForm({...editPeriodeForm, pembimbing: e.target.value})}
                                     style={{
                                         width: "100%",

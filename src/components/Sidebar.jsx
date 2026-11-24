@@ -30,6 +30,7 @@ function getPhotoUrl(photo) {
 
 function Sidebar({ onLogout: onLogoutOverride } = {}) {
     const location = useLocation();
+    const [jamMasuk, setJamMasuk] = useState("08:00");
     const [jamPulang, setJamPulang] = useState("17:00");
     const [jadwalError, setJadwalError] = useState("");
     const [currentUser, setCurrentUser] = useState(() => {
@@ -96,6 +97,7 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
         let cancelled = false;
         const endpoint = isPembimbing ? "/pembimbing/jadwal-absensi" : "/absensi/jadwal";
         const handleScheduleUpdated = (event) => {
+            if (event.detail?.jamMasuk) setJamMasuk(event.detail.jamMasuk);
             if (event.detail?.jamPulang) setJamPulang(event.detail.jamPulang);
         };
         window.addEventListener("attendance-schedule-updated", handleScheduleUpdated);
@@ -104,6 +106,7 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
             .then((response) => {
                 if (!cancelled) {
                     setJadwalError("");
+                    setJamMasuk(response.data?.data?.jam_masuk || "08:00");
                     setJamPulang(response.data?.data?.jam_pulang || "17:00");
                 }
             })
@@ -195,7 +198,7 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
                         <span>Jam Kerja Magang</span>
                     </div>
                     <div className="sidebar-hours-time">
-                        08.00 – {jamPulang.replace(":", ".")} WIB
+                        {jamMasuk.replace(":", ".")} – {jamPulang.replace(":", ".")} WIB
                     </div>
                     <span className="sidebar-hours-days">Senin – Minggu</span>
                     {jadwalError && <span className="sidebar-hours-error">{jadwalError}</span>}
