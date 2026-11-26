@@ -167,11 +167,14 @@ export default function FormPendaftaran() {
       const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
       const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png)$/i.test(file.name);
 
+      const maxTargetKb = Math.max(100, Math.floor(maxFileSizeMb * 1024 * 0.9));
+      const targetPdfKb = file.size > 1024 * 1024 ? maxTargetKb : Math.min(100, maxTargetKb);
+
       let result;
       if (isPdf) {
-        result = await optimizePdf(file, 100);
+        result = await optimizePdf(file, targetPdfKb);
       } else if (isImage) {
-        result = await convertScanImageToCompressedPdf(file, 100);
+        result = await convertScanImageToCompressedPdf(file, targetPdfKb);
       } else {
         setPdfCompressionError('Pilih berkas PDF atau scan surat berformat JPG/PNG.');
         e.target.value = '';
@@ -1547,7 +1550,7 @@ export default function FormPendaftaran() {
                             {pdfCompressionInfo.savedPercent > 0 && ` (-${pdfCompressionInfo.savedPercent}%)`}
                             {pdfCompressionInfo.isUnderTarget
                               ? ' · Optimal'
-                              : ' · Sudah dioptimalkan, ukuran masih di atas target 100 KB'}
+                              : ` · Sudah dioptimalkan (maks. ${maxFileSizeMb} MB)`}
                           </span>
                         </div>
                       )}

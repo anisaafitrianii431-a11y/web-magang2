@@ -456,12 +456,14 @@
 .hero-title {
   position: relative;
   z-index: 1;
-  font-size: 3.4rem;
+  font-size: clamp(0.95rem, 3.2vw, 2.75rem);
   font-weight: 800;
   line-height: 1.15;
-  letter-spacing: -1.2px;
+  letter-spacing: -0.8px;
   margin-bottom: 24px;
   color: #ffffff;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .text-gradient {
@@ -744,26 +746,41 @@
 
 .contact-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 18px;
+  align-items: stretch;
 }
 
 .contact-item {
-  background: rgba(30, 41, 59, 0.6);
+  background: rgba(30, 41, 59, 0.65);
   backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  padding: 20px 24px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  padding: 20px;
   border-radius: var(--radius-md);
   display: flex;
-  align-items: center;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
   transition: all 0.3s ease;
 }
 
 .contact-item:hover {
-  background: rgba(30, 41, 59, 0.85);
+  background: rgba(30, 41, 59, 0.88);
   border-color: rgba(56, 189, 248, 0.4);
   transform: translateY(-2px);
+}
+
+.contact-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .contact-icon {
@@ -771,28 +788,41 @@
   flex-shrink: 0;
 }
 
+.contact-content {
+  min-width: 0;
+  flex: 1;
+}
+
 .contact-label {
   display: block;
-  font-size: 0.775rem;
+  font-size: 0.74rem;
   color: #94a3b8;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
 }
 
 .contact-val {
   display: block;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
+  line-height: 1.5;
   color: #ffffff;
-  margin-top: 2px;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .contact-link {
+  display: block;
   color: #38bdf8;
   text-decoration: none;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
+  line-height: 1.5;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   transition: color 0.2s ease;
 }
 
@@ -1698,7 +1728,8 @@
   }
 
   .hero-title {
-    font-size: 2.4rem;
+    font-size: clamp(0.92rem, 3.6vw, 1.85rem);
+    letter-spacing: -0.4px;
   }
 
   .hero-logo-frame {

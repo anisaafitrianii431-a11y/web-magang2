@@ -204,6 +204,29 @@
   flex-wrap: wrap;
 }
 
+.pd-landing-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.pd-landing-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.45);
+}
+
 .pd-info-box {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -234,6 +257,7 @@
   font-size: 13px;
   font-weight: 700;
   line-height: 1.4;
+  white-space: nowrap;
 }
 
 .pd-hero-landing-btn {
@@ -320,6 +344,34 @@
 .pd-hero-landing-btn:hover .pd-hero-landing-btn-arrow {
   transform: translate(2px, -2px);
   color: #ffffff;
+}
+
+.pd-hero-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.pd-hero-review-btn {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.24) 0%, rgba(217, 119, 6, 0.18) 100%);
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.pd-hero-review-btn .pd-hero-landing-btn-icon {
+  color: #fbbf24;
+}
+
+.pd-hero-review-btn:hover {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.38);
+}
+
+@media (max-width: 540px) {
+  .pd-hero-actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── 2. Stat Cards Grid ───────────────────────────────────────── */
@@ -775,8 +827,60 @@
 }
 
 /* ── Ulasan Peserta ──────────────────────────────────────────── */
+.ulasan-page {
+  padding: 28px 32px 52px;
+}
+
+.ulasan-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.ulasan-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 15px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  transition: all 0.16s ease;
+}
+
+.ulasan-back-btn:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  transform: translateY(-1px);
+}
+
+.ulasan-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .pd-review-section {
   margin-top: 32px;
+}
+
+.ulasan-section {
+  margin-top: 0;
 }
 
 .pd-review-heading {
@@ -786,14 +890,195 @@
 .pd-review-heading h2 {
   margin: 0;
   color: #0f172a;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .pd-review-heading p {
   margin: 6px 0 0;
   color: #64748b;
+  font-size: 13.5px;
+}
+
+.ulasan-page .komentar-wrapper {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.2fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.ulasan-page .komentar-form-box,
+.ulasan-page .komentar-list {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 24px 26px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  margin-top: 0;
+}
+
+.ulasan-page .komentar-form-box h3,
+.ulasan-page .komentar-list h3 {
+  margin: 0 0 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.ulasan-page .auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ulasan-page .rating-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ulasan-page .rating-select-group label,
+.ulasan-page .form-group label {
   font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.ulasan-page .stars-picker select {
+  width: 100%;
+  box-sizing: border-box;
+  background: #f8fafc;
+  color: #0f172a;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  font-size: 13.5px;
+}
+
+.ulasan-page .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ulasan-page .input-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.55;
+  resize: vertical;
+  outline: none;
+}
+
+.ulasan-page .input-textarea:focus {
+  border-color: #4f46e5;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.ulasan-page .btn.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 18px;
+  border-radius: 11px;
+  border: none;
+  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+
+.ulasan-page .reviews-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 440px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.ulasan-page .review-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ulasan-page .review-card:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.ulasan-page .review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ulasan-page .user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ulasan-page .small-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ulasan-page .user-name {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.ulasan-page .review-date {
+  display: block;
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+.ulasan-page .review-text {
+  margin: 0;
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.55;
+}
+
+@media (max-width: 960px) {
+  .ulasan-page {
+    padding: 20px 18px 40px;
+  }
+
+  .ulasan-page .komentar-wrapper {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Panel Pintasan Menu ─────────────────────────────────────── */
@@ -882,6 +1167,14 @@
   .pd-hero-sidebar {
     width: 100%;
     flex-direction: column;
+    align-items: stretch;
+  }
+  .pd-info-row {
+    flex-direction: column;
+    width: 100%;
+  }
+  .pd-landing-btn {
+    width: 100%;
   }
 
   .pd-hero-sidebar-row {

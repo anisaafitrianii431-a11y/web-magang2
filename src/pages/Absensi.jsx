@@ -8,6 +8,23 @@ import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import api from "../services/api";
 import { API_BASE_URL } from "../config/api";
+import { applyKopToPdfPage, KOP_BOTTOM_SAFE_MARGIN, KOP_TOP_SAFE_Y, loadKopDataUrl } from "../utils/kopSurat";
+
+function normalizeIsoDate(value) {
+    const text = String(value || "").trim().slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "";
+}
+
+function formatPeriodDate(value, withLongMonth = false) {
+    const iso = normalizeIsoDate(value);
+    if (!iso) return "-";
+    const [year, month, day] = iso.split("-").map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: withLongMonth ? "long" : "short",
+        year: "numeric",
+    });
+}
 
 function getPhotoUrl(photo) {
     if (!photo) return null;
@@ -41,6 +58,7 @@ function Absensi() {
     });
     const [photoError, setPhotoError] = useState(false);
     const [participant, setParticipant] = useState(null);
+    const [registration, setRegistration] = useState(null);
 
     useEffect(() => {
         setPhotoError(false);
@@ -56,26 +74,33 @@ function Absensi() {
     const [attendanceStatus, setAttendanceStatus] = useState("Hadir");
     const [keterangan, setKeterangan] = useState("");
 
-    // Riwayat presensi untuk statistik kehadiran bulanan & rekap per bulan
+    // Riwayat presensi untuk statistik kehadiran bulanan & rekap periode magang
     const [attendanceHistory, setAttendanceHistory] = useState([]);
     const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
-    const [showMonthModal, setShowMonthModal] = useState(false);
-    const [companyProfile, setCompanyProfile] = useState(null);
+    const [showSemesterModal, setShowSemesterModal] = useState(false);
+    const [customPeriodRange, setCustomPeriodRange] = useState({ start: "", end: "" });
 
-    const currentYear = new Date().getFullYear();
-    const currentMonthNum = new Date().getMonth() + 1;
+    const registeredPeriod = registration?.periode || null;
+    const registeredPeriodStart = normalizeIsoDate(
+        registeredPeriod?.tanggal_mulai || registration?.tanggal_mulai || participant?.tanggal_mulai || currentUser?.tanggal_mulai
+    );
+    const registeredPeriodEnd = normalizeIsoDate(
+        registeredPeriod?.tanggal_selesai || registration?.tanggal_selesai || participant?.tanggal_selesai || currentUser?.tanggal_selesai
+    );
+    const registeredPeriodName = registeredPeriod?.nama_periode || registeredPeriod?.nama || "";
 
-    const loadCompanyProfile = async () => {
-        try {
-            const res = await api.get("/beranda/profil");
-            const prof = res.data?.data || res.data;
-            if (prof && typeof prof === "object") {
-                setCompanyProfile(prof);
-            }
-        } catch (err) {
-            console.warn("Profil kantor belum dapat dimuat dari landing page:", err);
-        }
-    };
+    const fallbackMonthStart = `${selectedMonth}-01`;
+    const fallbackMonthEnd = useMemo(() => {
+        const [yStr, mStr] = String(selectedMonth || "").split("-");
+        const y = parseInt(yStr, 10) || new Date().getFullYear();
+        const m = parseInt(mStr, 10) || (new Date().getMonth() + 1);
+        const lastDay = new Date(y, m, 0).getDate();
+        return `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    }, [selectedMonth]);
+
+    const recapStartDate = customPeriodRange.start || registeredPeriodStart || fallbackMonthStart;
+    const recapEndDate = customPeriodRange.end || registeredPeriodEnd || fallbackMonthEnd;
+    const isCustomRangeActive = Boolean(customPeriodRange.start || customPeriodRange.end);
 
     const loadAttendanceHistory = async () => {
         try {
@@ -120,313 +145,236 @@ function Absensi() {
         return { hadir, izin, sakit, alpa, total, percentage };
     }, [monthlyRecords]);
 
-    const monthsList = [
-        { value: "01", label: "Januari" },
-        { value: "02", label: "Februari" },
-        { value: "03", label: "Maret" },
-        { value: "04", label: "April" },
-        { value: "05", label: "Mei" },
-        { value: "06", label: "Juni" },
-        { value: "07", label: "Juli" },
-        { value: "08", label: "Agustus" },
-        { value: "09", label: "September" },
-        { value: "10", label: "Oktober" },
-        { value: "11", label: "November" },
-        { value: "12", label: "Desember" },
-    ];
-    const yearsList = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
+    const periodStats = useMemo(() => {
+        const rawStart = normalizeIsoDate(recapStartDate) || fallbackMonthStart;
+        const rawEnd = normalizeIsoDate(recapEndDate) || fallbackMonthEnd;
+        const [startBound, endBound] = rawStart <= rawEnd ? [rawStart, rawEnd] : [rawEnd, rawStart];
 
-    const [selectedYearVal, selectedMonthVal] = useMemo(() => {
-        const parts = (selectedMonth || "").split("-");
-        return [parts[0] || String(currentYear), parts[1] || String(currentMonthNum).padStart(2, "0")];
-    }, [selectedMonth, currentYear, currentMonthNum]);
+        const [startYear, startMonth] = startBound.split("-").map(Number);
+        const [endYear, endMonth] = endBound.split("-").map(Number);
 
-    const sortedMonthlyRecords = useMemo(() => {
-        return [...monthlyRecords].sort((a, b) => String(a.tanggal || "").localeCompare(String(b.tanggal || "")));
-    }, [monthlyRecords]);
+        const monthsData = [];
+        let totalHadir = 0;
+        let totalIzin = 0;
+        let totalSakit = 0;
+        let totalAlpa = 0;
 
-    const exportMonthlyPdf = async () => {
-        let currentProfile = companyProfile;
-        if (!currentProfile) {
-            try {
-                const res = await api.get("/beranda/profil");
-                currentProfile = res.data?.data || res.data;
-                if (currentProfile) setCompanyProfile(currentProfile);
-            } catch {}
+        let y = startYear;
+        let m = startMonth;
+        let guard = 0;
+
+        while ((y < endYear || (y === endYear && m <= endMonth)) && guard < 36) {
+            guard += 1;
+            const mStr = String(m).padStart(2, "0");
+            const key = `${y}-${mStr}`;
+            const mName = new Date(y, m - 1, 1).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+
+            const recs = attendanceHistory.filter((item) => {
+                const dateKey = normalizeIsoDate(item.tanggal);
+                return dateKey.startsWith(key) && dateKey >= startBound && dateKey <= endBound;
+            });
+
+            let hadir = 0;
+            let izin = 0;
+            let sakit = 0;
+            let alpa = 0;
+
+            recs.forEach((item) => {
+                const s = String(item.status || "").toLowerCase();
+                const app = String(item.approval_status || "").toLowerCase();
+                if (s === "hadir" || app === "approved") hadir++;
+                else if (s === "izin") izin++;
+                else if (s === "sakit") sakit++;
+                else if (s === "alpa" || app === "rejected") alpa++;
+            });
+
+            const total = hadir + izin + sakit + alpa;
+            const pct = total > 0 ? Math.round((hadir / total) * 100) : 0;
+
+            totalHadir += hadir;
+            totalIzin += izin;
+            totalSakit += sakit;
+            totalAlpa += alpa;
+
+            monthsData.push({
+                monthKey: key,
+                monthName: mName,
+                hadir,
+                izin,
+                sakit,
+                alpa,
+                total,
+                pct,
+            });
+
+            m += 1;
+            if (m > 12) {
+                m = 1;
+                y += 1;
+            }
         }
 
+        const grandTotal = totalHadir + totalIzin + totalSakit + totalAlpa;
+        const avgPct = grandTotal > 0 ? Math.round((totalHadir / grandTotal) * 100) : 0;
+
+        return {
+            startBound,
+            endBound,
+            monthsData,
+            totalHadir,
+            totalIzin,
+            totalSakit,
+            totalAlpa,
+            grandTotal,
+            avgPct,
+        };
+    }, [attendanceHistory, recapStartDate, recapEndDate, fallbackMonthStart, fallbackMonthEnd]);
+
+    const exportPeriodPdf = async () => {
+        const kopDataUrl = await loadKopDataUrl();
         const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-        const [y, m] = (selectedMonth || "").split("-");
-        const monthYearTitle = `BULAN ${new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1).toLocaleDateString("id-ID", { month: "long", year: "numeric" }).toUpperCase()}`;
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const periodLabel = `${formatPeriodDate(periodStats.startBound, true)} - ${formatPeriodDate(periodStats.endBound, true)}`.toUpperCase();
+        const periodTitle = registeredPeriodName && !isCustomRangeActive
+            ? `${registeredPeriodName.toUpperCase()} (${periodLabel})`
+            : `PERIODE MAGANG: ${periodLabel}`;
 
-        const participantName = participant?.participant_name || currentUser?.name || "Peserta Magang";
+        const participantName = participant?.participant_name || currentUser?.name || currentUser?.nama || "Peserta Magang";
         const participantCode = participant?.participant_code || currentUser?.npm || currentUser?.nim || "-";
-        const institution = participant?.institution || currentUser?.institution || "Sekolah Tinggi Teknologi Payakumbuh";
-        const supervisorName = participant?.pembimbing?.nama || participant?.pembimbing?.name || participant?.supervisor_name || "Ibrahim Saputra, S.Kom";
+        const institution = participant?.institution || registration?.asal_instansi || currentUser?.institution || "Sekolah Tinggi Teknologi Payakumbuh";
 
-        // 1. Kop Surat Dinamis dari Profil Landing Page
-        const companyName = currentProfile?.nama_perusahaan || "CV. PUTRA ANUGRAH MANDIRI (PAM-TECHNO)";
-        const companyAddress = currentProfile?.alamat || "Jl. M. Yunus No. 6, Lubuk Lintah, Kec. Kuranji, Kota Padang, Sumatera Barat 25153";
-        const companyPhone = currentProfile?.telepon || "";
-        const companyEmail = currentProfile?.email || "";
-        const companyWebsite = currentProfile?.website || "";
+        applyKopToPdfPage(doc, kopDataUrl);
 
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(13);
-        doc.setTextColor(15, 23, 42);
-        doc.text(companyName.toUpperCase(), 105, 15, { align: "center", maxWidth: 180 });
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8.5);
-        doc.setTextColor(71, 85, 105);
-        doc.text("Sistem Informasi Portal Magang & Praktik Kerja Lapangan (PKL)", 105, 20.5, { align: "center" });
-
-        // Baris alamat kantor
-        doc.setFontSize(8);
-        doc.setTextColor(100, 116, 139);
-        doc.text(companyAddress, 105, 25, { align: "center", maxWidth: 180 });
-
-        // Baris kontak (Telepon, Email, Web)
-        const contactParts = [];
-        if (companyPhone) contactParts.push(`Telp: ${companyPhone}`);
-        if (companyEmail) contactParts.push(`Email: ${companyEmail}`);
-        if (companyWebsite) contactParts.push(`Web: ${companyWebsite}`);
-        const contactLine = contactParts.join("   |   ");
-
-        let headerLineY = 28.5;
-        if (contactLine) {
-            doc.text(contactLine, 105, 29.5, { align: "center", maxWidth: 180 });
-            headerLineY = 33.5;
-        }
-
-        // Garis Ganda Pembatas Kop Surat (Rapi & Tidak Bertabrakan)
-        doc.setDrawColor(79, 70, 229);
-        doc.setLineWidth(0.6);
-        doc.line(14, headerLineY, 196, headerLineY);
-        doc.setDrawColor(203, 213, 225);
-        doc.setLineWidth(0.2);
-        doc.line(14, headerLineY + 0.9, 196, headerLineY + 0.9);
-
-        // 2. Judul Laporan
-        const titleY = headerLineY + 9;
+        // Judul Laporan
         doc.setFont("helvetica", "bold");
         doc.setFontSize(12);
         doc.setTextColor(15, 23, 42);
-        doc.text("REKAPITULASI KEHADIRAN MAGANG BULANAN", 105, titleY, { align: "center" });
-        doc.setFontSize(10);
+        doc.text("REKAPITULASI KEHADIRAN PERIODE MAGANG", 105, KOP_TOP_SAFE_Y + 4, { align: "center" });
+        doc.setFontSize(9.5);
         doc.setTextColor(79, 70, 229);
-        doc.text(monthYearTitle, 105, titleY + 6, { align: "center" });
+        doc.text(periodTitle, 105, 46, { align: "center", maxWidth: 182 });
 
-        // 3. Kotak Identitas Peserta
-        const idBoxY = titleY + 11;
-        const idBoxHeight = 22;
+        // Kotak Identitas Peserta
         doc.setFillColor(248, 250, 252);
-        doc.roundedRect(14, idBoxY, 182, idBoxHeight, 2, 2, "F");
+        doc.roundedRect(14, 52, 182, 22, 2, 2, "F");
         doc.setDrawColor(226, 232, 240);
-        doc.setLineWidth(0.3);
-        doc.roundedRect(14, idBoxY, 182, idBoxHeight, 2, 2, "D");
+        doc.roundedRect(14, 52, 182, 22, 2, 2, "D");
 
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(8.5);
-        doc.setTextColor(51, 65, 85);
-        doc.text("Nama Peserta", 18, idBoxY + 6.8);
-        doc.text("NPM / NIM", 18, idBoxY + 12.8);
-        doc.text("Instansi / Kampus", 18, idBoxY + 18.8);
+        doc.setFontSize(9);
+        doc.setTextColor(15, 23, 42);
+        doc.text("Nama Peserta", 18, 59);
+        doc.text("NPM / NIM", 18, 65);
+        doc.text("Instansi / Kampus", 18, 71);
 
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(15, 23, 42);
-        doc.text(`:  ${participantName}`, 55, idBoxY + 6.8);
-        doc.text(`:  ${participantCode}`, 55, idBoxY + 12.8);
-        doc.text(`:  ${institution}`, 55, idBoxY + 18.8);
+        doc.setTextColor(51, 65, 85);
+        doc.text(`:  ${participantName}`, 55, 59);
+        doc.text(`:  ${participantCode}`, 55, 65);
+        doc.text(`:  ${institution}`, 55, 71);
 
-        // 4. Header Tabel Harian (Dimulai tepat di bawah Kotak Identitas, tanpa strip ringkasan)
-        const tableHeaderY = idBoxY + idBoxHeight + 6;
-        const colWidths = [10, 44, 24, 24, 24, 56];
-        const colHeaders = ["NO", "HARI & TANGGAL", "JAM MASUK", "JAM PULANG", "STATUS", "KETERANGAN"];
-
-        const drawTableHeader = (y) => {
+        const drawTableHeader = (yPos) => {
             doc.setFillColor(79, 70, 229);
-            doc.rect(14, y, 182, 7.5, "F");
+            doc.rect(14, yPos, 182, 8, "F");
+
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(8);
+            doc.setFontSize(8.5);
             doc.setTextColor(255, 255, 255);
-            let curX = 14;
-            colHeaders.forEach((h, i) => {
-                const w = colWidths[i];
-                if (i === 1 || i === 5) {
-                    doc.text(h, curX + 3, y + 4.8);
-                } else {
-                    doc.text(h, curX + w / 2, y + 4.8, { align: "center" });
-                }
-                curX += w;
-            });
+            doc.text("NO", 18, yPos + 5.5);
+            doc.text("BULAN", 30, yPos + 5.5);
+            doc.text("HADIR", 75, yPos + 5.5, { align: "center" });
+            doc.text("IZIN", 100, yPos + 5.5, { align: "center" });
+            doc.text("SAKIT", 125, yPos + 5.5, { align: "center" });
+            doc.text("ALPA", 150, yPos + 5.5, { align: "center" });
+            doc.text("% HADIR", 180, yPos + 5.5, { align: "center" });
         };
 
-        drawTableHeader(tableHeaderY);
-        let currentY = tableHeaderY + 7.5;
-        const rowHeight = 7.5;
-        const pageBottom = 238;
+        // Header Tabel
+        const startY = 82;
+        drawTableHeader(startY);
 
-        if (sortedMonthlyRecords.length === 0) {
-            doc.setFillColor(255, 255, 255);
+        // Baris Tabel
+        doc.setTextColor(15, 23, 42);
+        doc.setFont("helvetica", "normal");
+        let currentY = startY + 8;
+
+        periodStats.monthsData.forEach((m, idx) => {
+            if (currentY + 8 > pageHeight - KOP_BOTTOM_SAFE_MARGIN) {
+                doc.addPage();
+                applyKopToPdfPage(doc, kopDataUrl);
+                drawTableHeader(KOP_TOP_SAFE_Y + 2);
+                currentY = KOP_TOP_SAFE_Y + 10;
+            }
+            if (idx % 2 === 1) {
+                doc.setFillColor(248, 250, 252);
+                doc.rect(14, currentY, 182, 8, "F");
+            }
             doc.setDrawColor(226, 232, 240);
-            doc.rect(14, currentY, 182, 10, "FD");
-            doc.setFont("helvetica", "italic");
+            doc.rect(14, currentY, 182, 8, "D");
+
+            doc.setFont("helvetica", "normal");
             doc.setFontSize(8.5);
-            doc.setTextColor(148, 163, 184);
-            doc.text("Belum ada catatan presensi pada bulan ini.", 105, currentY + 6.2, { align: "center" });
-            currentY += 10;
-        } else {
-            sortedMonthlyRecords.forEach((rec, idx) => {
-                if (currentY + rowHeight > pageBottom) {
-                    doc.addPage();
-                    currentY = 20;
-                    drawTableHeader(currentY);
-                    currentY += 7.5;
-                }
+            doc.setTextColor(15, 23, 42);
+            doc.text(String(idx + 1), 18, currentY + 5.5);
+            doc.text(m.monthName, 30, currentY + 5.5);
+            doc.text(`${m.hadir} hari`, 75, currentY + 5.5, { align: "center" });
+            doc.text(`${m.izin} hari`, 100, currentY + 5.5, { align: "center" });
+            doc.text(`${m.sakit} hari`, 125, currentY + 5.5, { align: "center" });
+            doc.text(`${m.alpa} hari`, 150, currentY + 5.5, { align: "center" });
+            doc.text(`${m.pct}%`, 180, currentY + 5.5, { align: "center" });
 
-                if (idx % 2 === 1) {
-                    doc.setFillColor(248, 250, 252);
-                    doc.rect(14, currentY, 182, rowHeight, "F");
-                }
-                doc.setDrawColor(226, 232, 240);
-                doc.setLineWidth(0.2);
-                doc.rect(14, currentY, 182, rowHeight, "D");
+            currentY += 8;
+        });
 
-                let tglFormatted = rec.tanggal || "-";
-                try {
-                    const d = new Date(rec.tanggal);
-                    tglFormatted = d.toLocaleDateString("id-ID", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
-                } catch {}
-
-                let curX = 14;
-                doc.setFont("helvetica", "normal");
-                doc.setFontSize(8);
-                doc.setTextColor(15, 23, 42);
-
-                // NO
-                doc.text(String(idx + 1), curX + colWidths[0] / 2, currentY + 4.8, { align: "center" });
-                curX += colWidths[0];
-
-                // HARI & TANGGAL
-                doc.text(tglFormatted, curX + 3, currentY + 4.8);
-                curX += colWidths[1];
-
-                // JAM MASUK
-                doc.text(rec.jam_masuk || "--:--", curX + colWidths[2] / 2, currentY + 4.8, { align: "center" });
-                curX += colWidths[2];
-
-                // JAM PULANG
-                doc.text(rec.jam_pulang || "--:--", curX + colWidths[3] / 2, currentY + 4.8, { align: "center" });
-                curX += colWidths[3];
-
-                // STATUS
-                const s = rec.status || "Hadir";
-                doc.setFont("helvetica", "bold");
-                if (s.toLowerCase() === "hadir") doc.setTextColor(21, 128, 61);
-                else if (s.toLowerCase() === "izin") doc.setTextColor(67, 56, 202);
-                else if (s.toLowerCase() === "sakit") doc.setTextColor(180, 83, 9);
-                else doc.setTextColor(185, 28, 28);
-                doc.text(s, curX + colWidths[4] / 2, currentY + 4.8, { align: "center" });
-                curX += colWidths[4];
-
-                // KETERANGAN
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(71, 85, 105);
-                const ket = (rec.keterangan || "-").slice(0, 36);
-                doc.text(ket, curX + 3, currentY + 4.8, { maxWidth: colWidths[5] - 6 });
-
-                currentY += rowHeight;
-            });
-        }
-
-        // Baris Total Akumulatif (Footer Tabel Presisi)
-        if (currentY + 8.5 > pageBottom) {
+        if (currentY + 60 > pageHeight - KOP_BOTTOM_SAFE_MARGIN) {
             doc.addPage();
-            currentY = 20;
+            applyKopToPdfPage(doc, kopDataUrl);
+            currentY = KOP_TOP_SAFE_Y + 4;
         }
+
+        // Baris Total Akumulatif
         doc.setFillColor(238, 242, 255);
-        doc.rect(14, currentY, 182, 8.5, "F");
+        doc.rect(14, currentY, 182, 9, "F");
         doc.setDrawColor(199, 210, 254);
-        doc.setLineWidth(0.3);
-        doc.rect(14, currentY, 182, 8.5, "D");
+        doc.rect(14, currentY, 182, 9, "D");
 
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(8);
+        doc.setFontSize(8.5);
         doc.setTextColor(30, 27, 75);
+        doc.text("TOTAL PERIODE MAGANG", 30, currentY + 6);
+        doc.text(`${periodStats.totalHadir} hari`, 75, currentY + 6, { align: "center" });
+        doc.text(`${periodStats.totalIzin} hari`, 100, currentY + 6, { align: "center" });
+        doc.text(`${periodStats.totalSakit} hari`, 125, currentY + 6, { align: "center" });
+        doc.text(`${periodStats.totalAlpa} hari`, 150, currentY + 6, { align: "center" });
+        doc.text(`${periodStats.avgPct}%`, 180, currentY + 6, { align: "center" });
 
-        // Kolom 1+2 (Judul Total)
-        doc.text("TOTAL BULAN INI", 18, currentY + 5.2);
+        currentY += 15;
 
-        // Kolom 3 (Hadir)
-        doc.setTextColor(21, 128, 61);
-        doc.text(`Hadir: ${monthlyStats.hadir} hari`, 14 + colWidths[0] + colWidths[1] + colWidths[2] / 2, currentY + 5.2, { align: "center" });
-
-        // Kolom 4 (Izin)
-        doc.setTextColor(67, 56, 202);
-        doc.text(`Izin: ${monthlyStats.izin} hari`, 14 + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] / 2, currentY + 5.2, { align: "center" });
-
-        // Kolom 5 (Sakit)
-        doc.setTextColor(180, 83, 9);
-        doc.text(`Sakit: ${monthlyStats.sakit} hari`, 14 + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] / 2, currentY + 5.2, { align: "center" });
-
-        // Kolom 6 (Alpa & Persentase)
-        doc.setTextColor(185, 28, 28);
-        doc.text(`Alpa: ${monthlyStats.alpa} hari`, 14 + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + colWidths[4] + 3, currentY + 5.2);
-
-        doc.setTextColor(67, 56, 202);
-        doc.text(`${monthlyStats.percentage}% Kehadiran`, 193, currentY + 5.2, { align: "right" });
-
-        currentY += 8.5 + 5;
-
-        // Catatan Evaluasi di Bawah Tabel
-        if (currentY + 8 > pageBottom) {
-            doc.addPage();
-            currentY = 20;
-        }
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
-        doc.setTextColor(100, 116, 139);
-        doc.text(`* Total kehadiran efektif sebanyak ${monthlyStats.hadir} hari kerja dari akumulasi ${monthlyStats.total} catatan presensi (${monthlyStats.percentage}% kehadiran).`, 14, currentY);
-
-        currentY += 12;
-
-        // Tanda Tangan (Sejajar dan Proporsional)
-        if (currentY + 36 > 282) {
-            doc.addPage();
-            currentY = 25;
-        }
-        let city = "Kota Padang";
-        if (currentProfile?.alamat) {
-            const addressParts = currentProfile.alamat.split(",").map((s) => s.trim()).filter(Boolean);
-            if (addressParts.length >= 2) {
-                city = addressParts[addressParts.length - 2] || addressParts[0];
-            } else if (addressParts.length === 1 && addressParts[0]) {
-                city = addressParts[0];
-            }
-        }
-        const signDate = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
-
+        // Catatan Evaluasi
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(`Keterangan: Total kehadiran efektif sebanyak ${periodStats.totalHadir} hari kerja dari akumulasi ${periodStats.grandTotal} catatan presensi (${periodStats.avgPct}% kehadiran).`, 14, currentY, { maxWidth: 182 });
+
+        currentY += 16;
+
+        // Tanda Tangan
+        const signDate = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
         doc.setTextColor(15, 23, 42);
-
-        // Baris Tanggal di Atas Tanda Tangan Kanan
-        doc.text(`${city}, ${signDate}`, 135, currentY);
+        doc.text(`Padang, ${signDate}`, 145, currentY);
         currentY += 5;
+        doc.text("Pembimbing Magang,", 145, currentY);
 
-        // Baris Posisi/Jabatan
-        doc.text("Peserta Magang,", 22, currentY);
-        doc.text("Pembimbing Magang,", 135, currentY);
-
-        currentY += 20; // Ruang tanda tangan
-
-        // Baris Nama
+        currentY += 22;
         doc.setFont("helvetica", "bold");
-        doc.text(participantName, 22, currentY);
-        doc.text(supervisorName, 135, currentY);
+        doc.text("( .................................................. )", 145, currentY);
+        currentY += 4.5;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text("Ibrahim Saputra, S.Kom", 145, currentY);
 
-        doc.save(`rekap-absensi-bulanan-${participantName.toLowerCase().replace(/\s+/g, "-")}-${selectedMonth}.pdf`);
+        doc.save(`rekap-absensi-periode-${participantName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${periodStats.startBound}-sd-${periodStats.endBound}.pdf`);
     };
 
     useEffect(() => {
@@ -435,19 +383,8 @@ function Absensi() {
                 setCurrentUser(event.detail.user);
             }
         };
-        const handleCompanyProfileUpdated = (event) => {
-            if (event.detail) {
-                setCompanyProfile(event.detail);
-            } else {
-                void loadCompanyProfile();
-            }
-        };
         window.addEventListener("user-profile-updated", handleProfileUpdated);
-        window.addEventListener("company-profile-updated", handleCompanyProfileUpdated);
-        return () => {
-            window.removeEventListener("user-profile-updated", handleProfileUpdated);
-            window.removeEventListener("company-profile-updated", handleCompanyProfileUpdated);
-        };
+        return () => window.removeEventListener("user-profile-updated", handleProfileUpdated);
     }, []);
 
     // Kebijakan absensi daring / Zoom
@@ -564,7 +501,7 @@ function Absensi() {
     // Load attendance policy
     const loadAttendancePolicy = async () => {
         try {
-            const res = await api.get("/pengaturan-absensi");
+            const res = await api.get("/pengaturan-absensi"); x``
             if (res.data?.data) {
                 setPolicy(res.data.data);
             }
@@ -578,31 +515,34 @@ function Absensi() {
 
         const loadProfile = async () => {
             try {
-                const response = await api.get("/me");
-                const user = response.data?.data;
+                const [meRes, regRes] = await Promise.allSettled([
+                    api.get("/me"),
+                    api.get("/pendaftaran/me"),
+                ]);
+                const user = meRes.status === "fulfilled" ? meRes.value.data?.data : null;
+                const regData = regRes.status === "fulfilled" ? regRes.value.data?.data : null;
                 let profile = user?.magang || null;
 
-                if (!profile) {
-                    const registrationResponse = await api.get("/pendaftaran/me");
-                    const registration = registrationResponse.data?.data;
-                    if (registration?.status === "Pemagang Aktif") {
-                        profile = {
-                            participant_name: user?.name || user?.nama || "Peserta Magang",
-                            participant_code:
-                                registration?.nim
-                                || registration?.nim_user
-                                || registration?.participant_code
-                                || user?.nim
-                                || user?.npm
-                                || null,
-                            institution: registration.asal_instansi,
-                        };
-                    }
+                if (!profile && regData?.status === "Pemagang Aktif") {
+                    profile = {
+                        participant_name: user?.name || user?.nama || "Peserta Magang",
+                        participant_code: user?.nim || user?.npm || null,
+                        institution: regData.asal_instansi,
+                    };
+                } else if (profile && regData) {
+                    profile = {
+                        ...profile,
+                        participant_code: profile.participant_code || user?.nim || user?.npm || null,
+                        institution: profile.institution || regData.asal_instansi,
+                    };
                 }
 
                 if (cancelled) return;
                 if (user) {
                     setCurrentUser(user);
+                }
+                if (regData) {
+                    setRegistration(regData);
                 }
                 setParticipant(profile);
 
@@ -650,7 +590,6 @@ function Absensi() {
         void loadOfficeLocations();
         void loadAttendancePolicy();
         void loadAttendanceHistory();
-        void loadCompanyProfile();
         detectLocation();
 
         const timer = setInterval(() => setClock(new Date()), 1000);
@@ -1071,10 +1010,10 @@ function Absensi() {
                                     <button
                                         type="button"
                                         className="btn-semester-recap"
-                                        onClick={() => setShowMonthModal(true)}
+                                        onClick={() => setShowSemesterModal(true)}
                                     >
                                         <FileText size={16} />
-                                        <span>Rekap per Bulan</span>
+                                        <span>Rekap Periode Magang</span>
                                     </button>
                                 </div>
                             </div>
@@ -1532,9 +1471,9 @@ function Absensi() {
                         </div>
                     )}
 
-                    {/* Modal Rekapitulasi Kehadiran per Bulan */}
-                    {showMonthModal && (
-                        <div className="attendance-modal-backdrop" onClick={() => setShowMonthModal(false)}>
+                    {/* Modal Rekapitulasi Kehadiran per Semester */}
+                    {showSemesterModal && (
+                        <div className="attendance-modal-backdrop" onClick={() => setShowSemesterModal(false)}>
                             <div className="attendance-modal-dialog" onClick={(e) => e.stopPropagation()}>
                                 <div className="attendance-modal-header">
                                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -1543,16 +1482,16 @@ function Absensi() {
                                         </div>
                                         <div>
                                             <h3 style={{ margin: 0, fontSize: "17px", fontWeight: "800", color: "#0f172a" }}>
-                                                Rekapitulasi Kehadiran per Bulan
+                                                Rekapitulasi Kehadiran Periode Magang
                                             </h3>
                                             <p style={{ margin: 0, fontSize: "12px", color: "#64748b" }}>
-                                                {participant?.participant_name} ({participant?.participant_code || "-"})
+                                                {participant?.participant_name || currentUser?.name || "Peserta"} ({participant?.participant_code || currentUser?.nim || currentUser?.npm || "-"})
                                             </p>
                                         </div>
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => setShowMonthModal(false)}
+                                        onClick={() => setShowSemesterModal(false)}
                                         style={{
                                             border: "none",
                                             background: "#f1f5f9",
@@ -1570,36 +1509,63 @@ function Absensi() {
                                 </div>
 
                                 <div className="attendance-modal-body">
-                                    {/* Filter Bulan & Tahun */}
-                                    <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center", background: "#f8fafc", padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-                                        <div style={{ flex: 1, minWidth: "160px" }}>
-                                            <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "#64748b", marginBottom: "4px" }}>
-                                                PILIH BULAN
-                                            </label>
-                                            <select
-                                                value={selectedMonthVal}
-                                                onChange={(e) => setSelectedMonth(`${selectedYearVal}-${e.target.value}`)}
-                                                style={{ width: "100%", padding: "7px 10px", borderRadius: "8px", border: "1.5px solid #cbd5e1", fontSize: "13px", fontWeight: "600", outline: "none", background: "#ffffff" }}
-                                            >
-                                                {monthsList.map((m) => (
-                                                    <option key={m.value} value={m.value}>{m.label}</option>
-                                                ))}
-                                            </select>
+                                    {/* Filter Periode Magang Peserta */}
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", background: "#f8fafc", padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                                            <div>
+                                                <span style={{ display: "block", fontSize: "10.5px", fontWeight: "800", letterSpacing: "0.05em", color: "#64748b" }}>
+                                                    PERIODE MAGANG PESERTA
+                                                </span>
+                                                <strong style={{ fontSize: "13.5px", color: "#0f172a" }}>
+                                                    {registeredPeriodStart && registeredPeriodEnd
+                                                        ? `${registeredPeriodName ? `${registeredPeriodName} • ` : ""}${formatPeriodDate(registeredPeriodStart)} – ${formatPeriodDate(registeredPeriodEnd)}`
+                                                        : `Rentang ${formatPeriodDate(periodStats.startBound)} – ${formatPeriodDate(periodStats.endBound)}`}
+                                                </strong>
+                                            </div>
+                                            {isCustomRangeActive && registeredPeriodStart && registeredPeriodEnd && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCustomPeriodRange({ start: "", end: "" })}
+                                                    style={{
+                                                        border: "1px solid #c7d2fe",
+                                                        background: "#eef2ff",
+                                                        color: "#4338ca",
+                                                        padding: "5px 10px",
+                                                        borderRadius: "8px",
+                                                        fontSize: "11.5px",
+                                                        fontWeight: "700",
+                                                        cursor: "pointer",
+                                                    }}
+                                                >
+                                                    Sesuai Periode Magang
+                                                </button>
+                                            )}
                                         </div>
 
-                                        <div style={{ width: "120px" }}>
-                                            <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "#64748b", marginBottom: "4px" }}>
-                                                TAHUN
-                                            </label>
-                                            <select
-                                                value={parseInt(selectedYearVal, 10)}
-                                                onChange={(e) => setSelectedMonth(`${e.target.value}-${selectedMonthVal}`)}
-                                                style={{ width: "100%", padding: "7px 10px", borderRadius: "8px", border: "1.5px solid #cbd5e1", fontSize: "13px", fontWeight: "600", outline: "none", background: "#ffffff" }}
-                                            >
-                                                {yearsList.map((y) => (
-                                                    <option key={y} value={y}>{y}</option>
-                                                ))}
-                                            </select>
+                                        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
+                                            <div style={{ flex: 1, minWidth: "160px" }}>
+                                                <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "#64748b", marginBottom: "4px" }}>
+                                                    DARI TANGGAL
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={recapStartDate}
+                                                    onChange={(e) => setCustomPeriodRange((prev) => ({ start: e.target.value, end: prev.end || recapEndDate }))}
+                                                    style={{ width: "100%", padding: "7px 10px", borderRadius: "8px", border: "1.5px solid #cbd5e1", fontSize: "13px", fontWeight: "600", outline: "none", background: "#ffffff", boxSizing: "border-box" }}
+                                                />
+                                            </div>
+
+                                            <div style={{ flex: 1, minWidth: "160px" }}>
+                                                <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "#64748b", marginBottom: "4px" }}>
+                                                    SAMPAI TANGGAL
+                                                </label>
+                                                <input
+                                                    type="date"
+                                                    value={recapEndDate}
+                                                    onChange={(e) => setCustomPeriodRange((prev) => ({ start: prev.start || recapStartDate, end: e.target.value }))}
+                                                    style={{ width: "100%", padding: "7px 10px", borderRadius: "8px", border: "1.5px solid #cbd5e1", fontSize: "13px", fontWeight: "600", outline: "none", background: "#ffffff", boxSizing: "border-box" }}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
@@ -1607,98 +1573,62 @@ function Absensi() {
                                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: "8px" }}>
                                         <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "8px 12px", borderRadius: "8px", textAlign: "center" }}>
                                             <span style={{ fontSize: "10.5px", fontWeight: "700", color: "#166534", display: "block" }}>TOTAL HADIR</span>
-                                            <strong style={{ fontSize: "16px", color: "#15803d" }}>{monthlyStats.hadir} Hari</strong>
+                                            <strong style={{ fontSize: "16px", color: "#15803d" }}>{periodStats.totalHadir} Hari</strong>
                                         </div>
                                         <div style={{ background: "#eef2ff", border: "1px solid #c7d2fe", padding: "8px 12px", borderRadius: "8px", textAlign: "center" }}>
                                             <span style={{ fontSize: "10.5px", fontWeight: "700", color: "#3730a3", display: "block" }}>TOTAL IZIN</span>
-                                            <strong style={{ fontSize: "16px", color: "#4338ca" }}>{monthlyStats.izin} Hari</strong>
+                                            <strong style={{ fontSize: "16px", color: "#4338ca" }}>{periodStats.totalIzin} Hari</strong>
                                         </div>
                                         <div style={{ background: "#fffbeb", border: "1px solid #fde68a", padding: "8px 12px", borderRadius: "8px", textAlign: "center" }}>
                                             <span style={{ fontSize: "10.5px", fontWeight: "700", color: "#92400e", display: "block" }}>TOTAL SAKIT</span>
-                                            <strong style={{ fontSize: "16px", color: "#b45309" }}>{monthlyStats.sakit} Hari</strong>
+                                            <strong style={{ fontSize: "16px", color: "#b45309" }}>{periodStats.totalSakit} Hari</strong>
                                         </div>
                                         <div style={{ background: "#fef2f2", border: "1px solid #fecaca", padding: "8px 12px", borderRadius: "8px", textAlign: "center" }}>
                                             <span style={{ fontSize: "10.5px", fontWeight: "700", color: "#991b1b", display: "block" }}>TOTAL ALPA</span>
-                                            <strong style={{ fontSize: "16px", color: "#b91c1c" }}>{monthlyStats.alpa} Hari</strong>
+                                            <strong style={{ fontSize: "16px", color: "#b91c1c" }}>{periodStats.totalAlpa} Hari</strong>
                                         </div>
                                         <div style={{ background: "#0f172a", border: "1px solid #312e81", padding: "8px 12px", borderRadius: "8px", textAlign: "center" }}>
-                                            <span style={{ fontSize: "10.5px", fontWeight: "700", color: "#a5b4fc", display: "block" }}>% KEHADIRAN</span>
-                                            <strong style={{ fontSize: "16px", color: "#38bdf8" }}>{monthlyStats.percentage}%</strong>
+                                            <span style={{ fontSize: "10.5px", fontWeight: "700", color: "#a5b4fc", display: "block" }}>% RATA-RATA</span>
+                                            <strong style={{ fontSize: "16px", color: "#38bdf8" }}>{periodStats.avgPct}%</strong>
                                         </div>
                                     </div>
 
-                                    {/* Tabel Rincian Harian Bulan Ini */}
-                                    <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "12px", maxHeight: "360px" }}>
+                                    {/* Tabel Rincian Bulan Sesuai Periode */}
+                                    <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "12px" }}>
                                         <table className="semester-table">
                                             <thead>
                                                 <tr>
-                                                    <th style={{ width: "35px", textAlign: "center" }}>No</th>
-                                                    <th>Hari & Tanggal</th>
-                                                    <th style={{ textAlign: "center" }}>Jam Masuk</th>
-                                                    <th style={{ textAlign: "center" }}>Jam Pulang</th>
-                                                    <th style={{ textAlign: "center" }}>Status</th>
-                                                    <th>Keterangan</th>
+                                                    <th style={{ width: "35px" }}>No</th>
+                                                    <th>Bulan</th>
+                                                    <th style={{ textAlign: "center" }}>Hadir</th>
+                                                    <th style={{ textAlign: "center" }}>Izin</th>
+                                                    <th style={{ textAlign: "center" }}>Sakit</th>
+                                                    <th style={{ textAlign: "center" }}>Alpa</th>
+                                                    <th style={{ textAlign: "center" }}>% Kehadiran</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {sortedMonthlyRecords.length === 0 ? (
-                                                    <tr>
-                                                        <td colSpan={6} style={{ textAlign: "center", padding: "28px 16px", color: "#64748b" }}>
-                                                            Belum ada catatan presensi pada bulan ini.
+                                                {periodStats.monthsData.map((m, idx) => (
+                                                    <tr key={m.monthKey}>
+                                                        <td style={{ color: "#94a3b8", fontWeight: "600" }}>{idx + 1}</td>
+                                                        <td style={{ fontWeight: "700" }}>{m.monthName}</td>
+                                                        <td style={{ textAlign: "center", color: "#16a34a", fontWeight: "700" }}>{m.hadir} hari</td>
+                                                        <td style={{ textAlign: "center", color: "#4f46e5" }}>{m.izin} hari</td>
+                                                        <td style={{ textAlign: "center", color: "#d97706" }}>{m.sakit} hari</td>
+                                                        <td style={{ textAlign: "center", color: "#dc2626" }}>{m.alpa} hari</td>
+                                                        <td style={{ textAlign: "center", fontWeight: "700", color: m.pct >= 75 ? "#16a34a" : "#dc2626" }}>
+                                                            {m.pct}%
                                                         </td>
                                                     </tr>
-                                                ) : (
-                                                    sortedMonthlyRecords.map((m, idx) => {
-                                                        const s = String(m.status || "Hadir").toLowerCase();
-                                                        const badgeStyle =
-                                                            s === "hadir" ? { bg: "#dcfce7", color: "#15803d" }
-                                                            : s === "izin" ? { bg: "#e0e7ff", color: "#4338ca" }
-                                                            : s === "sakit" ? { bg: "#fef3c7", color: "#b45309" }
-                                                            : { bg: "#fee2e2", color: "#b91c1c" };
-
-                                                        let tglFormatted = m.tanggal || "-";
-                                                        try {
-                                                            const d = new Date(m.tanggal);
-                                                            tglFormatted = d.toLocaleDateString("id-ID", {
-                                                                weekday: "short",
-                                                                day: "numeric",
-                                                                month: "short",
-                                                                year: "numeric"
-                                                            });
-                                                        } catch {}
-
-                                                        return (
-                                                            <tr key={m.id || idx}>
-                                                                <td style={{ color: "#94a3b8", fontWeight: "600", textAlign: "center" }}>{idx + 1}</td>
-                                                                <td style={{ fontWeight: "700", whiteSpace: "nowrap" }}>{tglFormatted}</td>
-                                                                <td style={{ textAlign: "center" }}>{m.jam_masuk || "--:--"}</td>
-                                                                <td style={{ textAlign: "center" }}>{m.jam_pulang || "--:--"}</td>
-                                                                <td style={{ textAlign: "center" }}>
-                                                                    <span style={{
-                                                                        display: "inline-block",
-                                                                        padding: "2px 8px",
-                                                                        borderRadius: "6px",
-                                                                        fontSize: "11.5px",
-                                                                        fontWeight: "700",
-                                                                        background: badgeStyle.bg,
-                                                                        color: badgeStyle.color
-                                                                    }}>
-                                                                        {m.status || "Hadir"}
-                                                                    </span>
-                                                                </td>
-                                                                <td style={{ fontSize: "12px", color: "#475569" }}>{m.keterangan || "—"}</td>
-                                                            </tr>
-                                                        );
-                                                    })
-                                                )}
-                                                {sortedMonthlyRecords.length > 0 && (
-                                                    <tr className="total-row">
-                                                        <td colSpan={2}>TOTAL BULAN INI</td>
-                                                        <td colSpan={2} style={{ textAlign: "center" }}>{monthlyStats.hadir} Hadir / {monthlyStats.total} Presensi</td>
-                                                        <td style={{ textAlign: "center" }}>{monthlyStats.percentage}%</td>
-                                                        <td style={{ fontSize: "11.5px" }}>{monthlyStats.izin} Izin, {monthlyStats.sakit} Sakit, {monthlyStats.alpa} Alpa</td>
-                                                    </tr>
-                                                )}
+                                                ))}
+                                                <tr className="total-row">
+                                                    <td colSpan={2}>TOTAL PERIODE MAGANG</td>
+                                                    <td style={{ textAlign: "center" }}>{periodStats.totalHadir} hari</td>
+                                                    <td style={{ textAlign: "center" }}>{periodStats.totalIzin} hari</td>
+                                                    <td style={{ textAlign: "center" }}>{periodStats.totalSakit} hari</td>
+                                                    <td style={{ textAlign: "center" }}>{periodStats.totalAlpa} hari</td>
+                                                    <td style={{ textAlign: "center" }}>{periodStats.avgPct}%</td>
+                                                </tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -1707,7 +1637,7 @@ function Absensi() {
                                 <div className="attendance-modal-footer">
                                     <button
                                         type="button"
-                                        onClick={() => setShowMonthModal(false)}
+                                        onClick={() => setShowSemesterModal(false)}
                                         style={{
                                             border: "1px solid #cbd5e1",
                                             background: "#ffffff",
@@ -1724,10 +1654,10 @@ function Absensi() {
                                     <button
                                         type="button"
                                         className="btn-semester-recap"
-                                        onClick={exportMonthlyPdf}
+                                        onClick={exportPeriodPdf}
                                     >
                                         <Download size={16} />
-                                        <span>Unduh PDF Rekap Bulanan</span>
+                                        <span>Unduh PDF Rekap Periode</span>
                                     </button>
                                 </div>
                             </div>

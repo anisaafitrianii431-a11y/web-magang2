@@ -13,14 +13,13 @@ import {
     BookOpen,
     Globe,
     ArrowUpRight,
+    Star,
 } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import api from "../services/api";
 import { API_BASE_URL } from "../config/api";
 import { normalizeRole } from "../utils/auth";
-import FormKomentar from "../components/landing/FormKomentar";
-import ListKomentar from "../components/landing/ListKomentar";
 import "./ParticipantDashboard.css";
 
 const roleNames = {
@@ -71,7 +70,6 @@ function ParticipantDashboard({ user }) {
     const [failedSections, setFailedSections] = useState([]);
     const [downloadingLetter, setDownloadingLetter] = useState(false);
     const [downloadMessage, setDownloadMessage] = useState("");
-    const [refreshKomentar, setRefreshKomentar] = useState(0);
 
     useEffect(() => {
         const handleProfileUpdated = (event) => {
@@ -279,20 +277,36 @@ function ParticipantDashboard({ user }) {
                                         </span>
                                     </div>
                                 </div>
-                                <Link
-                                    to="/"
-                                    className="pd-hero-landing-btn"
-                                    title="Kunjungi Landing Page Utama (Portal Publik)"
-                                >
-                                    <div className="pd-hero-landing-btn-icon">
-                                        <Globe size={18} />
-                                    </div>
-                                    <div className="pd-hero-landing-btn-body">
-                                        <span className="pd-hero-landing-btn-label">Halaman Utama</span>
-                                        <span className="pd-hero-landing-btn-title">Landing Page</span>
-                                    </div>
-                                    <ArrowUpRight size={16} className="pd-hero-landing-btn-arrow" />
-                                </Link>
+                                <div className="pd-hero-actions">
+                                    <Link
+                                        to="/"
+                                        className="pd-hero-landing-btn"
+                                        title="Kunjungi Landing Page Utama (Portal Publik)"
+                                    >
+                                        <div className="pd-hero-landing-btn-icon">
+                                            <Globe size={18} />
+                                        </div>
+                                        <div className="pd-hero-landing-btn-body">
+                                            <span className="pd-hero-landing-btn-label">Halaman Utama</span>
+                                            <span className="pd-hero-landing-btn-title">Landing Page</span>
+                                        </div>
+                                        <ArrowUpRight size={16} className="pd-hero-landing-btn-arrow" />
+                                    </Link>
+                                    <Link
+                                        to="/ulasan"
+                                        className="pd-hero-landing-btn pd-hero-review-btn"
+                                        title="Buka Halaman Ulasan & Rating"
+                                    >
+                                        <div className="pd-hero-landing-btn-icon">
+                                            <Star size={18} />
+                                        </div>
+                                        <div className="pd-hero-landing-btn-body">
+                                            <span className="pd-hero-landing-btn-label">Feedback Portal</span>
+                                            <span className="pd-hero-landing-btn-title">Beri Rating &amp; Ulasan</span>
+                                        </div>
+                                        <ArrowUpRight size={16} className="pd-hero-landing-btn-arrow" />
+                                    </Link>
+                                </div>
                             </div>
                         </div>
                     </section>
@@ -404,17 +418,6 @@ function ParticipantDashboard({ user }) {
                             <Download size={15} />
                             {downloadingLetter ? "Mengunduh..." : "Unduh Surat Balasan"}
                         </button>
-                    </section>
-
-                    <section className="pd-review-section" id="ulasan-peserta">
-                        <div className="pd-review-heading">
-                            <h2>Ulasan & Rating</h2>
-                            <p>Bagikan pengalaman Anda selama menggunakan portal magang.</p>
-                        </div>
-                        <div className="komentar-wrapper">
-                            <FormKomentar onCommentAdded={() => setRefreshKomentar((value) => value + 1)} />
-                            <ListKomentar refreshTrigger={refreshKomentar} />
-                        </div>
                     </section>
 
                     {failedSections.length > 0 && (
@@ -1173,6 +1176,7 @@ function Dashboard() {
     const managementLinks = role === "pembimbing"
         ? [
             { to: "/riwayat", icon: "📅", title: "Absensi Magang", description: "Pantau kehadiran peserta dan validasi izin." },
+            { to: "/logbook", icon: "📓", title: "Logbook Harian", description: "Pantau & verifikasi kegiatan harian peserta." },
             { to: "/periode", icon: "🗓️", title: "Periode Magang", description: "Lihat periode peserta magang." },
             { to: "/pembimbing/jadwal-absensi", icon: "🕒", title: "Jadwal Absensi", description: "Atur jam masuk dan jam pulang." },
             { to: "/tugas", icon: "📋", title: "Tugas Magang", description: "Periksa dan nilai submisi tugas." },
@@ -1195,11 +1199,31 @@ function Dashboard() {
                     <h1>{role === "admin" ? "Dashboard Administrator" : "Dashboard Pembimbing"}</h1>
                     <p className="subtitle">Ringkasan {roleNames[role] || "Pengguna"}</p>
 
-                    <div className="welcome-card">
+                    <div className="welcome-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
                         <div>
                             <h2>Halo, {displayName} 👋</h2>
                             <p>{description}</p>
                         </div>
+                        <Link
+                            to="/"
+                            style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                padding: "10px 18px",
+                                borderRadius: "10px",
+                                background: "linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)",
+                                color: "#ffffff",
+                                fontSize: "13px",
+                                fontWeight: "700",
+                                textDecoration: "none",
+                                boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)",
+                            }}
+                        >
+                            <Globe size={15} />
+                            <span>Kunjungi Landing Page</span>
+                            <ArrowUpRight size={15} />
+                        </Link>
                     </div>
 
                     <div className="management-links">

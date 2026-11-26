@@ -11,7 +11,9 @@
   flex-shrink: 0;
   position: sticky;
   top: 0;
+  align-self: flex-start;
   height: 100vh;
+  height: 100dvh;
   z-index: 50;
   padding: 20px 14px;
   box-sizing: border-box;

@@ -17,6 +17,8 @@ import Periode from "./pages/Periode";
 import Peserta from "./pages/Peserta";
 import FormPendaftaran from "./pages/pemagang/FromPendaftaran";
 import Riwayat from "./pages/Riwayat";
+import Logbook from "./pages/Logbook";
+import Ulasan from "./pages/Ulasan";
 import SuratBalasan from "./pages/SuratBalasan";
 import Tugas from "./pages/Tugas";
 import PengaturanAbsensi from "./pages/PengaturanAbsensi";
@@ -55,6 +57,8 @@ function App() {
                 <Route path="/peserta" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Peserta /></ProtectedRoute>} />
                 <Route path="/periode" element={<ProtectedRoute allowedRole={["admin", "pembimbing"]}><Periode /></ProtectedRoute>} />
                 <Route path="/riwayat" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><Riwayat /></ProtectedRoute>} />
+                <Route path="/logbook" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><Logbook /></ProtectedRoute>} />
+                <Route path="/ulasan" element={<ProtectedRoute allowedRole={["admin", "pembimbing", "pemagang"]}><Ulasan /></ProtectedRoute>} />
                 <Route path="/akun-peserta" element={<ProtectedRoute allowedRole="admin"><Navigate to="/admin/akun-peserta" replace /></ProtectedRoute>} />
                 <Route path="/kelola-pembimbing" element={<ProtectedRoute allowedRole="admin"><Navigate to="/admin/pembimbing" replace /></ProtectedRoute>} />
                 <Route path="/pembimbing" element={<ProtectedRoute allowedRole="pembimbing"><Dashboard /></ProtectedRoute>} />

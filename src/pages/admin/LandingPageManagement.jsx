@@ -96,6 +96,7 @@ function LandingPageManagement() {
     const fotoInputRef = useRef(null);
 
     const [videoFile, setVideoFile] = useState(null);
+    const [videoUrl, setVideoUrl] = useState("");
     const [removeVideo, setRemoveVideo] = useState(false);
     const [videoPreview, setVideoPreview] = useState("");
     const videoInputRef = useRef(null);
@@ -144,9 +145,21 @@ function LandingPageManagement() {
             if (item?.foto_url) setFotoPreview(resolveStorageUrl(item.foto_url));
             else if (item?.foto) setFotoPreview(resolveStorageUrl(item.foto));
 
-            // Jika item sudah punya video, tampilkan preview
-            if (item?.video_url) setVideoPreview(resolveStorageUrl(item.video_url));
-            else if (item?.video) setVideoPreview(resolveStorageUrl(item.video));
+            // Jika item sudah punya video, tampilkan preview atau URL YouTube
+            const rawVideo = String(item?.video || item?.video_url || "").trim();
+            if (/^https?:\/\//i.test(rawVideo) && !rawVideo.includes("/storage/")) {
+                setVideoUrl(rawVideo);
+                setVideoPreview("");
+            } else if (item?.video_url) {
+                setVideoUrl("");
+                setVideoPreview(resolveStorageUrl(item.video_url));
+            } else if (item?.video) {
+                setVideoUrl("");
+                setVideoPreview(resolveStorageUrl(item.video));
+            } else {
+                setVideoUrl("");
+                setVideoPreview("");
+            }
         }
     };
 
@@ -158,6 +171,7 @@ function LandingPageManagement() {
         setRemoveFoto(false);
         setFotoPreview("");
         setVideoFile(null);
+        setVideoUrl("");
         setRemoveVideo(false);
         setVideoPreview("");
     };
@@ -179,6 +193,7 @@ function LandingPageManagement() {
                 const path = editingId
                     ? `/admin/landing-page/aktivitas/${editingId}`
                     : "/admin/landing-page/aktivitas";
+                const trimmedVideoUrl = videoUrl.trim();
                 const aktivitasData = {
                     judul: form.judul,
                     deskripsi: form.deskripsi,
@@ -197,6 +212,7 @@ function LandingPageManagement() {
                     else if (editingId && removeFoto) formData.append("foto", "");
 
                     if (videoFile) formData.append("video", videoFile);
+                    else if (trimmedVideoUrl) formData.append("video", trimmedVideoUrl);
                     else if (editingId && removeVideo) formData.append("video", "");
 
                     if (editingId) formData.append("_method", "PUT");
@@ -206,8 +222,9 @@ function LandingPageManagement() {
                 } else {
                     await api[editingId ? "put" : "post"](path, {
                         ...aktivitasData,
-                        ...(editingId && removeFoto ? { foto: null } : {}),
-                        ...(editingId && removeVideo ? { video: null } : {}),
+                        ...(trimmedVideoUrl ? { video: trimmedVideoUrl } : {}),
+                        ...(!trimmedVideoUrl && editingId && removeFoto ? { foto: null } : {}),
+                        ...(!trimmedVideoUrl && editingId && removeVideo ? { video: null } : {}),
                     });
                 }
             }
@@ -574,9 +591,30 @@ function LandingPageManagement() {
                                         )}
                                     </div>
 
-                                    {/* Input Upload Video Kegiatan */}
+                                    {/* Input Link YouTube & Upload Video Kegiatan */}
+                                    <label className="landing-admin-field wide">
+                                        <span>Link Video YouTube Kegiatan (Opsional)</span>
+                                        <input
+                                            type="url"
+                                            placeholder="https://www.youtube.com/watch?v=... atau https://youtu.be/..."
+                                            value={videoUrl}
+                                            onChange={(e) => {
+                                                const nextUrl = e.target.value;
+                                                setVideoUrl(nextUrl);
+                                                if (nextUrl.trim()) {
+                                                    setVideoFile(null);
+                                                    setVideoPreview("");
+                                                    setRemoveVideo(false);
+                                                    if (videoInputRef.current) videoInputRef.current.value = "";
+                                                } else if (editingId && form.video) {
+                                                    setRemoveVideo(true);
+                                                }
+                                            }}
+                                        />
+                                    </label>
+
                                     <div className="landing-admin-field wide landing-admin-foto-field" style={{ marginTop: "14px" }}>
-                                        <span>Video Kegiatan Magang (Opsional)</span>
+                                        <span>Atau Unggah File Video Kegiatan (Opsional)</span>
                                         <input
                                             ref={videoInputRef}
                                             id="landing-admin-video"
@@ -587,6 +625,7 @@ function LandingPageManagement() {
                                                 const file = e.target.files[0];
                                                 if (!file) return;
                                                 setVideoFile(file);
+                                                setVideoUrl("");
                                                 setRemoveVideo(false);
                                                 setVideoPreview(URL.createObjectURL(file));
                                             }}

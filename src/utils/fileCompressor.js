@@ -180,18 +180,16 @@ export async function optimizePdf(file, targetSizeKb = 100) {
       throw new Error('Dokumen PDF tidak memiliki halaman yang valid.');
     }
 
-    // Jika dokumen sangat tebal (> 6 halaman, misal Laporan KP / skripsi puluhan lembar):
-    // Jangan paksa ke 100 KB karena 1 halaman hanya dapat < 2 KB (tulisan akan hancur/buram total).
-    // Alihkan langsung ke kompresi stream presisi untuk menjaga seluruh teks tetap terbaca tajam.
-    if (numPages > 6) {
-      console.info(`Dokumen memiliki ${numPages} halaman (dokumen tebal). Menggunakan optimasi stream presisi agar tetap terbaca.`);
+    // Jika dokumen sangat tebal (> 120 halaman), alihkan ke optimasi stream agar browser tetap responsif.
+    if (numPages > 120) {
+      console.info(`Dokumen memiliki ${numPages} halaman (> 120 halaman). Menggunakan optimasi stream presisi.`);
       throw new Error('DOKUMEN_TEBAL');
     }
 
-    // Hitung alokasi ukuran per halaman agar total dokumen berada di kisaran <= 100 KB (misal ~70-95 KB)
-    // Berikan margin 10 KB untuk overhead struktur metadata PDF
-    const totalImageBudgetKb = Math.max(30, targetSizeKb - 10);
-    const perPageTargetKb = Math.max(18, Math.floor(totalImageBudgetKb / numPages));
+    // Hitung alokasi ukuran per halaman agar total dokumen berada di bawah targetSizeKb
+    const overheadKb = Math.min(250, numPages * 3 + 15);
+    const totalImageBudgetKb = Math.max(30, targetSizeKb - overheadKb);
+    const perPageTargetKb = Math.max(12, Math.floor(totalImageBudgetKb / numPages));
 
     const { PDFDocument } = await import('pdf-lib');
     const newPdfDoc = await PDFDocument.create();
@@ -220,20 +218,26 @@ export async function optimizePdf(file, targetSizeKb = 100) {
 
     for (let pageNum = 1; pageNum <= numPages; pageNum++) {
       const page = await pdfDoc.getPage(pageNum);
-      
+
       // Ambil ukuran dasar halaman dokumen (scale 1.0)
       const baseViewport = page.getViewport({ scale: 1.0 });
 
-      // Batasi resolusi maksimum canvas agar dokumen scan raksasa (misal 2500x3500px dari scanner/kamera)
-      // tidak membengkakkan memori dan ukuran file hasil kompresi.
-      // Resolusi 850x1200px sudah sangat tajam dan jernih untuk membaca teks surat, tanda tangan, dan stempel.
-      const targetMaxWidth = numPages === 1 ? 880 : (numPages <= 3 ? 760 : 640);
-      const targetMaxHeight = numPages === 1 ? 1240 : (numPages <= 3 ? 1080 : 900);
+      // Pilih resolusi berdasarkan anggaran per halaman agar teks tetap tajam sekaligus memenuhi target ukuran
+      const targetMaxWidth = perPageTargetKb >= 120
+        ? 1150
+        : perPageTargetKb >= 40
+          ? 900
+          : (numPages === 1 ? 880 : (numPages <= 3 ? 760 : 640));
+      const targetMaxHeight = perPageTargetKb >= 120
+        ? 1620
+        : perPageTargetKb >= 40
+          ? 1280
+          : (numPages === 1 ? 1240 : (numPages <= 3 ? 1080 : 900));
 
       let scale = Math.min(
         targetMaxWidth / baseViewport.width,
         targetMaxHeight / baseViewport.height,
-        1.25 // Maksimal scale 1.25 jika dokumen ukuran pt standar
+        1.5
       );
 
       const viewport = page.getViewport({ scale });
@@ -249,22 +253,16 @@ export async function optimizePdf(file, targetSizeKb = 100) {
       await page.render({ canvasContext: ctx, viewport }).promise;
 
       // Iterasi kompresi JPEG halaman adaptif
-      let quality = 0.65;
+      let quality = perPageTargetKb >= 120 ? 0.78 : (perPageTargetKb >= 40 ? 0.70 : 0.65);
       let pageBytes = await canvasToJpegBytes(canvas, quality);
 
-      // Jika ukuran halaman melebihi jatah target KB, turunkan kualitas bertahap
-      if (pageBytes.byteLength > perPageTargetKb * 1024) {
-        quality = 0.50;
-        pageBytes = await canvasToJpegBytes(canvas, quality);
-      }
+      const qualitySteps = perPageTargetKb >= 120
+        ? [0.62, 0.48, 0.36]
+        : [0.50, 0.38, 0.28];
 
-      if (pageBytes.byteLength > perPageTargetKb * 1024) {
-        quality = 0.38;
-        pageBytes = await canvasToJpegBytes(canvas, quality);
-      }
-
-      if (pageBytes.byteLength > perPageTargetKb * 1024) {
-        quality = 0.28;
+      for (const q of qualitySteps) {
+        if (pageBytes.byteLength <= perPageTargetKb * 1024) break;
+        quality = q;
         pageBytes = await canvasToJpegBytes(canvas, quality);
       }
 

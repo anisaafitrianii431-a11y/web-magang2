@@ -4,6 +4,67 @@
    ========================================================================== */
 
 /* ── 1. Global Reset & Container Konsisten ─────────────────────── */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: clip;
+}
+
+/* Custom Vertical Scrollbar Konsisten di Semua Halaman & Modal */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+  background-clip: content-box;
+}
+
+/* Global Modal Vertical Scroll Support */
+.modal-overlay,
+.attendance-modal-backdrop {
+  overflow-y: auto !important;
+  align-items: flex-start !important;
+  padding: 24px 16px !important;
+}
+
+.modal-overlay > div,
+.modal-dialog,
+.modal-content,
+.attendance-modal-dialog {
+  margin: auto !important;
+  max-height: calc(100vh - 48px) !important;
+  overflow-y: auto !important;
+}
+
+.modal-dialog > form,
+.modal-content > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.modal-body {
+  overflow-y: auto !important;
+  flex: 1;
+  min-height: 0;
+}
+
 body, 
 .layout, 
 .app-shell, 

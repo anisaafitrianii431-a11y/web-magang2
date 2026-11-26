@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import api from '../services/api';
+import { applyKopToPdfPage, KOP_TOP_SAFE_Y, loadKopDataUrl } from '../utils/kopSurat';
 
 function getPredicate(score) {
   if (score >= 85) return 'A (Sangat Baik)';
@@ -125,25 +126,28 @@ export default function PenilaianPage({ onSubmit, isSaving, submitError }) {
         throw new Error('Penilaian belum lengkap dan belum dapat diunduh.');
       }
 
+      const kopDataUrl = await loadKopDataUrl();
       const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
       const pageWidth = doc.internal.pageSize.getWidth();
       const margin = 18;
       const total = Number(evaluation.nilai_akhir);
 
-      doc.setFontSize(16);
+      applyKopToPdfPage(doc, kopDataUrl);
+
+      doc.setFontSize(15);
       doc.setFont('helvetica', 'bold');
-      doc.text('FORM PENILAIAN AKHIR PEMAGANG', margin, 22);
+      doc.text('FORM PENILAIAN AKHIR PEMAGANG', margin, KOP_TOP_SAFE_Y + 4);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Nama peserta: ${participant.nama_peserta || '-'}`, margin, 34);
-      doc.text(`Asal instansi: ${participant.asal_instansi || '-'}`, margin, 41);
+      doc.text(`Nama peserta: ${participant.nama_peserta || '-'}`, margin, KOP_TOP_SAFE_Y + 14);
+      doc.text(`Asal instansi: ${participant.asal_instansi || '-'}`, margin, KOP_TOP_SAFE_Y + 21);
       if (participant.laporan?.judul_laporan) {
-        doc.text(`Judul laporan: ${participant.laporan.judul_laporan}`, margin, 48, {
+        doc.text(`Judul laporan: ${participant.laporan.judul_laporan}`, margin, KOP_TOP_SAFE_Y + 28, {
           maxWidth: pageWidth - margin * 2,
         });
       }
 
-      const tableTop = participant.laporan?.judul_laporan ? 62 : 57;
+      const tableTop = participant.laporan?.judul_laporan ? KOP_TOP_SAFE_Y + 40 : KOP_TOP_SAFE_Y + 35;
       const columns = [margin, margin + 10, margin + 101, margin + 128, margin + 151];
       const tableRight = pageWidth - margin;
       const rowHeight = 10;

@@ -145,6 +145,13 @@ function hitungTerlambat(submisiList, deadline) {
   ).length;
 }
 
+// Helper: Ambil submisi milik peserta yang sedang login
+function getParticipantSubmisi(submisiList, userId) {
+  const list = submisiList || [];
+  if (!userId) return list[0] || null;
+  return list.find((s) => Number(s.user_id) === Number(userId)) || list[0] || null;
+}
+
 // Top Navbar Component
 function TopNavbar({ user, isConnected }) {
   const currentRole = user?.role || 'peserta';
@@ -514,7 +521,7 @@ function Tugas() {
   const filteredData = useMemo(() => {
     return daftarTugas.filter((item) => {
       const submisiList = item.submisi || [];
-      const submisi = submisiList[0];
+      const submisi = isPeserta ? getParticipantSubmisi(submisiList, user?.id) : submisiList[0];
 
       const matchSearch =
         !searchQuery ||
@@ -530,7 +537,7 @@ function Tugas() {
 
       return matchSearch && matchKategori && matchStatus;
     });
-  }, [daftarTugas, searchQuery, filterKategori, filterStatus]);
+  }, [daftarTugas, searchQuery, filterKategori, filterStatus, isPeserta, user?.id]);
 
   // Ringkasan statistik tugas untuk kartu metrik
   const stats = useMemo(() => {
@@ -538,16 +545,20 @@ function Tugas() {
     let belumDikerjakan = 0;
     let menungguReview = 0;
     let selesai = 0;
+    const nilaiList = [];
 
     daftarTugas.forEach((tugas) => {
       const submisiList = tugas.submisi || [];
-      const mySub = isPeserta ? submisiList[0] : null;
+      const mySub = isPeserta ? getParticipantSubmisi(submisiList, user?.id) : null;
 
       if (isPeserta) {
         if (!mySub) {
           belumDikerjakan++;
         } else if (mySub.status === 'sudah_dinilai') {
           selesai++;
+          if (mySub.nilai !== null && mySub.nilai !== undefined && mySub.nilai !== '') {
+            nilaiList.push(Number(mySub.nilai));
+          }
         } else {
           menungguReview++;
         }
@@ -565,8 +576,12 @@ function Tugas() {
       }
     });
 
-    return { total, belumDikerjakan, menungguReview, selesai };
-  }, [daftarTugas, isPeserta]);
+    const rataRata = nilaiList.length
+      ? (nilaiList.reduce((acc, n) => acc + n, 0) / nilaiList.length).toFixed(1)
+      : null;
+
+    return { total, belumDikerjakan, menungguReview, selesai, rataRata };
+  }, [daftarTugas, isPeserta, user?.id]);
 
   if (!user) {
     return <Login />;
@@ -682,7 +697,9 @@ function Tugas() {
                 <span className="task-metric-num" style={{ color: '#16a34a' }}>{stats.selesai}</span>
                 <span className="task-metric-label">Selesai & Dinilai</span>
                 <span className="task-metric-sub">
-                  {isPeserta ? 'Telah dinilai pembimbing' : 'Selesai dievaluasi'}
+                  {isPeserta
+                    ? (stats.rataRata ? `Rata-rata Nilai: ${stats.rataRata}` : 'Telah dinilai pembimbing')
+                    : 'Selesai dievaluasi'}
                 </span>
               </div>
             </div>
@@ -883,7 +900,7 @@ function Tugas() {
                   ) : (
                     filteredData.map((tugas, index) => {
                       const submisiList = tugas.submisi || [];
-                      const submisi = submisiList[0];
+                      const submisi = isPeserta ? getParticipantSubmisi(submisiList, user?.id) : submisiList[0];
                       const statusInfo = getStatusSubmisi(submisi, tugas.deadline);
                       const deadlineInfo = formatDeadlineInfo(tugas.deadline);
                       const deadlineFormatted = formatTanggal(tugas.deadline);
@@ -991,9 +1008,9 @@ function Tugas() {
                                       gap: '4px',
                                       background: '#eef2ff',
                                       color: '#3730a3',
-                                      padding: '2px 8px',
+                                      padding: '3px 9px',
                                       borderRadius: '6px',
-                                      fontSize: '11px',
+                                      fontSize: '11.5px',
                                       fontWeight: 700,
                                       border: '1px solid #c7d2fe'
                                     }}
@@ -1001,6 +1018,21 @@ function Tugas() {
                                     <Award size={12} color="#4f46e5" />
                                     <span>Nilai: {submisi.nilai} ({formatNilaiAkhir(submisi.nilai).short})</span>
                                   </div>
+                                )}
+                                {submisi?.feedback && (
+                                  <span
+                                    title={submisi.feedback}
+                                    style={{
+                                      fontSize: '11px',
+                                      color: '#475569',
+                                      maxWidth: '170px',
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                    }}
+                                  >
+                                    💬 "{submisi.feedback}"
+                                  </span>
                                 )}
                               </div>
                             ) : (
@@ -1078,8 +1110,33 @@ function Tugas() {
                                 </button>
                               )}
 
-                              {/* Peserta: Kumpulkan / Ubah */}
-                              {isPeserta && (
+                              {/* Peserta: Lihat Nilai (jika sudah dinilai) atau Kumpulkan / Ubah */}
+                              {isPeserta && submisi?.status === 'sudah_dinilai' ? (
+                                <button
+                                  type="button"
+                                  className="action-btn"
+                                  onClick={() => setModalDetail(tugas)}
+                                  title="Lihat Nilai & Feedback Pembimbing"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '7px 14px',
+                                    borderRadius: '8px',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                                    border: 'none',
+                                    color: '#ffffff',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 2px 8px rgba(22, 163, 74, 0.25)',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  <Award size={13} />
+                                  <span>Lihat Nilai</span>
+                                </button>
+                              ) : isPeserta && (
                                 <button
                                   type="button"
                                   className="action-btn btn-submit-action"
@@ -1151,7 +1208,7 @@ function Tugas() {
 
       {/* ================= MODAL DETAIL TUGAS ================= */}
       {modalDetail && (() => {
-        const mySub = isPeserta ? modalDetail.submisi?.[0] : null;
+        const mySub = isPeserta ? getParticipantSubmisi(modalDetail.submisi, user?.id) : null;
         const deadlineInfo = formatDeadlineInfo(modalDetail.deadline);
         const isKelompok = modalDetail.kategori === 'Kelompok';
         const subStatus = mySub ? getStatusSubmisi(mySub, modalDetail.deadline) : null;
@@ -1484,11 +1541,20 @@ function Tugas() {
                         {/* Nilai & Feedback jika sudah dinilai */}
                         {gradeInfo && (
                           <div style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)', padding: '14px 16px', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: mySub.feedback ? '8px' : 0 }}>
-                              <Award size={18} color="#16a34a" />
-                              <strong style={{ fontSize: '0.94rem', color: '#166534' }}>
-                                Nilai Tugas: {mySub.nilai} / {gradeInfo.label}
-                              </strong>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: mySub.feedback || mySub.penilai || mySub.tanggal_dinilai ? '8px' : 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Award size={18} color="#16a34a" />
+                                <strong style={{ fontSize: '0.94rem', color: '#166534' }}>
+                                  Nilai Tugas: {mySub.nilai} — {gradeInfo.label}
+                                </strong>
+                              </div>
+                              {(mySub.penilai?.name || mySub.tanggal_dinilai) && (
+                                <span style={{ fontSize: '0.76rem', color: '#15803d', fontWeight: 600 }}>
+                                  {mySub.penilai?.name ? `Dinilai oleh ${mySub.penilai.name}` : ''}
+                                  {mySub.penilai?.name && mySub.tanggal_dinilai ? ' • ' : ''}
+                                  {mySub.tanggal_dinilai ? new Date(mySub.tanggal_dinilai).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                                </span>
+                              )}
                             </div>
                             {mySub.feedback && (
                               <div style={{ fontSize: '0.88rem', color: '#14532d', background: 'rgba(255,255,255,0.7)', padding: '10px 12px', borderRadius: '8px', border: '1px solid #dcfce7' }}>

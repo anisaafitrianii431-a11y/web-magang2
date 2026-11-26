@@ -14,6 +14,7 @@ import {
     Clock,
     Sliders,
     Award,
+    BookOpen,
     LogOut,
     ChevronRight,
 } from "lucide-react";
@@ -71,12 +72,14 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
             { to: "/admin/lokasi", label: "Lokasi Absensi", icon: MapPin },
             { to: "/admin/akun-peserta", label: "Kelola Akun Peserta", icon: Users },
             { to: "/riwayat", label: "Absensi Magang", icon: CalendarDays },
+            { to: "/logbook", label: "Logbook Harian", icon: BookOpen },
             { to: "/tugas", label: "Tugas Magang", icon: CheckSquare },
             { to: "/laporan", label: "Laporan Magang", icon: FolderCheck },
         ]
         : isPembimbing
             ? [
                 { to: "/riwayat", label: "Absensi Magang", icon: CalendarDays },
+                { to: "/logbook", label: "Logbook Harian", icon: BookOpen },
                 { to: "/pembimbing/jadwal-absensi", label: "Jadwal Absensi", icon: Clock },
                 { to: "/tugas", label: "Tugas Magang", icon: CheckSquare },
                 { to: "/laporan", label: "Laporan Magang", icon: FolderCheck },
@@ -86,8 +89,9 @@ function Sidebar({ onLogout: onLogoutOverride } = {}) {
             : [
                 { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
                 { to: "/absensi", label: "Absen Hari Ini", icon: CalendarCheck },
-                { to: "/tugas", label: "Tugas Magang", icon: CheckSquare },
                 { to: "/riwayat", label: "Riwayat Absensi", icon: CalendarDays },
+                { to: "/logbook", label: "Logbook Harian", icon: BookOpen },
+                { to: "/tugas", label: "Tugas Magang", icon: CheckSquare },
                 { to: "/laporan", label: "Laporan Magang", icon: FolderCheck },
             ];
 

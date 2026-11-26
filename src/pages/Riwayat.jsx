@@ -27,6 +27,7 @@ import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import api from "../services/api";
 import { API_BASE_URL } from "../config/api";
+import { applyKopToPdfPage, KOP_BOTTOM_SAFE_MARGIN, KOP_TOP_SAFE_Y, loadKopDataUrl } from "../utils/kopSurat";
 
 function getPhotoUrl(photo) {
     if (!photo) return null;
@@ -409,7 +410,8 @@ function Riwayat() {
 
     const displayedData = filteredData;
 
-    const exportMonthlyPdf = () => {
+    const exportMonthlyPdf = async () => {
+        const kopDataUrl = await loadKopDataUrl();
         const doc = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
         doc.setLineHeightFactor(1.5);
         const [yearStr, monthStr] = (activeMonth || new Date().toISOString().slice(0, 7)).split("-");
@@ -621,11 +623,12 @@ function Riwayat() {
                 const columnWidths = [10, 31, 27, 52, width - 120];
                 const columnTitles = ["No.", "Tanggal", "Hari", "Status (Hadir/Izin/Sakit/Alpha)", "Keterangan"];
 
+                applyKopToPdfPage(doc, kopDataUrl);
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(13);
                 doc.setTextColor(0);
-                doc.text("LAPORAN ABSENSI MAGANG", pageWidth / 2, 20, { align: "center" });
-                const metaY = 26;
+                doc.text("LAPORAN ABSENSI MAGANG", pageWidth / 2, KOP_TOP_SAFE_Y + 3, { align: "center" });
+                const metaY = KOP_TOP_SAFE_Y + 8;
                 const metaHeight = 17;
                 doc.setDrawColor(...border);
                 doc.setFillColor(255, 255, 255);
@@ -651,13 +654,13 @@ function Riwayat() {
                 drawMeta("Nama Peserta Magang", selectedPerson.name, left + 3, metaY + 13.5, width / 2 - 3, 40);
                 drawMeta("Pembimbing Lapangan", supervisorName, left + width / 2 + 3, metaY + 13.5, width / 2 - 3, 40);
 
-                const summaryTitleY = 60;
+                const summaryTitleY = metaY + 23;
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(9);
                 doc.setTextColor(0);
                 doc.text("Ringkasan Kehadiran Bulan Ini", left, summaryTitleY);
 
-                const summaryY = 63;
+                const summaryY = summaryTitleY + 3;
                 const summaryWidth = width / 6;
                 const summaryHeaders = ["Hari Kerja", "Hadir", "Izin", "Sakit", "Tanpa Keterangan", "Persentase Hadir"];
                 const summaryValues = [
@@ -685,16 +688,16 @@ function Riwayat() {
                     doc.text(summaryValues[index], x + summaryWidth / 2, summaryY + 10.5, { align: "center" });
                 });
 
-                const sectionY = 81;
+                const sectionY = summaryY + 17;
                 doc.setFont("helvetica", "bold");
                 doc.setFontSize(8.5);
                 doc.setTextColor(0);
                 doc.text("Detail Absensi Harian", left, sectionY);
 
-                let tableY = 84;
+                let tableY = sectionY + 3;
                 const headerHeight = 7;
-                const rowHeight = 8.7;
-                const pageBottom = doc.internal.pageSize.getHeight() - 14;
+                const rowHeight = 7.4;
+                const pageBottom = doc.internal.pageSize.getHeight() - KOP_BOTTOM_SAFE_MARGIN;
                 const drawTableHeader = () => {
                     let x = left;
                     columnTitles.forEach((title, index) => {
@@ -716,7 +719,8 @@ function Riwayat() {
                 dailyRows.forEach((row, index) => {
                     if (tableY + rowHeight > pageBottom) {
                         doc.addPage();
-                        tableY = 14;
+                        applyKopToPdfPage(doc, kopDataUrl);
+                        tableY = KOP_TOP_SAFE_Y + 2;
                         drawTableHeader();
                     }
                     let x = left;
@@ -746,10 +750,10 @@ function Riwayat() {
 
         const totalDisplayRows = participantStats.length;
         const tableRowHeight = 12.75;
-        const attendanceSectionY = 62;
+        const attendanceSectionY = KOP_TOP_SAFE_Y + 42;
         const tableHeaderStartY = attendanceSectionY + 9;
         const tableHeaderHeight = 8;
-        const pageBottom = doc.internal.pageSize.getHeight() - 14;
+        const pageBottom = doc.internal.pageSize.getHeight() - KOP_BOTTOM_SAFE_MARGIN;
         const signatureSpace = 54;
         const ROWS_PER_PAGE = Math.max(
             1,
@@ -767,10 +771,12 @@ function Riwayat() {
                 doc.addPage();
             }
 
+            applyKopToPdfPage(doc, kopDataUrl);
+
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(17);
+            doc.setFontSize(16);
             doc.setTextColor(0);
-            doc.text("REKAP ABSENSI MAGANG BULANAN", 105, 19, { align: "center" });
+            doc.text("REKAP ABSENSI MAGANG BULANAN", 105, KOP_TOP_SAFE_Y + 4, { align: "center" });
 
             doc.setFont("helvetica", "normal");
             doc.setFontSize(9.5);
@@ -778,18 +784,18 @@ function Riwayat() {
             doc.text(
                 "Laporan seluruh peserta dalam satu tabel untuk satu bulan pelaporan.",
                 105,
-                25,
+                KOP_TOP_SAFE_Y + 10,
                 { align: "center", maxWidth: 170 }
             );
 
             doc.setDrawColor(0);
             doc.setLineWidth(0.3);
             doc.setFillColor(245, 245, 245);
-            doc.roundedRect(tableX, 30, tableWidth, 22, 2, 2, "FD");
+            doc.roundedRect(tableX, KOP_TOP_SAFE_Y + 15, tableWidth, 22, 2, 2, "FD");
 
             doc.setDrawColor(0);
-            doc.line(tableX, 41, tableX + tableWidth, 41);
-            doc.line(114, 30, 114, 41);
+            doc.line(tableX, KOP_TOP_SAFE_Y + 26, tableX + tableWidth, KOP_TOP_SAFE_Y + 26);
+            doc.line(114, KOP_TOP_SAFE_Y + 15, 114, KOP_TOP_SAFE_Y + 26);
 
             const drawMetadata = (label, value, labelX, colonX, valueX, y, maxValueWidth) => {
                 doc.setFont("helvetica", "bold");
@@ -805,9 +811,9 @@ function Riwayat() {
                 doc.text(text, valueX, y, { maxWidth: maxValueWidth });
             };
 
-            drawMetadata("Kampus", institutionName, 17, 44, 49, 36, 62);
-            drawMetadata("Pembimbing", supervisorName, 17, 44, 49, 48, tableWidth - 38);
-            drawMetadata("Bulan / Tahun", monthYearLabel, 117, 149, 154, 36, 40);
+            drawMetadata("Kampus", institutionName, 17, 44, 49, KOP_TOP_SAFE_Y + 21, 62);
+            drawMetadata("Pembimbing", supervisorName, 17, 44, 49, KOP_TOP_SAFE_Y + 33, tableWidth - 38);
+            drawMetadata("Bulan / Tahun", monthYearLabel, 117, 149, 154, KOP_TOP_SAFE_Y + 21, 40);
 
             const sec2Y = attendanceSectionY;
             doc.setFillColor(235, 235, 235);

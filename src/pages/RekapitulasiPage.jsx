@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../services/api';
+import { createKopDocxSectionConfig } from '../utils/kopSurat';
 
 function formatDate(value) {
   if (!value) return 'Belum ditentukan';
@@ -81,7 +82,9 @@ function RekapitulasiPage() {
     if (!selectedParticipant) return;
 
     try {
-      const { AlignmentType, BorderStyle, Document, Packer, Paragraph, ShadingType, Table, TableBorders, TableCell, TableRow, TextRun, WidthType } = await import('docx');
+      const docxModule = await import('docx');
+      const { AlignmentType, BorderStyle, Document, Packer, Paragraph, ShadingType, Table, TableBorders, TableCell, TableRow, TextRun, WidthType } = docxModule;
+      const kopSection = await createKopDocxSectionConfig(docxModule);
       const tasks = selectedParticipant.detail_tugas || [];
       const grade = getFinalGrade(selectedParticipant);
       const font = 'Times New Roman';
@@ -153,35 +156,6 @@ function RekapitulasiPage() {
         ],
         verticalAlign: 'center',
       });
-      const letterhead = new Table({
-        rows: [new TableRow({
-          cantSplit: true,
-          children: [new TableCell({
-            children: [new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [new TextRun({
-                text: 'CV PUTRA ANUGRAH MANDIRI',
-                font,
-                bold: true,
-                size: 26,
-                color: '000000',
-              })],
-              spacing: { after: 80 },
-            })],
-            margins: { top: 80, bottom: 100, left: 100, right: 100 },
-          })],
-        })],
-        width: { size: tableWidth, type: WidthType.DXA },
-        columnWidths: [tableWidth],
-        borders: new TableBorders({
-          top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-          bottom: { style: BorderStyle.DOUBLE, size: 8, color: '000000' },
-          left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-          right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-          insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-          insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-        }),
-      });
       const taskRows = tasks.length
         ? tasks.map((task) => [
             task.judul || 'Tugas telah dihapus',
@@ -205,19 +179,21 @@ function RekapitulasiPage() {
           },
         },
         sections: [{
+          headers: {
+            default: kopSection.header,
+          },
           properties: {
             page: {
               size: { width: 11906, height: 16838 },
-              margin: { top: 900, right: 900, bottom: 900, left: 900 },
+              margin: kopSection.margin,
             },
           },
           children: [
-            letterhead,
             new Paragraph({
               children: [new TextRun({ text: 'REKAPITULASI MAGANG', font, size: 28, bold: true, color: '000000' })],
               alignment: AlignmentType.CENTER,
               keepNext: true,
-              spacing: { before: 160, after: 100 },
+              spacing: { before: 80, after: 100 },
             }),
             new Paragraph({
               children: [new TextRun({

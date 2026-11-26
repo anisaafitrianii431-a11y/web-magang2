@@ -614,9 +614,9 @@ td { color: #334155; }
 /* ============================================================
    MODALS
    ============================================================ */
-.modal-overlay { position: fixed; inset: 0; background-color: rgba(15, 23, 42, 0.45); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
-.modal-dialog { background-color: #ffffff; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); width: 100%; max-width: 600px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; animation: modalFadeIn 0.18s ease-out; }
-.modal-dialog > .task-form { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; }
+.modal-overlay { position: fixed; inset: 0; background-color: rgba(15, 23, 42, 0.45); backdrop-filter: blur(4px); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; z-index: 100; padding: 24px 16px; }
+.modal-dialog { background-color: #ffffff; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); width: 100%; max-width: 600px; max-height: calc(100vh - 48px); margin: auto; display: flex; flex-direction: column; overflow-y: auto; animation: modalFadeIn 0.18s ease-out; }
+.modal-dialog > .task-form, .modal-dialog > form { display: flex; flex: 1; flex-direction: column; min-height: 0; }
 
 @keyframes modalFadeIn {
   from { opacity: 0; transform: scale(0.96); }

@@ -82,24 +82,30 @@ function ProfilKantor() {
       <div className="contact-strip">
         {profil?.alamat && (
           <div className="contact-item">
-            <MapPin className="contact-icon" size={20} />
-            <div>
+            <span className="contact-icon-box" aria-hidden="true">
+              <MapPin className="contact-icon" size={18} />
+            </span>
+            <div className="contact-content">
               <span className="contact-label">Alamat</span>
               <span className="contact-val">{profil.alamat}</span>
             </div>
           </div>
         )}
         <div className="contact-item">
-          <Mail className="contact-icon" size={20} />
-          <div>
+          <span className="contact-icon-box" aria-hidden="true">
+            <Mail className="contact-icon" size={18} />
+          </span>
+          <div className="contact-content">
             <span className="contact-label">Email</span>
             <span className="contact-val">{profil?.email || 'info@instansi.go.id'}</span>
           </div>
         </div>
         {profil?.telepon && (
           <div className="contact-item">
-            <Phone className="contact-icon" size={20} />
-            <div>
+            <span className="contact-icon-box" aria-hidden="true">
+              <Phone className="contact-icon" size={18} />
+            </span>
+            <div className="contact-content">
               <span className="contact-label">Telepon</span>
               <span className="contact-val">{profil.telepon}</span>
             </div>
@@ -107,8 +113,10 @@ function ProfilKantor() {
         )}
         {profil?.instagram && (
           <div className="contact-item">
-            <Camera className="contact-icon" size={20} />
-            <div>
+            <span className="contact-icon-box" aria-hidden="true">
+              <Camera className="contact-icon" size={18} />
+            </span>
+            <div className="contact-content">
               <span className="contact-label">Instagram</span>
               <a href={getInstagramUrl(profil.instagram)} target="_blank" rel="noreferrer" className="contact-link">
                 {profil.instagram}
