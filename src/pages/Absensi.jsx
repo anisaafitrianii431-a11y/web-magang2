@@ -9,6 +9,7 @@ import Navbar from "../components/Navbar";
 import api from "../services/api";
 import { API_BASE_URL } from "../config/api";
 import { applyKopToPdfPage, KOP_BOTTOM_SAFE_MARGIN, KOP_TOP_SAFE_Y, loadKopDataUrl } from "../utils/kopSurat";
+import { compressImageToTarget } from "../utils/fileCompressor";
 
 function normalizeIsoDate(value) {
     const text = String(value || "").trim().slice(0, 10);
@@ -411,11 +412,22 @@ function Absensi() {
     const mapContainerRef = useRef(null);
     const mapInstanceRef = useRef(null);
 
-    const handleFileChange = (e) => {
+    const handleFileChange = async (e) => {
         const file = e.target.files?.[0];
         if (file) {
-            setZoomFile(file);
-            setZoomPreview(URL.createObjectURL(file));
+            try {
+                const result = await compressImageToTarget(file, {
+                    targetSizeKb: 250,
+                    maxWidth: 1440,
+                    maxHeight: 1440,
+                });
+                const compressedFile = result.file || file;
+                setZoomFile(compressedFile);
+                setZoomPreview(URL.createObjectURL(compressedFile));
+            } catch {
+                setZoomFile(file);
+                setZoomPreview(URL.createObjectURL(file));
+            }
         } else {
             setZoomFile(null);
             setZoomPreview(null);
@@ -956,10 +968,10 @@ function Absensi() {
                             <span className="attendance-meta-label" style={{ textAlign: "right" }}>STATUS HARI INI</span>
                             <div>
                                 <span className={`attendance-badge-lg ${data?.status === "Hadir" || data?.approval_status === "approved"
-                                        ? "badge-success"
-                                        : data?.status === "Alpa" || data?.approval_status === "rejected"
-                                            ? "badge-danger"
-                                            : "badge-neutral"
+                                    ? "badge-success"
+                                    : data?.status === "Alpa" || data?.approval_status === "rejected"
+                                        ? "badge-danger"
+                                        : "badge-neutral"
                                     }`}>
                                     <span style={{
                                         display: "inline-block",

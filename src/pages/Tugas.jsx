@@ -26,6 +26,7 @@ import api from '../api';
 import Login from './Login';
 import Sidebar from '../components/Sidebar';
 import { normalizeRole } from '../utils/auth';
+import { compressImageToTarget, optimizePdf } from '../utils/fileCompressor';
 
 // Helper: Format deadline informasi lengkap (Hari, Tanggal, Jam WIB, dan status countdown)
 function formatDeadlineInfo(deadlineString) {
@@ -277,6 +278,71 @@ function Tugas() {
   const [uploadCatatan, setUploadCatatan] = useState('');
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [compressingFile, setCompressingFile] = useState(false);
+  const [compressionNote, setCompressionNote] = useState('');
+  const [fileError, setFileError] = useState('');
+
+  const ALLOWED_SUBMISI_EXT = ['pdf', 'doc', 'docx', 'zip', 'rar', 'jpg', 'jpeg', 'png'];
+  const MAX_SUBMISI_BYTES = 5 * 1024 * 1024;
+
+  const handleSelectSubmisiFile = async (selected) => {
+    if (!selected) {
+      setUploadFile(null);
+      setCompressionNote('');
+      setFileError('');
+      return;
+    }
+
+    const ext = String(selected.name || '').split('.').pop()?.toLowerCase() || '';
+    if (!ALLOWED_SUBMISI_EXT.includes(ext)) {
+      setUploadFile(null);
+      setCompressionNote('');
+      setFileError(`Format berkas ".${ext || '?'}" tidak didukung. Hanya diperbolehkan: PDF, DOCX, DOC, ZIP, RAR, JPG, PNG.`);
+      return;
+    }
+
+    setFileError('');
+    setCompressionNote('');
+    const isImage = selected.type.startsWith('image/');
+    const isPdf = selected.type === 'application/pdf' || ext === 'pdf';
+
+    if (!isImage && !(isPdf && selected.size > 2.5 * 1024 * 1024)) {
+      if (selected.size > MAX_SUBMISI_BYTES) {
+        setUploadFile(null);
+        setFileError('Ukuran berkas melebihi batas maksimal 5 MB.');
+        return;
+      }
+      setUploadFile(selected);
+      return;
+    }
+
+    setCompressingFile(true);
+    try {
+      const result = isImage
+        ? await compressImageToTarget(selected, { targetSizeKb: 300, maxWidth: 1600, maxHeight: 1600 })
+        : await optimizePdf(selected, 1500);
+
+      const nextFile = result?.file && result.file.size < selected.size ? result.file : selected;
+      if (nextFile.size > MAX_SUBMISI_BYTES) {
+        setUploadFile(null);
+        setFileError('Ukuran berkas setelah kompresi masih melebihi batas maksimal 5 MB.');
+        return;
+      }
+      setUploadFile(nextFile);
+      if (nextFile.size < selected.size) {
+        setCompressionNote(`Dikompresi dari ${formatFileSize(selected.size)} (${result.savedPercent || Math.round((1 - nextFile.size / selected.size) * 100)}% lebih hemat)`);
+      }
+    } catch {
+      if (selected.size > MAX_SUBMISI_BYTES) {
+        setUploadFile(null);
+        setFileError('Ukuran berkas melebihi batas maksimal 5 MB.');
+        return;
+      }
+      setUploadFile(selected);
+    } finally {
+      setCompressingFile(false);
+    }
+  };
 
   // Clear session
   const clearSession = useCallback(() => {
@@ -2114,8 +2180,9 @@ function Tugas() {
                         onDrop={(e) => {
                           e.preventDefault();
                           setIsDragging(false);
-                          if (e.dataTransfer.files?.[0]) {
-                            setUploadFile(e.dataTransfer.files[0]);
+                          const dropped = e.dataTransfer.files?.[0];
+                          if (dropped) {
+                            void handleSelectSubmisiFile(dropped);
                           }
                         }}
                         style={{
@@ -2132,7 +2199,11 @@ function Tugas() {
                         <input
                           type="file"
                           accept=".pdf,.doc,.docx,.zip,.rar,.jpg,.jpeg,.png"
-                          onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                          onChange={(e) => {
+                            const picked = e.target.files?.[0] || null;
+                            e.target.value = '';
+                            void handleSelectSubmisiFile(picked);
+                          }}
                           required={!isEdit}
                           style={{
                             opacity: 0,
@@ -2209,8 +2280,9 @@ function Tugas() {
                             >
                               {uploadFile.name}
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: '#166534', marginTop: '2px' }}>
-                              <span>{formatFileSize(uploadFile.size)}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '0.78rem', color: '#166534', marginTop: '2px' }}>
+                              <span>{compressingFile ? 'Mengompresi berkas...' : formatFileSize(uploadFile.size)}</span>
+                              {compressionNote && <span>• {compressionNote}</span>}
                               <span>•</span>
                               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: 600 }}>
                                 <CheckCircle2 size={12} color="#16a34a" /> Siap diunggah
@@ -2221,7 +2293,11 @@ function Tugas() {
 
                         <button
                           type="button"
-                          onClick={() => setUploadFile(null)}
+                          onClick={() => {
+                            setUploadFile(null);
+                            setCompressionNote('');
+                            setFileError('');
+                          }}
                           style={{
                             background: '#ffffff',
                             border: '1px solid #bbf7d0',
@@ -2239,6 +2315,27 @@ function Tugas() {
                         >
                           Ganti Berkas
                         </button>
+                      </div>
+                    )}
+                    {fileError && (
+                      <div
+                        role="alert"
+                        style={{
+                          marginTop: '10px',
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          background: '#fef2f2',
+                          border: '1px solid #fecaca',
+                          color: '#b91c1c',
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                        <span>{fileError}</span>
                       </div>
                     )}
                   </div>
@@ -2315,7 +2412,7 @@ function Tugas() {
                   <button
                     type="submit"
                     className="btn-save-primary"
-                    disabled={uploading}
+                    disabled={uploading || compressingFile || Boolean(fileError)}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -2325,7 +2422,8 @@ function Tugas() {
                       fontSize: '0.88rem',
                       fontWeight: 700,
                       boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)',
-                      cursor: uploading ? 'not-allowed' : 'pointer'
+                      cursor: (uploading || compressingFile || Boolean(fileError)) ? 'not-allowed' : 'pointer',
+                      opacity: (uploading || compressingFile || Boolean(fileError)) ? 0.65 : 1
                     }}
                   >
                     {uploading ? (

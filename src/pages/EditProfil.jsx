@@ -21,6 +21,7 @@ import {
 import Sidebar from "../components/Sidebar";
 import api from "../services/api";
 import { API_BASE_URL } from "../config/api";
+import { compressImageToTarget } from "../utils/fileCompressor";
 
 function getPhotoUrl(photo) {
     if (!photo) return null;
@@ -122,9 +123,14 @@ export default function EditProfil() {
         };
     }, []);
 
-    const handleFileChange = (e) => {
+    const handleFileChange = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
+
+        if (!file.type.startsWith("image/")) {
+            setError("Berkas foto profil harus berupa gambar (JPG, PNG, atau WEBP).");
+            return;
+        }
 
         if (file.size > 5 * 1024 * 1024) {
             setError("Ukuran foto maksimal adalah 5 MB.");
@@ -132,14 +138,27 @@ export default function EditProfil() {
         }
 
         setError("");
-        setFotoFile(file);
         setPhotoError(false);
+
+        let finalFile = file;
+        try {
+            const result = await compressImageToTarget(file, {
+                targetSizeKb: 200,
+                maxWidth: 800,
+                maxHeight: 1000,
+            });
+            finalFile = result.file || file;
+        } catch {
+            finalFile = file;
+        }
+
+        setFotoFile(finalFile);
 
         const reader = new FileReader();
         reader.onloadend = () => {
             setFotoPreview(reader.result);
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(finalFile);
     };
 
     const handleChange = (e) => {
@@ -376,10 +395,10 @@ export default function EditProfil() {
                         <form onSubmit={handleSubmit}>
                             <div
                                 style={{
-                                  display: "grid",
-                                  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-                                  gap: "24px",
-                                  alignItems: "start",
+                                    display: "grid",
+                                    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                                    gap: "24px",
+                                    alignItems: "start",
                                 }}
                             >
                                 {/* KOLOM KIRI: Foto Profil & Kartu Status */}

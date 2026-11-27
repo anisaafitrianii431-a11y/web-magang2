@@ -27,6 +27,7 @@ import api from "../services/api";
 import { applyKopToPdfPage, KOP_BOTTOM_SAFE_MARGIN, KOP_TOP_SAFE_Y, loadKopDataUrl } from "../utils/kopSurat";
 import { API_BASE_URL } from "../config/api";
 import { getStoredUser, normalizeRole } from "../utils/auth";
+import { compressImageToTarget, formatFileSize } from "../utils/fileCompressor";
 
 const KATEGORI_OPTIONS = [
     "Teknis",
@@ -87,8 +88,10 @@ const emptyForm = {
     judul_kegiatan: "",
     deskripsi_kegiatan: "",
     foto_kegiatan: null,
+    video_kegiatan: null,
     link_video: "",
     remove_foto: false,
+    remove_video: false,
 };
 
 export default function Logbook() {
@@ -115,6 +118,8 @@ export default function Logbook() {
     const [editingItem, setEditingItem] = useState(null);
     const [form, setForm] = useState(emptyForm);
     const [photoPreview, setPhotoPreview] = useState("");
+    const [photoInfo, setPhotoInfo] = useState("");
+    const [videoPreview, setVideoPreview] = useState("");
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState("");
 
@@ -125,8 +130,9 @@ export default function Logbook() {
     const [verifying, setVerifying] = useState(false);
     const [verifyError, setVerifyError] = useState("");
 
-    // Modal Preview Foto
+    // Modal Preview Foto & Video
     const [previewImage, setPreviewImage] = useState(null);
+    const [previewVideo, setPreviewVideo] = useState(null);
 
     const loadLogbooks = useCallback(async () => {
         setLoading(true);
@@ -221,6 +227,8 @@ export default function Logbook() {
         setEditingItem(null);
         setForm({ ...emptyForm, tanggal: getTodayStr() });
         setPhotoPreview("");
+        setPhotoInfo("");
+        setVideoPreview("");
         setFormError("");
         setFormOpen(true);
     };
@@ -235,15 +243,19 @@ export default function Logbook() {
             judul_kegiatan: item.judul_kegiatan || "",
             deskripsi_kegiatan: item.deskripsi_kegiatan || "",
             foto_kegiatan: null,
+            video_kegiatan: null,
             link_video: item.link_video || "",
             remove_foto: false,
+            remove_video: false,
         });
         setPhotoPreview(item.foto_url ? getPhotoUrl(item.foto_url) : "");
+        setPhotoInfo("");
+        setVideoPreview(item.video_url ? getPhotoUrl(item.video_url) : "");
         setFormError("");
         setFormOpen(true);
     };
 
-    const handleFileChange = (e) => {
+    const handleFileChange = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
         if (!file.type.startsWith("image/")) {
@@ -251,8 +263,37 @@ export default function Logbook() {
             return;
         }
         setFormError("");
-        setForm((prev) => ({ ...prev, foto_kegiatan: file, remove_foto: false }));
-        setPhotoPreview(URL.createObjectURL(file));
+        try {
+            const result = await compressImageToTarget(file, {
+                targetSizeKb: 250,
+                maxWidth: 1440,
+                maxHeight: 1440,
+            });
+            const compressedFile = result.file || file;
+            setForm((prev) => ({ ...prev, foto_kegiatan: compressedFile, remove_foto: false }));
+            setPhotoPreview(URL.createObjectURL(compressedFile));
+            setPhotoInfo(`Dikompresi: ${formatFileSize(file.size)} → ${formatFileSize(compressedFile.size)}`);
+        } catch {
+            setForm((prev) => ({ ...prev, foto_kegiatan: file, remove_foto: false }));
+            setPhotoPreview(URL.createObjectURL(file));
+            setPhotoInfo(`Ukuran: ${formatFileSize(file.size)}`);
+        }
+    };
+
+    const handleVideoChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith("video/")) {
+            setFormError("File video kegiatan harus berupa video (MP4, WEBM, MOV, AVI).");
+            return;
+        }
+        if (file.size > 15 * 1024 * 1024) {
+            setFormError("Ukuran file video maksimal 15 MB. Untuk video panjang, gunakan Link URL Video.");
+            return;
+        }
+        setFormError("");
+        setForm((prev) => ({ ...prev, video_kegiatan: file, remove_video: false }));
+        setVideoPreview(URL.createObjectURL(file));
     };
 
     const handleSaveForm = async (e) => {
@@ -278,6 +319,12 @@ export default function Logbook() {
             }
             if (form.remove_foto) {
                 payload.append("remove_foto", "1");
+            }
+            if (form.video_kegiatan instanceof File) {
+                payload.append("video_kegiatan", form.video_kegiatan);
+            }
+            if (form.remove_video) {
+                payload.append("remove_video", "1");
             }
 
             if (editingItem) {
@@ -856,7 +903,7 @@ export default function Logbook() {
                                                         <p style={{ margin: 0, fontSize: "12.5px", color: "#475569", lineHeight: 1.5, whiteSpace: "pre-line" }}>
                                                             {item.deskripsi_kegiatan}
                                                         </p>
-                                                        {(item.foto_url || getSafeVideoUrl(item.link_video)) && (
+                                                        {(item.foto_url || item.video_url || getSafeVideoUrl(item.link_video)) && (
                                                             <div style={{ marginTop: "6px", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                                                                 {item.foto_url && (
                                                                     <button
@@ -884,6 +931,34 @@ export default function Logbook() {
                                                                     >
                                                                         <Camera size={12} />
                                                                         <span>Lihat Dokumentasi</span>
+                                                                    </button>
+                                                                )}
+                                                                {item.video_url && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            setPreviewVideo({
+                                                                                url: getPhotoUrl(item.video_url),
+                                                                                title: item.judul_kegiatan,
+                                                                                date: dateInfo.fullDate,
+                                                                            })
+                                                                        }
+                                                                        style={{
+                                                                            display: "inline-flex",
+                                                                            alignItems: "center",
+                                                                            gap: "5px",
+                                                                            fontSize: "11.5px",
+                                                                            fontWeight: 650,
+                                                                            color: "#7c3aed",
+                                                                            background: "#f5f3ff",
+                                                                            border: "1px solid #ddd6fe",
+                                                                            borderRadius: "7px",
+                                                                            padding: "4px 9px",
+                                                                            cursor: "pointer",
+                                                                        }}
+                                                                    >
+                                                                        <Video size={12} />
+                                                                        <span>Putar Video</span>
                                                                     </button>
                                                                 )}
                                                                 {getSafeVideoUrl(item.link_video) && (
@@ -1218,6 +1293,35 @@ export default function Logbook() {
 
                                     <div>
                                         <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#334155", marginBottom: "5px" }}>
+                                            Upload Video Kegiatan (Opsional)
+                                        </label>
+                                        <input type="file" accept="video/mp4,video/webm,video/quicktime,video/x-msvideo,video/*" onChange={handleVideoChange} style={{ fontSize: "12.5px" }} />
+                                        <small style={{ display: "block", marginTop: "4px", fontSize: "11.5px", color: "#64748b" }}>
+                                            Format: MP4, WEBM, MOV, atau AVI (maksimal 15 MB). Untuk video panjang, gunakan Link URL Video di bawah.
+                                        </small>
+                                        {videoPreview && (
+                                            <div style={{ marginTop: "8px", display: "flex", alignItems: "center", gap: "10px" }}>
+                                                <video
+                                                    src={videoPreview}
+                                                    controls
+                                                    style={{ width: "140px", height: "84px", borderRadius: "8px", border: "1px solid #cbd5e1", background: "#0f172a" }}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setVideoPreview("");
+                                                        setForm((p) => ({ ...p, video_kegiatan: null, remove_video: true }));
+                                                    }}
+                                                    style={{ fontSize: "12px", color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
+                                                >
+                                                    Hapus Video
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#334155", marginBottom: "5px" }}>
                                             Link URL Video Kegiatan (Opsional)
                                         </label>
                                         <input
@@ -1237,6 +1341,9 @@ export default function Logbook() {
                                             Foto Dokumentasi (Opsional)
                                         </label>
                                         <input type="file" accept="image/*" onChange={handleFileChange} style={{ fontSize: "12.5px" }} />
+                                        <small style={{ display: "block", marginTop: "4px", fontSize: "11.5px", color: "#64748b" }}>
+                                            {photoInfo || "Foto otomatis dikompresi ke ±250 KB sebelum diunggah agar tetap tajam dan hemat ruang."}
+                                        </small>
                                         {photoPreview && (
                                             <div style={{ marginTop: "8px", display: "flex", alignItems: "center", gap: "10px" }}>
                                                 <img
@@ -1248,6 +1355,7 @@ export default function Logbook() {
                                                     type="button"
                                                     onClick={() => {
                                                         setPhotoPreview("");
+                                                        setPhotoInfo("");
                                                         setForm((p) => ({ ...p, foto_kegiatan: null, remove_foto: true }));
                                                     }}
                                                     style={{ fontSize: "12px", color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
@@ -1330,6 +1438,15 @@ export default function Logbook() {
                                         {verifyTarget.nama_peserta || "Peserta"} • {formatDateInfo(verifyTarget.tanggal).fullDate}
                                     </div>
                                     <p style={{ margin: "6px 0 0", color: "#334155", lineHeight: 1.45 }}>{verifyTarget.deskripsi_kegiatan}</p>
+                                    {verifyTarget.video_url && (
+                                        <div style={{ marginTop: "8px" }}>
+                                            <video
+                                                src={getPhotoUrl(verifyTarget.video_url)}
+                                                controls
+                                                style={{ width: "100%", maxHeight: "200px", borderRadius: "8px", background: "#0f172a" }}
+                                            />
+                                        </div>
+                                    )}
                                     {getSafeVideoUrl(verifyTarget.link_video) && (
                                         <a
                                             href={getSafeVideoUrl(verifyTarget.link_video)}
@@ -1487,6 +1604,59 @@ export default function Logbook() {
                                         src={previewImage.url}
                                         alt={previewImage.title}
                                         style={{ maxWidth: "100%", maxHeight: "70vh", borderRadius: "8px", objectFit: "contain" }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modal Preview Video Kegiatan */}
+                    {previewVideo && (
+                        <div
+                            className="modal-overlay"
+                            onClick={() => setPreviewVideo(null)}
+                            style={{
+                                position: "fixed",
+                                inset: 0,
+                                background: "rgba(15, 23, 42, 0.78)",
+                                backdropFilter: "blur(5px)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: "20px",
+                                zIndex: 10000,
+                            }}
+                        >
+                            <div
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                    maxWidth: "760px",
+                                    width: "100%",
+                                    background: "#ffffff",
+                                    borderRadius: "18px",
+                                    overflow: "hidden",
+                                    boxShadow: "0 25px 50px rgba(0,0,0,0.35)",
+                                }}
+                            >
+                                <div style={{ padding: "14px 18px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <div>
+                                        <strong style={{ fontSize: "14px", color: "#0f172a" }}>{previewVideo.title}</strong>
+                                        <div style={{ fontSize: "11.5px", color: "#64748b" }}>{previewVideo.date}</div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPreviewVideo(null)}
+                                        style={{ background: "#f1f5f9", border: "none", borderRadius: "8px", padding: "6px", cursor: "pointer" }}
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                </div>
+                                <div style={{ padding: "16px", background: "#0f172a", display: "flex", justifyContent: "center" }}>
+                                    <video
+                                        src={previewVideo.url}
+                                        controls
+                                        autoPlay
+                                        style={{ width: "100%", maxHeight: "70vh", borderRadius: "8px", background: "#000000" }}
                                     />
                                 </div>
                             </div>
