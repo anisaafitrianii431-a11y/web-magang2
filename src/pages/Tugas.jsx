@@ -26,7 +26,7 @@ import api from '../api';
 import Login from './Login';
 import Sidebar from '../components/Sidebar';
 import { normalizeRole } from '../utils/auth';
-import { compressImageToTarget, optimizePdf } from '../utils/fileCompressor';
+import { compressImageToTarget, optimizeDocx, optimizePdf } from '../utils/fileCompressor';
 
 // Helper: Format deadline informasi lengkap (Hari, Tanggal, Jam WIB, dan status countdown)
 function formatDeadlineInfo(deadlineString) {
@@ -283,7 +283,6 @@ function Tugas() {
   const [fileError, setFileError] = useState('');
 
   const ALLOWED_SUBMISI_EXT = ['pdf', 'doc', 'docx', 'zip', 'rar', 'jpg', 'jpeg', 'png'];
-  const MAX_SUBMISI_BYTES = 5 * 1024 * 1024;
 
   const handleSelectSubmisiFile = async (selected) => {
     if (!selected) {
@@ -305,39 +304,28 @@ function Tugas() {
     setCompressionNote('');
     const isImage = selected.type.startsWith('image/');
     const isPdf = selected.type === 'application/pdf' || ext === 'pdf';
+    const isDocx = ext === 'docx';
 
-    if (!isImage && !(isPdf && selected.size > 2.5 * 1024 * 1024)) {
-      if (selected.size > MAX_SUBMISI_BYTES) {
-        setUploadFile(null);
-        setFileError('Ukuran berkas melebihi batas maksimal 5 MB.');
-        return;
-      }
+    if (!isImage && !(isPdf && selected.size > 500 * 1024) && !(isDocx && selected.size > 500 * 1024)) {
       setUploadFile(selected);
       return;
     }
 
     setCompressingFile(true);
     try {
+      const pdfTargetKb = Math.min(1200, Math.max(400, Math.round((selected.size / 1024) * 0.55)));
       const result = isImage
-        ? await compressImageToTarget(selected, { targetSizeKb: 300, maxWidth: 1600, maxHeight: 1600 })
-        : await optimizePdf(selected, 1500);
+        ? await compressImageToTarget(selected, { targetSizeKb: 250, maxWidth: 1440, maxHeight: 1440 })
+        : isPdf
+          ? await optimizePdf(selected, pdfTargetKb)
+          : await optimizeDocx(selected);
 
       const nextFile = result?.file && result.file.size < selected.size ? result.file : selected;
-      if (nextFile.size > MAX_SUBMISI_BYTES) {
-        setUploadFile(null);
-        setFileError('Ukuran berkas setelah kompresi masih melebihi batas maksimal 5 MB.');
-        return;
-      }
       setUploadFile(nextFile);
       if (nextFile.size < selected.size) {
         setCompressionNote(`Dikompresi dari ${formatFileSize(selected.size)} (${result.savedPercent || Math.round((1 - nextFile.size / selected.size) * 100)}% lebih hemat)`);
       }
     } catch {
-      if (selected.size > MAX_SUBMISI_BYTES) {
-        setUploadFile(null);
-        setFileError('Ukuran berkas melebihi batas maksimal 5 MB.');
-        return;
-      }
       setUploadFile(selected);
     } finally {
       setCompressingFile(false);
@@ -524,19 +512,38 @@ function Tugas() {
   };
 
   // USE CASE 5 (Admin & Pembimbing): Unduh File Submisi
-  const handleDownloadSubmisi = async (submisiId, namaPeserta) => {
+  const MIME_EXT_MAP = {
+    'application/pdf': 'pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/msword': 'doc',
+    'application/zip': 'zip',
+    'application/x-zip-compressed': 'zip',
+    'application/x-rar-compressed': 'rar',
+    'application/vnd.rar': 'rar',
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+  };
+
+  const handleDownloadSubmisi = async (submisiId, namaPeserta, filePath = '') => {
     try {
       const res = await api.get(`/submisi/${submisiId}/download`, { responseType: 'blob' });
+      const disposition = res.headers?.['content-disposition'] || '';
+      const dispMatch = /filename\*?=(?:UTF-8'')?"?([^";\n]+)"?/i.exec(disposition);
+      const dispExt = dispMatch?.[1]?.split('.').pop()?.toLowerCase();
+      const pathExt = String(filePath || '').split('.').pop()?.toLowerCase();
+      const mimeExt = MIME_EXT_MAP[String(res.data?.type || '').toLowerCase()];
+      const ext = (dispExt && dispExt !== disposition) ? dispExt : (pathExt || mimeExt || 'pdf');
+
       const url = window.URL.createObjectURL(res.data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Tugas_${namaPeserta || 'Peserta'}.pdf`;
+      a.download = `Tugas_${namaPeserta || 'Peserta'}.${ext}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-    } catch {
-      alert('Mengunduh contoh berkas submisi peserta: Tugas_' + (namaPeserta || 'Peserta') + '.pdf');
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Gagal mengunduh berkas submisi peserta.');
     }
   };
 
@@ -1643,7 +1650,7 @@ function Tugas() {
                             type="button"
                             className="btn-search"
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 14px', borderRadius: '8px', fontSize: '0.86rem', fontWeight: 600 }}
-                            onClick={() => handleDownloadSubmisi(mySub.id, user.name)}
+                            onClick={() => handleDownloadSubmisi(mySub.id, user.name, mySub.file_path)}
                           >
                             <Download size={15} />
                             Unduh Berkas Saya
@@ -1789,7 +1796,7 @@ function Tugas() {
                           {user?.role === 'pembimbing' && (
                             <button
                               className="action-btn"
-                              onClick={() => handleDownloadSubmisi(sub.id, sub.peserta?.name)}
+                              onClick={() => handleDownloadSubmisi(sub.id, sub.peserta?.name, sub.file_path)}
                               title="Unduh Berkas Peserta"
                             >
                               📥 Unduh Berkas
@@ -2234,7 +2241,10 @@ function Tugas() {
                           Klik untuk memilih berkas atau seret ke sini
                         </div>
                         <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
-                          Format didukung: <strong>PDF, DOCX, DOC, ZIP, RAR, JPG, PNG</strong> (Maksimal 5 MB)
+                          Format didukung: <strong>PDF, DOCX, DOC, ZIP, RAR, JPG, PNG</strong>
+                          <span style={{ display: 'block', marginTop: '3px', fontSize: '0.76rem', color: '#94a3b8' }}>
+                            (PDF, DOCX &amp; Gambar otomatis dikompresi agar ukuran lebih hemat)
+                          </span>
                         </p>
                       </div>
                     ) : (

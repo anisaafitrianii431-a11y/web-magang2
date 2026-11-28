@@ -439,3 +439,159 @@ export async function convertScanImageToCompressedPdf(imageFile, targetSizeKb = 
     savedPercent: Math.max(0, Math.round((1 - validFile.size / imageFile.size) * 100))
   };
 }
+
+/**
+ * Kompresi gambar di dalam dokumen .docx (word/media/*) termasuk konversi PNG/WEBP besar ke JPEG
+ * sambil memperbarui referensi .rels & [Content_Types].xml agar tetap valid di Microsoft Word.
+ */
+export async function optimizeDocx(file, options = {}) {
+  const {
+    minImageKb = 40,
+    targetImageKb = 160,
+    maxWidth = 1200,
+    maxHeight = 1200
+  } = options;
+
+  try {
+    const { default: JSZip } = await import('jszip');
+    const buffer = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(buffer);
+
+    const mediaPaths = Object.keys(zip.files).filter((path) => {
+      const entry = zip.files[path];
+      return !entry.dir && /^word\/media\/.+\.(jpe?g|png|webp)$/i.test(path);
+    });
+
+    if (mediaPaths.length === 0) {
+      return {
+        file,
+        originalSize: file.size,
+        compressedSize: file.size,
+        isUnderTarget: true,
+        originalSizeFormatted: formatFileSize(file.size),
+        compressedSizeFormatted: formatFileSize(file.size),
+        savedPercent: 0
+      };
+    }
+
+    let modified = false;
+    const renamedMap = {}; // oldName -> newName (basename inside word/media/)
+
+    for (const path of mediaPaths) {
+      const origBytes = await zip.files[path].async('uint8array');
+      if (origBytes.byteLength < minImageKb * 1024) continue;
+
+      const ext = path.split('.').pop().toLowerCase();
+      const mime = ext === 'png' ? 'image/png' : (ext === 'webp' ? 'image/webp' : 'image/jpeg');
+      const oldBase = path.split('/').pop();
+      const imgFile = new File([origBytes], oldBase, { type: mime });
+
+      const compressed = await compressImageToTarget(imgFile, {
+        targetSizeKb: targetImageKb,
+        maxWidth,
+        maxHeight,
+        outputType: 'image/jpeg'
+      });
+
+      if (compressed?.file && compressed.file.size > 200 && compressed.file.size < origBytes.byteLength) {
+        const nextBytes = new Uint8Array(await compressed.file.arrayBuffer());
+        if (ext === 'jpg' || ext === 'jpeg') {
+          zip.file(path, nextBytes);
+          modified = true;
+        } else {
+          let newBase = oldBase.replace(/\.[^/.]+$/, '.jpg');
+          let newPath = `word/media/${newBase}`;
+          if (zip.files[newPath] && newPath !== path) {
+            newBase = oldBase.replace(/\.[^/.]+$/, '_cmp.jpg');
+            newPath = `word/media/${newBase}`;
+          }
+          zip.remove(path);
+          zip.file(newPath, nextBytes);
+          renamedMap[oldBase] = newBase;
+          modified = true;
+        }
+      }
+    }
+
+    if (!modified) {
+      return {
+        file,
+        originalSize: file.size,
+        compressedSize: file.size,
+        isUnderTarget: true,
+        originalSizeFormatted: formatFileSize(file.size),
+        compressedSizeFormatted: formatFileSize(file.size),
+        savedPercent: 0
+      };
+    }
+
+    // Perbarui referensi .rels dan [Content_Types].xml jika ada file PNG/WEBP yang dikonversi ke .jpg
+    const renamedEntries = Object.entries(renamedMap);
+    if (renamedEntries.length > 0) {
+      const relsPaths = Object.keys(zip.files).filter((p) => /^word\/_rels\/.*\.rels$/i.test(p));
+      for (const relPath of relsPaths) {
+        let relXml = await zip.files[relPath].async('string');
+        let relChanged = false;
+        for (const [oldBase, newBase] of renamedEntries) {
+          if (relXml.includes(`media/${oldBase}`)) {
+            relXml = relXml.split(`media/${oldBase}`).join(`media/${newBase}`);
+            relChanged = true;
+          }
+        }
+        if (relChanged) {
+          zip.file(relPath, relXml);
+        }
+      }
+
+      if (zip.files['[Content_Types].xml']) {
+        let ctXml = await zip.files['[Content_Types].xml'].async('string');
+        if (!/Extension=["']jpg["']/i.test(ctXml)) {
+          ctXml = ctXml.replace(
+            /<\/Types>/i,
+            '<Default Extension="jpg" ContentType="image/jpeg"/></Types>'
+          );
+        }
+        for (const [oldBase, newBase] of renamedEntries) {
+          if (ctXml.includes(`/word/media/${oldBase}`)) {
+            ctXml = ctXml.split(`/word/media/${oldBase}`).join(`/word/media/${newBase}`);
+          }
+        }
+        zip.file('[Content_Types].xml', ctXml);
+      }
+    }
+
+    const outBlob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 }
+    });
+
+    const outFile = (outBlob && outBlob.size > 1000 && outBlob.size < file.size)
+      ? new File([outBlob], file.name, {
+          type: file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          lastModified: Date.now()
+        })
+      : file;
+
+    return {
+      file: outFile,
+      originalSize: file.size,
+      compressedSize: outFile.size,
+      isUnderTarget: outFile.size < file.size,
+      originalSizeFormatted: formatFileSize(file.size),
+      compressedSizeFormatted: formatFileSize(outFile.size),
+      savedPercent: Math.max(0, Math.round((1 - outFile.size / file.size) * 100))
+    };
+  } catch (err) {
+    console.warn('Kompresi DOCX gagal, menggunakan berkas asli:', err);
+    return {
+      file,
+      originalSize: file.size,
+      compressedSize: file.size,
+      isUnderTarget: true,
+      originalSizeFormatted: formatFileSize(file.size),
+      compressedSizeFormatted: formatFileSize(file.size),
+      savedPercent: 0
+    };
+  }
+}
